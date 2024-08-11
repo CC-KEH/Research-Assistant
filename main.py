@@ -15,12 +15,13 @@ button_selection_color = "#6C7BFE"
 frame_border = 0
 heading_size = 24
 heading_color = "#6C7BFE"
+
 # Layout
 root = customtkinter.CTk()
 root.title('Research Assistant')
 root.geometry('1400x800')
 root.resizable(width=True, height=True)
-v1 = ShowPdf()
+
 
 # Create a PanedWindow with vertical orientation
 paned_window = PanedWindow(root, orient=HORIZONTAL, bg=bg_color)
@@ -88,6 +89,7 @@ def update_selection_ui():
 def open_file(filepath):
     for widget in frame2.winfo_children():
         widget.destroy()
+    v1 = ShowPdf()
     v2 = v1.pdf_view(frame2, pdf_location=filepath, width=600, height=600, bar=False)
     v2.pack()
 
