@@ -1,16 +1,14 @@
 from customtkinter import *
 from PIL import Image
 
-# from src.utils.constants import *
-
 BG_COLOR = "#1e1e1e"
 HEADING_COLOR = "#6C7BFE"
 FRAME_COLOR = "#151515"
 BUTTON_SELECTION_COLOR = "#69aa96"
 
 class ChatUI:
-    def __init__(self):
-        self.window = CTk()
+    def __init__(self, parent):
+        self.parent = parent
         self.width = 400
         self.height = 800
         
@@ -21,12 +19,10 @@ class ChatUI:
         self._setup_main_window()
 
     def _setup_main_window(self):
-        self.window.title("Chat UI")
-        self.window.resizable(width=True, height=False)
-        self.window.configure(width=self.width, height=self.height, fg_color=FRAME_COLOR)
+        self.parent.configure(width=self.width, height=self.height, fg_color=FRAME_COLOR)
         # Head label
         head_label = CTkLabel(
-            self.window,
+            self.parent,
             text="Model Name",
             text_color=HEADING_COLOR,
             font=self.FONT_BOLD,
@@ -35,7 +31,7 @@ class ChatUI:
         head_label.place(relwidth=1)
 
         # Text widget with scrollbar
-        text_frame = CTkFrame(self.window, bg_color=BG_COLOR)
+        text_frame = CTkFrame(self.parent, bg_color=BG_COLOR)
         text_frame.place(relheight=0.825, relwidth=1, rely=0.08)
 
         self.text_widget = CTkTextbox(
@@ -56,9 +52,8 @@ class ChatUI:
 
         # Entry box
         self.msg_entry = CTkEntry(
-            self.window,
+            self.parent,
             bg_color=BG_COLOR,
-            # fg_color=HEADING_COLOR,
             font=self.FONT
         )
         self.msg_entry.place(relwidth=0.74, rely=0.925, relheight=0.06, relx=0.011)
@@ -66,7 +61,7 @@ class ChatUI:
         # Send button
         send_img = CTkImage(Image.open("send.png"), size=(20, 20))
         send_button = CTkButton(
-            self.window,
+            self.parent,
             text="",
             image=send_img,
             fg_color=HEADING_COLOR,
@@ -100,10 +95,3 @@ class ChatUI:
         
         processed_msg = msg.upper()
         return processed_msg
-
-    def run(self):
-        self.window.mainloop()
-
-if __name__ == "__main__":
-    chatui = ChatUI()
-    chatui.run()

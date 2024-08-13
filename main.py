@@ -3,7 +3,9 @@ from tkinter import filedialog
 import customtkinter
 from src.utils.common import *
 from pdf_viewer import ShowPdf
-# from tkPDFViewer import tkPDFViewer as pdf
+from chat import ChatUI
+import markdown
+from tkhtmlview import HTMLLabel
 
 # Themes and colors
 customtkinter.set_appearance_mode('system')
@@ -21,7 +23,6 @@ root = customtkinter.CTk()
 root.title('Research Assistant')
 root.geometry('1400x800')
 root.resizable(width=True, height=True)
-
 
 # Create a PanedWindow with vertical orientation
 paned_window = PanedWindow(root, orient=HORIZONTAL, bg=bg_color)
@@ -53,10 +54,10 @@ button_frame.pack(pady=20)
 
 def update_file_list():
     for widget in frame1.winfo_children():
-        if isinstance(widget, customtkinter.CTkButton) and widget not in [add_file_button, delete_file_button, add_folder_button]:
+        if isinstance(widget, customtkinter.CTkButton) and widget not in [add_file_button, delete_file_button, merge_files_button]:
             widget.destroy()
     for file in library:
-        file_button = customtkinter.CTkButton(frame1, text=file.split('/')[-1], corner_radius=5, fg_color=bg_color, text_color='white',border_color=frame_color, border_width=1, width=200, height=20)
+        file_button = customtkinter.CTkButton(frame1, text=file.split('/')[-1], corner_radius=5, fg_color=bg_color, text_color='white',border_color=frame_color, border_width=1, width=200, height=25)
         file_button.pack(fill='x', padx=10)
         file_button.bind('<Button-1>', lambda event, f=file: on_file_click(event, f))
     
@@ -85,13 +86,48 @@ def update_selection_ui():
             else:
                 widget.configure(border_color=frame_color)  # Reset border color for non-selected files
 
-
-def open_file(filepath):
+def update_frame2_ui():
     for widget in frame2.winfo_children():
         widget.destroy()
+    if selected_files:
+        open_file(selected_files[-1])
+
+def open_file(filepath):
+    summary = """
+    # Hello, CustomTkinter!
+
+    This is a **bold** text and this is *italic* text.
+
+    - List item 1
+    - List item 2
+
+    [OpenAI](https://openai.com)
+    """
+    html_text = markdown.markdown(summary)
+    
+    for widget in frame2.winfo_children():
+        widget.destroy()
+    
+    # Create a CTkTabview widget
+    notebook = customtkinter.CTkTabview(frame2)
+    notebook.pack(fill=BOTH, expand=1)
+    
+    # Add tabs to the notebook
+    notebook.add("PDF Viewer")
+    notebook.add("Summary")
+    
+    # PDF Viewer in "PDF Viewer" tab
+    viewer_tab = notebook.tab("PDF Viewer")
     v1 = ShowPdf()
-    v2 = v1.pdf_view(frame2, pdf_location=filepath, width=600, height=600, bar=False)
+    v2 = v1.pdf_view(viewer_tab, pdf_location=filepath, width=600, height=600, bar=False)
     v2.pack()
+    
+    # Summary in "Summary" tab
+    summary_tab = notebook.tab("Summary")
+    summary_label = HTMLLabel(summary_tab, html=html_text, background=bg_color)
+    summary_label.pack(fill="both", expand=True)
+    summary_label.fit_height()
+
 
 def delete_selected_files():
     global selected_files
@@ -102,8 +138,7 @@ def delete_selected_files():
     # Clear frame2
     for widget in frame2.winfo_children():
         widget.destroy()
-    
-    
+
 # Functions to add files and folders
 def browse_files():
     file_paths = filedialog.askopenfilenames()
@@ -111,17 +146,15 @@ def browse_files():
         library.extend(file_paths)
         update_file_list()
 
-def browse_folder():
-    folder_path = filedialog.askdirectory()
-    if folder_path:
-        # Add all files in the folder to the local library
-        import os
-        for file_name in os.listdir(folder_path):
-            file_path = os.path.join(folder_path, file_name)
-            if os.path.isfile(file_path):
-                library.append(file_path)
-        update_file_list()
-
+def merge_files():
+    global selected_files
+    print(selected_files)
+    merge_pdfs(selected_files)
+    selected_files = []
+    update_file_list()
+    # Clear frame2
+    for widget in frame2.winfo_children():
+        widget.destroy()
 
 # Buttons
 add_file_button = customtkinter.CTkButton(master=button_frame,
@@ -140,9 +173,9 @@ delete_file_button = customtkinter.CTkButton(master=button_frame,
                                              fg_color=frame_color,
                                              bg_color=frame_color)
 
-add_folder_button = customtkinter.CTkButton(master=button_frame,
-                                            text="📁",
-                                            command=browse_folder,  # Updated to call browse_folder function
+merge_files_button = customtkinter.CTkButton(master=button_frame,
+                                            text="🔗",
+                                            command=merge_files,  # Updated to call browse_folder function
                                             width=25, height=25,
                                             corner_radius=10,
                                             fg_color=frame_color,
@@ -150,9 +183,12 @@ add_folder_button = customtkinter.CTkButton(master=button_frame,
 
 # Pack buttons horizontally
 add_file_button.pack(side=LEFT, padx=10)
-add_folder_button.pack(side=LEFT, padx=10)
+merge_files_button.pack(side=LEFT, padx=10)
 delete_file_button.pack(side=LEFT, padx=10)
 
 update_file_list()
+
+# Instantiate ChatUI in frame3
+chat_ui = ChatUI(frame3)
 
 root.mainloop()

@@ -4,3 +4,5 @@ tkPDFViewer
 markdown
 tkinterhtml
 pillow
+PyPDF2
+CTkMessagebox
