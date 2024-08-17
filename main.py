@@ -17,7 +17,7 @@ button_selection_color = "#6C7BFE"
 frame_border = 0
 heading_size = 24
 heading_color = "#6C7BFE"
-
+text_color = "#FFFFFF"
 # Layout
 root = customtkinter.CTk()
 root.title('Research Assistant')
@@ -93,7 +93,7 @@ def update_frame2_ui():
         open_file(selected_files[-1])
 
 def open_file(filepath):
-    summary = """
+    summary = f"""<b style="color:{text_color}">
     # Hello, CustomTkinter!
 
     This is a **bold** text and this is *italic* text.
@@ -101,7 +101,7 @@ def open_file(filepath):
     - List item 1
     - List item 2
 
-    [OpenAI](https://openai.com)
+    [OpenAI](https://openai.com)</b>
     """
     html_text = markdown.markdown(summary)
     
@@ -109,7 +109,7 @@ def open_file(filepath):
         widget.destroy()
     
     # Create a CTkTabview widget
-    notebook = customtkinter.CTkTabview(frame2)
+    notebook = customtkinter.CTkTabview(frame2,segmented_button_selected_color=heading_color,segmented_button_unselected_color=bg_color,segmented_button_fg_color=bg_color,fg_color=bg_color)
     notebook.pack(fill=BOTH, expand=1)
     
     # Add tabs to the notebook
@@ -124,7 +124,7 @@ def open_file(filepath):
     
     # Summary in "Summary" tab
     summary_tab = notebook.tab("Summary")
-    summary_label = HTMLLabel(summary_tab, html=html_text, background=bg_color)
+    summary_label = HTMLLabel(summary_tab, html=html_text, background=bg_color,foreground='white')
     summary_label.pack(fill="both", expand=True)
     summary_label.fit_height()
 
@@ -156,6 +156,13 @@ def merge_files():
     for widget in frame2.winfo_children():
         widget.destroy()
 
+def summarize_all_files():
+    # Send all the files to the model for summarization
+    # Receive the summarized text in a single file
+    # Save the file in the library, as complete_summary.md
+    # Open the file in frame2
+    pass
+
 # Buttons
 add_file_button = customtkinter.CTkButton(master=button_frame,
                                           text="📚",
@@ -181,9 +188,18 @@ merge_files_button = customtkinter.CTkButton(master=button_frame,
                                             fg_color=frame_color,
                                             bg_color=frame_color)
 
+summarize_all_files_button = customtkinter.CTkButton(master=button_frame,
+                                            text="📝",
+                                            command=summarize_all_files,
+                                            width=25, height=25,
+                                            corner_radius=10,
+                                            fg_color=frame_color,
+                                            bg_color=frame_color)
+
 # Pack buttons horizontally
 add_file_button.pack(side=LEFT, padx=10)
 merge_files_button.pack(side=LEFT, padx=10)
+summarize_all_files_button.pack(side=LEFT, padx=10)
 delete_file_button.pack(side=LEFT, padx=10)
 
 update_file_list()
