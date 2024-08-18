@@ -24,3 +24,19 @@ final_combine_template = """
             Summary: 
 
             """
+summary_template ="""
+    # Topic
+    {topic}
+    
+    # Prerequisites
+    {prerequisites}
+    
+    # Introduction
+    {introduction}
+    
+    # Summary
+    {summary}
+    
+    # Conclusion
+    {conclusion}
+"""

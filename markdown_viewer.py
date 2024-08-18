@@ -16,7 +16,7 @@ This is a **bold** text and this is *italic* text.
 
 # Convert markdown to HTML
 html_text = markdown.markdown(markdown_text)
-
+print(html_text)
 # Create a CustomTkinter window
 class App(ctk.CTk):
     def __init__(self):

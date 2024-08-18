@@ -52,6 +52,16 @@ selected_files = []
 button_frame = Frame(frame1, bg=frame_color)
 button_frame.pack(pady=20)
 
+def load_chat_model():
+    # Load the chat model and update the model state
+    pass
+
+def load_summary_model():
+    # Load the summary model
+    pass
+
+# UI functions
+
 def update_file_list():
     for widget in frame1.winfo_children():
         if isinstance(widget, customtkinter.CTkButton) and widget not in [add_file_button, delete_file_button, merge_files_button]:
@@ -92,7 +102,13 @@ def update_frame2_ui():
     if selected_files:
         open_file(selected_files[-1])
 
+# Library functions
+
 def open_file(filepath):
+    # load_chat_model()
+    # summarizer = load_summary_model()
+    # summary = summarizer.summarize(filepath)
+    
     summary = f"""<b style="color:{text_color}">
     # Hello, CustomTkinter!
 
@@ -104,7 +120,6 @@ def open_file(filepath):
     [OpenAI](https://openai.com)</b>
     """
     html_text = markdown.markdown(summary)
-    
     for widget in frame2.winfo_children():
         widget.destroy()
     
@@ -128,7 +143,6 @@ def open_file(filepath):
     summary_label.pack(fill="both", expand=True)
     summary_label.fit_height()
 
-
 def delete_selected_files():
     global selected_files
     for file in selected_files:
@@ -139,7 +153,6 @@ def delete_selected_files():
     for widget in frame2.winfo_children():
         widget.destroy()
 
-# Functions to add files and folders
 def browse_files():
     file_paths = filedialog.askopenfilenames()
     if file_paths:
@@ -205,6 +218,6 @@ delete_file_button.pack(side=LEFT, padx=10)
 update_file_list()
 
 # Instantiate ChatUI in frame3
-chat_ui = ChatUI(frame3)
+chat_ui = ChatUI(parent=frame3,model_name='Gemini Pro',model_state='active')
 
 root.mainloop()
