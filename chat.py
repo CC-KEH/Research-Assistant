@@ -1,47 +1,46 @@
 from customtkinter import *
 from PIL import Image
 
-BG_COLOR = "#1e1e1e"
-HEADING_COLOR = "#6C7BFE"
-FRAME_COLOR = "#151515"
 BUTTON_SELECTION_COLOR = "#69aa96"
-HEADING_SIZE = 24
+
 class ChatUI:
-    def __init__(self, parent, model_name ,model_state):
+    def __init__(self, parent, model_name ,model_state, theme):
         self.parent = parent
         self.width = 400
         self.height = 800
+        self.theme = theme
         
         # Initialize fonts after the root window is created
         self.FONT = CTkFont("Helvetica", 16)
-        self.FONT_BOLD = CTkFont("Helvetica", HEADING_SIZE)
-        
+        self.HEADING_FONT = CTkFont("Helvetica", self.theme['heading_size'])
+
+        self.model_name = model_name
         self.model_state = model_state
         
         self._setup_main_window()
 
     def _setup_main_window(self):
-        self.parent.configure(width=self.width, height=self.height, fg_color=FRAME_COLOR)
+        self.parent.configure(width=self.width, height=self.height, fg_color=self.theme['colors'].FRAME_COLOR.value)
         # Head label
         head_label = CTkLabel(
             self.parent,
-            text=model_name,
-            text_color=HEADING_COLOR,
-            font=self.FONT_BOLD,
+            text=self.model_name,
+            text_color=self.theme['colors'].HEADING_COLOR.value,
+            font=self.HEADING_FONT,
             pady=20,
         )
         head_label.place(relwidth=1)
 
         # Text widget with scrollbar
-        text_frame = CTkFrame(self.parent, bg_color=BG_COLOR)
+        text_frame = CTkFrame(self.parent, bg_color=self.theme['colors'].BG_COLOR.value)
         text_frame.place(relheight=0.825, relwidth=1, rely=0.08)
 
         self.text_widget = CTkTextbox(
             text_frame,
             width=self.width - 20,
             height=self.height // 10,
-            bg_color=FRAME_COLOR,
-            fg_color=FRAME_COLOR,
+            bg_color=self.theme['colors'].FRAME_COLOR.value,
+            fg_color=self.theme['colors'].FRAME_COLOR.value,
             font=self.FONT,
             padx=5,
             pady=5,
@@ -55,22 +54,22 @@ class ChatUI:
         # Entry box
         self.msg_entry = CTkEntry(
             self.parent,
-            bg_color=BG_COLOR,
+            bg_color=self.theme['colors'].BG_COLOR.value,
             font=self.FONT
         )
         self.msg_entry.place(relwidth=0.77, rely=0.940, relheight=0.05, relx=0.011)
 
         # Send button
-        send_img = CTkImage(Image.open("send.png"), size=(20, 20))
+        send_img = CTkImage(Image.open("src/assets/send.png"), size=(20, 20))
         send_button = CTkButton(
             self.parent,
             text="",
             image=send_img,
-            fg_color=HEADING_COLOR,
-            font=self.FONT_BOLD,
+            fg_color=self.theme['colors'].HEADING_COLOR.value,
+            font=self.HEADING_FONT,
             width=20,
             command=self._on_send_button_click,
-            hover_color=BUTTON_SELECTION_COLOR
+            hover_color=self.theme['colors'].BUTTON_COLOR.value,
         )
         send_button.place(relx=0.80, rely=0.940, relheight=0.05, relwidth=0.185)
 
@@ -80,7 +79,7 @@ class ChatUI:
             self._insert_message(msg, "You")
             # Process the message and get the response
             response = self._process_message(msg)
-            self._insert_message(response, model_name)
+            self._insert_message(response, self.model_name)
 
     def _insert_message(self, msg, sender):
         self.text_widget.configure(state=NORMAL)

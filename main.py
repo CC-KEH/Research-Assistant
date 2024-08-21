@@ -1,11 +1,14 @@
 from tkinter import *
 from tkinter import filedialog
 import customtkinter
-from src.utils.common import *
-from pdf_viewer import ShowPdf
-from chat import ChatUI
 import markdown
 from tkhtmlview import HTMLLabel
+
+from chat import ChatUI
+from pdf_viewer import ShowPdf
+from src.utils.common import *
+from src.config.themes import *
+
 
 # Themes and colors
 customtkinter.set_appearance_mode('system')
@@ -18,6 +21,7 @@ frame_border = 0
 heading_size = 24
 heading_color = "#6C7BFE"
 text_color = "#FFFFFF"
+
 # Layout
 root = customtkinter.CTk()
 root.title('Research Assistant')

@@ -125,11 +125,11 @@ class SettingsApp(ctk.CTk):
         self.settings["font_size"] = self.font_size_var.get()
         self.settings["font_family"] = self.font_family_var.get()
         self.settings["theme"] = self.theme_var.get()
-        self.settings["model"] = self.model_var.get()
+        self.settings["model_name"] = self.model_var.get()
         self.settings["model_api"] = self.model_api_entry.get()
         self.settings["model_secretid"] = self.model_secretid_entry.get()
         self.settings["response_template"] = self.response_template_entry.get()
-        self.settings["prompt"] = self.prompt_entry.get()
+        self.settings["prompt_template"] = self.prompt_entry.get()
 
         # Save the updated settings
         save_settings(self.settings)
@@ -140,11 +140,11 @@ class SettingsApp(ctk.CTk):
             "font_size": "12",
             "font_family": "Arial",
             "theme": "Light",
-            "model": "Model A",
+            "model_name": "Model A",
             "model_api": "",
             "model_secretid": "",
             "response_template": "Default response template...",
-            "prompt": "Default prompt...",
+            "prompt_template": "Default prompt...",
         }
         self.apply_settings()
         self.update_ui()
