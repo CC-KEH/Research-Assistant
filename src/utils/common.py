@@ -49,6 +49,7 @@ def load_config():
     theme_config['font_size'] = int(config["font_size"])
     theme_config['heading_size'] = int(config["heading_size"])
     theme_config['font_family'] = config["font_family"]
+    theme_config['theme'] = config["theme"]
     
     if config["theme"] == "Dark":
         theme_config["colors"] = DarkTheme 
@@ -56,7 +57,7 @@ def load_config():
     elif config["theme"] == "Light":
         theme_config["colors"] = LightTheme
     
-    elif config["theme"] == "TokyoCityDarker":
+    else:
         theme_config["colors"] = TokyoCityDarkerTheme
     
     model_config['model_name'] = config["model_name"]
@@ -66,6 +67,23 @@ def load_config():
     model_config['prompt_template'] = config["prompt_template"]
     
     return theme_config, model_config
+
+
+def load_settings():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
+            return json.load(f)
+    else:
+        return {
+            "font_size": "12",
+            "font_family": "Arial",
+            "theme": "Light",
+            "model": "Model A",
+            "model_api": "",
+            "model_secretid": "",
+            "response_template": "Default response template...",
+            "prompt_template": "Default prompt...",
+        }
 
 
 # TODO: Fix these functions

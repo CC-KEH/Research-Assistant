@@ -6,6 +6,7 @@ class LightTheme(Enum):
     TEXT_COLOR = "#000000"
     HEADING_COLOR = "#78586f"
     BUTTON_COLOR = "#7F8DAD"
+    BUTTON_HOVER_COLOR = "#7F8CAC"
 
 class DarkTheme(Enum):
     BG_COLOR = "#1e1e1e"
@@ -13,6 +14,7 @@ class DarkTheme(Enum):
     TEXT_COLOR = "#FFFFFF"
     HEADING_COLOR = "#6C7BFE"
     BUTTON_COLOR = "#6C7BFE"
+    BUTTON_HOVER_COLOR = "#7F8DAD"
 
 class TokyoCityDarkerTheme(Enum):
     BG_COLOR = "#181C24"
@@ -20,3 +22,4 @@ class TokyoCityDarkerTheme(Enum):
     TEXT_COLOR = "#FFFFFF"
     HEADING_COLOR = "#e45e91"
     BUTTON_COLOR = "#14a5ae"
+    BUTTON_HOVER_COLOR = "#7F8DAD"

@@ -32,7 +32,7 @@ class ChatUI:
         head_label.place(relwidth=1)
 
         # Text widget with scrollbar
-        text_frame = CTkFrame(self.parent, bg_color=self.theme['colors'].BG_COLOR.value)
+        text_frame = CTkFrame(self.parent, bg_color=self.theme['colors'].FRAME_COLOR.value)
         text_frame.place(relheight=0.825, relwidth=1, rely=0.08)
 
         self.text_widget = CTkTextbox(
