@@ -126,6 +126,21 @@ def update_selection_ui(frame1, selected_files, theme):
     
 # Library functions
 
+def save_summary(file_name, summary):
+    os.makedirs(SUMMARIES_DIR, exist_ok=True)
+    file_path = os.path.join(SUMMARIES_DIR, f"{file_name}_summary.md")
+    with open(file_path, "w") as f:
+        f.write(summary)
+
+def merge_summaries():
+    summaries = [os.path.join(SUMMARIES_DIR, file) for file in os.listdir(SUMMARIES_DIR) if file.endswith(".md")]
+    for file in summaries:
+        with open(file, "r") as f:
+            summary = f.read()
+        with open("combined_summary.md", "a") as f:
+            f.write(summary)
+            f.write("\n\n")
+
 def open_file(filepath, frame2, theme):
     logger.info("Open File Operation Initiated")
     logger.info(f"Opening file: {filepath}")
@@ -143,6 +158,8 @@ def open_file(filepath, frame2, theme):
 
     [OpenAI](https://openai.com)</b>
     """
+    save_summary(file_name=filepath.split('/')[-1].split('.')[0], summary=summary)
+    
     html_text = markdown.markdown(summary)
     for widget in frame2.winfo_children():
         widget.destroy()
