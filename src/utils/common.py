@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Type
 
 import markdown
 from tkinter import *
@@ -12,6 +13,10 @@ from src.utils import logger
 from src.constants import *
 from src.config.themes import *
 from src.components.pdf_viewer import ShowPdf
+
+from src.rag.components.chat_model import ChatModel
+from src.rag.components.summarizer_model import Summarizer_Model
+from src.rag.components.process_files import VectorStorePipeline
 
 
 def merge_pdfs(files):
@@ -183,3 +188,35 @@ def open_file(filepath, frame2, theme):
     summary_label = HTMLLabel(summary_tab, html=html_text, background=theme['colors'].BG_COLOR.value,foreground='white')
     summary_label.pack(fill="both", expand=True)
     summary_label.fit_height()
+
+
+#* Model functions
+#* For specific paper
+def get_specific_summary(filepath, chain_type='stuff'):
+    summarizer = Summarizer_Model()
+    summary = summarizer.initiate_summarization(file_path=filepath)
+    return summary
+
+def get_specific_chat_model(filepath=None,pdfs_path=None):
+    chat_model = ChatModel(single=True)
+    vs = VectorStorePipeline()
+    pdfs = vs.get_pdfs(pdfs_path)
+    text = vs.get_pdf_text(pdfs)
+    chunks = vs.get_text_chunks(text)
+    vs.get_vector_store(chunks)
+    chat_model.initiate_chat_model()    
+
+#* For all papers
+def get_all_summary(filepath, chain_type='stuff'):
+    summarizer = Summarizer_Model(single=False)
+    summary = summarizer.initiate_summarization()
+    return summary
+
+def get_all_chat_model(filepath=None,pdfs_path=None):
+    chat_model = ChatModel(single=False)
+    vs = VectorStorePipeline()
+    pdfs = vs.get_pdfs(pdfs_path)
+    text = vs.get_pdf_text(pdfs)
+    chunks = vs.get_text_chunks(text)
+    vs.get_vector_store(chunks)
+    chat_model.initiate_chat_model()

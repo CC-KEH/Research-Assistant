@@ -15,8 +15,10 @@ class VectorStorePipeline:
             pdfs.append(pdfs_path + pdf)
         return pdfs
     
-    def get_pdf_text(self,pdf_docs):
+    def get_pdf_text(self,pdf_docs,single=False):
         text = ""
+        if single:
+            pdf_docs = [pdf_docs]
         for pdf in pdf_docs:
             pdf_reader = PdfReader(pdf)
             for page in pdf_reader.pages:

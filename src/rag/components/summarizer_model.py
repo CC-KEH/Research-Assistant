@@ -19,36 +19,49 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 class Summarizer_Model:
-    def __init__(self) -> None:
+    def __init__(self, single=False, chain_type='stuff') -> None:
         self.llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=0.3)
         self.vs = VectorStorePipeline()
-        
-    def summarize_chain(self,chain_type='stuff'):
-        pdfs = self.vs.get_pdfs('pdfs/')
+        self.is_single = single
+    
+    def summarize_single_chain(self,file_path):
+        content = self.vs.get_pdf_text(file_path,single=True)
+        self.prompt = PromptTemplate(template=final_combine_template,input_variables=['text'])
+        docs = [Document(page_content=content)]
+        self.chain = load_summarize_chain(self.llm,
+                                          self.prompt,
+                                          chain_type='stuff',
+                                          verbose=False)
+        output_summary = self.chain.run(docs)
+        return output_summary
+    
+    
+    def summarize_all_chain(self):
+        pdfs = self.vs.get_pdfs('library/')
         content = self.vs.get_pdf_text(pdfs)
         self.prompt = PromptTemplate(template=final_combine_template,input_variables=['text'])
         
-        if chain_type == 'stuff':
+        if self.chain_type == 'stuff':
             docs = [Document(page_content=content)]
             self.chain = load_summarize_chain(self.llm,
                                               self.prompt,
-                                              chain_type=chain_type,
+                                              chain_type=self.chain_type,
                                               verbose=False)
         
         
-        elif chain_type == 'map_reduce':
+        elif self.chain_type == 'map_reduce':
             self.chunk_prompt = PromptTemplate(template=chunks_template,input_variables=['text'])
             docs = self.vs.get_text_chunks(content,chunk_size=10000, chunk_overlap=20,for_summarization=True)
             self.chain = load_summarize_chain(self.llm,
-                                              chain_type=chain_type,
+                                              chain_type=self.chain_type,
                                               map_prompt=self.chunk_prompt,
                                               combine_prompt=self.prompt,
                                               verbose=False)
         
         
-        elif chain_type == 'refine':
+        elif self.chain_type == 'refine':
             self.chain = load_summarize_chain(self.llm,
-                                              chain_type=chain_type,
+                                              chain_type=self.chain_type,
                                               verbose=False)
             
         
@@ -57,7 +70,12 @@ class Summarizer_Model:
         
         output_summary = self.chain.run(docs)
         return output_summary            
-
+    
+    def initiate_summarization(self,file_path=None):
+        if self.is_single:
+            return self.summarize_single_chain(file_path=file_path)
+        else:
+            return self.summarize_all_chain()
         
 if __name__ == '__main__':
     types = ['stuff','map_reduce','refine']
