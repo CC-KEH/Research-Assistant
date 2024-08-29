@@ -6,3 +6,6 @@ tkinterhtml
 pillow
 PyPDF2
 CTkMessagebox
+langchain
+langchain_community
+langchain_google_genai

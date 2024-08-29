@@ -14,9 +14,9 @@ from src.constants import *
 from src.config.themes import *
 from src.components.pdf_viewer import ShowPdf
 
-from src.rag.components.chat_model import ChatModel
-from src.rag.components.summarizer_model import Summarizer_Model
-from src.rag.components.process_files import VectorStorePipeline
+# from src.rag.components.chat_model import ChatModel
+# from src.rag.components.summarizer_model import Summarizer_Model
+# from src.rag.components.process_files import VectorStorePipeline
 
 
 def merge_pdfs(files):
@@ -101,7 +101,7 @@ def update_file_list(frame1, frame2, library, selected_files, theme, add_file_bu
         file_button = customtkinter.CTkButton(frame1, text=file.split('/')[-1], corner_radius=5, fg_color=theme['colors'].BG_COLOR.value, text_color='white',border_color=theme['colors'].FRAME_COLOR.value, border_width=1, width=200, height=25)
         file_button.pack(fill='x', padx=10)
         file_button.bind('<Button-1>', lambda event, f=file: on_file_click(event, f, library, selected_files, frame1, frame2, theme))
-
+    return selected_files
 
 def on_file_click(event, filepath, library, selected_files, frame1, frame2, theme):
     if event.state & 0x0001:  # Check if Shift key is pressed
@@ -122,6 +122,7 @@ def on_file_click(event, filepath, library, selected_files, frame1, frame2, them
     
 def update_selection_ui(frame1, selected_files, theme):
     logger.info("Updating selection UI")
+    logger.info("Selected files: ", selected_files)
     for widget in frame1.winfo_children():
         if isinstance(widget, customtkinter.CTkButton):
             if widget.cget("text") in [file.split('/')[-1] for file in selected_files]:
@@ -192,31 +193,31 @@ def open_file(filepath, frame2, theme):
 
 #* Model functions
 #* For specific paper
-def get_specific_summary(filepath, chain_type='stuff'):
-    summarizer = Summarizer_Model()
-    summary = summarizer.initiate_summarization(file_path=filepath)
-    return summary
+# def get_specific_summary(filepath, chain_type='stuff'):
+#     summarizer = Summarizer_Model()
+#     summary = summarizer.initiate_summarization(file_path=filepath)
+#     return summary
 
-def get_specific_chat_model(filepath=None,pdfs_path=None):
-    chat_model = ChatModel(single=True)
-    vs = VectorStorePipeline()
-    pdfs = vs.get_pdfs(pdfs_path)
-    text = vs.get_pdf_text(pdfs)
-    chunks = vs.get_text_chunks(text)
-    vs.get_vector_store(chunks)
-    chat_model.initiate_chat_model()    
+# def get_specific_chat_model(filepath=None,pdfs_path=None):
+#     chat_model = ChatModel(single=True)
+#     vs = VectorStorePipeline()
+#     pdfs = vs.get_pdfs(pdfs_path)
+#     text = vs.get_pdf_text(pdfs)
+#     chunks = vs.get_text_chunks(text)
+#     vs.get_vector_store(chunks)
+#     chat_model.initiate_chat_model()    
 
-#* For all papers
-def get_all_summary(filepath, chain_type='stuff'):
-    summarizer = Summarizer_Model(single=False)
-    summary = summarizer.initiate_summarization()
-    return summary
+# #* For all papers
+# def get_all_summary(filepath, chain_type='stuff'):
+#     summarizer = Summarizer_Model(single=False)
+#     summary = summarizer.initiate_summarization()
+#     return summary
 
-def get_all_chat_model(filepath=None,pdfs_path=None):
-    chat_model = ChatModel(single=False)
-    vs = VectorStorePipeline()
-    pdfs = vs.get_pdfs(pdfs_path)
-    text = vs.get_pdf_text(pdfs)
-    chunks = vs.get_text_chunks(text)
-    vs.get_vector_store(chunks)
-    chat_model.initiate_chat_model()
+# def get_all_chat_model(filepath=None,pdfs_path=None):
+#     chat_model = ChatModel(single=False)
+#     vs = VectorStorePipeline()
+#     pdfs = vs.get_pdfs(pdfs_path)
+#     text = vs.get_pdf_text(pdfs)
+#     chunks = vs.get_text_chunks(text)
+#     vs.get_vector_store(chunks)
+#     chat_model.initiate_chat_model()

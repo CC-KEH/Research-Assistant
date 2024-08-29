@@ -1,15 +1,21 @@
 from customtkinter import *
 from PIL import Image
-
-BUTTON_SELECTION_COLOR = "#69aa96"
+import json
+import os
+from datetime import datetime
 
 class ChatUI:
-    def __init__(self, parent, model_name ,model_state, theme):
+    def __init__(self, parent, model_name, model_state, theme, all_chat=False, history_file='chat_history.json'):
         self.parent = parent
         self.width = 400
         self.height = 800
         self.theme = theme
-        
+        self.all_chat = all_chat
+        if self.all_chat:
+            self.history_file = "all_chat_history.json"
+        else:
+            self.history_file = history_file
+
         # Initialize fonts after the root window is created
         self.FONT = CTkFont("Helvetica", 16)
         self.HEADING_FONT = CTkFont("Helvetica", self.theme['heading_size'])
@@ -18,6 +24,7 @@ class ChatUI:
         self.model_state = model_state
         
         self._setup_main_window()
+        self._load_chat_history()
 
     def _setup_main_window(self):
         self.parent.configure(width=self.width, height=self.height, fg_color=self.theme['colors'].FRAME_COLOR.value)
@@ -76,14 +83,24 @@ class ChatUI:
     def _on_send_button_click(self):
         msg = self.msg_entry.get()
         if msg:
-            self._insert_message(msg, "You")
+            current_time = self._get_current_time()
+            self._insert_message(msg, "You", current_time)
             # Process the message and get the response
             response = self._process_message(msg)
-            self._insert_message(response, self.model_name)
+            self._insert_message(response, self.model_name, current_time)
 
-    def _insert_message(self, msg, sender):
+    def _insert_message(self, msg, sender, time):
         self.text_widget.configure(state=NORMAL)
-        self.text_widget.insert(END, f"{sender}: {msg}\n\n")
+        self.time_widget = CTkLabel(
+            self.text_widget,
+            text=f"{time}",
+            font=self.FONT,
+            fg_color=self.theme['colors'].HEADING_COLOR.value,
+            bg_color=self.theme['colors'].FRAME_COLOR.value,
+        )
+        # TODO: Add the time widget to the text widget
+        
+        self.text_widget.insert(END, f"{sender} : {msg}\n\n")
         self.text_widget.configure(state=DISABLED)
         self.text_widget.yview(END)
         self.msg_entry.delete(0, END)
@@ -94,5 +111,32 @@ class ChatUI:
         # Get the response from the model chain
         # Return the response
         
-        processed_msg = msg.upper()
+        processed_msg = msg.upper()  # Placeholder for actual processing
         return processed_msg
+
+    def _save_message_to_history(self, sender, msg, time, file_path=None):
+        chat_entry = {"sender": sender, "message": msg, "time": time, "paper": self.file_path}
+        if os.path.exists(self.history_file):
+            with open(self.history_file, "r") as file:
+                chat_history = json.load(file)
+        else:
+            chat_history = []
+
+        chat_history.append(chat_entry)
+
+        with open(self.history_file, "w") as file:
+            json.dump(chat_history, file, indent=4)
+
+    def _load_chat_history(self):
+        if os.path.exists(self.history_file):
+            with open(self.history_file, "r") as file:
+                chat_history = json.load(file)
+
+            self.text_widget.configure(state=NORMAL)
+            for entry in chat_history:
+                self.text_widget.insert(END, f"{entry['sender']} [{entry['time']}]: {entry['message']}\n\n")
+            self.text_widget.configure(state=DISABLED)
+            self.text_widget.yview(END)
+
+    def _get_current_time(self):
+        return datetime.now().strftime("%A %I:%M %p")

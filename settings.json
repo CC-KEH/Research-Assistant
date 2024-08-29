@@ -1,1 +1,11 @@
-{"font_size": "10", "heading_size": "22", "font_family": "Times", "theme": "Dark", "model_name": "ChatGPT", "model_api": "", "model_secretid": "", "response_template": "Default response template...", "prompt_template": "Default prompt..."}
+{
+    "font_size": "10",
+    "heading_size": "22",
+    "font_family": "Times",
+    "theme": "Dark",
+    "model_name": "ChatGPT",
+    "model_api": "",
+    "model_secretid": "",
+    "response_template": "Default response template...",
+    "prompt_template": "Default prompt..."
+}
