@@ -1,4 +1,4 @@
-# import tkinter
+from tkinter import *
 from tkinter import ttk, simpledialog
 import customtkinter
 
@@ -10,27 +10,103 @@ TEXT_COLOR = "#FFFFFF"
 HEADING_SIZE = 24
 
 class LibraryApp:
-    def __init__(self, root, theme='Dark'):
-        self.root = root
-        self.root.geometry("400x600")
-        self.root.title("Library")
-        
+    def __init__(self, parent, theme='Dark'):
+        self.root = parent
+        # self.root.geometry("400x600")
+        # self.root.title("Library")
+        self.theme = theme
         customtkinter.set_appearance_mode("Dark")
         customtkinter.set_default_color_theme("blue")
         
-        self.setup_frame()
-        self.setup_label()
+        self.setup_layout()
         self.setup_styles()
         self.setup_treeview()
         self.setup_buttons()
         
-    def setup_frame(self):
-        self.frame_1 = customtkinter.CTkFrame(master=self.root, bg_color=FRAME_COLOR, fg_color=FRAME_COLOR)
-        self.frame_1.pack(fill="both", expand=True)
+    def setup_layout(self):
+        label = Label(
+            self.root,
+            text="Library",
+            bg=self.theme["colors"].FRAME_COLOR.value,
+            fg=self.theme["colors"].HEADING_COLOR.value,
+            font=("Helvetica", self.theme["heading_size"]),
+        )
+        label.pack(side=TOP, pady=20)
         
-    def setup_label(self):
-        self.label = customtkinter.CTkLabel(master=self.frame_1, text="Library", font=("Helvetica", HEADING_SIZE), text_color=BUTTON_COLOR)
-        self.label.grid(pady=10, row=0, column=0, columnspan=3)
+        button_frame = Frame(self.root, bg=self.theme["colors"].FRAME_COLOR.value)
+        button_frame.pack(pady=20)
+
+        self.settings_button = customtkinter.CTkButton(
+            master=button_frame,
+            text="⚙️",
+            command=self.change_settings,
+            width=25,
+            height=25,
+            corner_radius=10,
+            fg_color=self.theme["colors"].FRAME_COLOR.value,
+            bg_color=self.theme["colors"].FRAME_COLOR.value,
+            hover_color=self.theme["colors"].BUTTON_COLOR.value,
+        )
+        
+        self.add_file_button = customtkinter.CTkButton(
+            master=button_frame,
+            text="📚",
+            command=self.browse_files,
+            width=25,
+            height=25,
+            corner_radius=10,
+            fg_color=self.theme["colors"].FRAME_COLOR.value,
+            bg_color=self.theme["colors"].FRAME_COLOR.value,
+            hover_color=self.theme["colors"].BUTTON_COLOR.value,
+            
+        )
+
+        self.delete_file_button = customtkinter.CTkButton(
+            master=button_frame,
+            text="🗑️",
+            command=self.delete_selected_item,
+            width=25,
+            height=25,
+            corner_radius=10,
+            fg_color=self.theme["colors"].FRAME_COLOR.value,
+            bg_color=self.theme["colors"].FRAME_COLOR.value,
+            hover_color=self.theme["colors"].BUTTON_COLOR.value,
+            
+        )
+
+        self.merge_files_button = customtkinter.CTkButton(
+            master=button_frame,
+            text="🔗",
+            command=self.merge_files,
+            width=25,
+            height=25,
+            corner_radius=10,
+            fg_color=self.theme["colors"].FRAME_COLOR.value,
+            bg_color=self.theme["colors"].FRAME_COLOR.value,
+            hover_color=self.theme["colors"].BUTTON_COLOR.value,
+            
+        )
+
+        self.summarize_all_files_button = customtkinter.CTkButton(
+            master=button_frame,
+            text="📝",
+            command=self.summarize_all_files,
+            width=25,
+            height=25,
+            corner_radius=10,
+            fg_color=self.theme["colors"].FRAME_COLOR.value,
+            bg_color=self.theme["colors"].FRAME_COLOR.value,
+            hover_color=self.theme["colors"].BUTTON_COLOR.value,
+            
+        )
+        
+
+        self.settings_button.pack(side=LEFT, padx=10)
+        self.add_file_button.pack(side=LEFT, padx=10)
+        self.merge_files_button.pack(side=LEFT, padx=10)
+        self.summarize_all_files_button.pack(side=LEFT, padx=10)
+        self.delete_file_button.pack(side=LEFT, padx=10)
+
         
     def setup_styles(self):
         self.treestyle = ttk.Style()
