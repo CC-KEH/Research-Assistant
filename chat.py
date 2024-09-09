@@ -35,12 +35,14 @@ class ChatUI:
             text_color=self.theme['colors'].HEADING_COLOR.value,
             font=self.HEADING_FONT,
             pady=20,
+            padx=10,
         )
         head_label.place(relwidth=1)
 
         # Text widget with scrollbar
-        text_frame = CTkFrame(self.parent, bg_color=self.theme['colors'].FRAME_COLOR.value)
-        text_frame.place(relheight=0.825, relwidth=1, rely=0.08)
+        # , bg_color=self.theme['colors'].FRAME_COLOR.value
+        text_frame = CTkFrame(self.parent)
+        text_frame.place(relheight=0.825, relwidth=1, rely=0.05)
 
         self.text_widget = CTkTextbox(
             text_frame,
@@ -62,7 +64,7 @@ class ChatUI:
         self.msg_entry = CTkEntry(
             self.parent,
             bg_color=self.theme['colors'].BG_COLOR.value,
-            font=self.FONT
+            font=self.FONT,
         )
         self.msg_entry.place(relwidth=0.77, rely=0.940, relheight=0.05, relx=0.011)
 

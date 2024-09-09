@@ -68,18 +68,19 @@ class App(customtkinter.CTk):
         paned_window.add(self.frame2, minsize=700)
         paned_window.add(self.frame3, minsize=300)
 
-        LibraryApp(self.frame1, self.theme)
+        # LibraryApp(self.frame1, self.theme)
         
         # Frame 3
-        label3 = Label(
-            self.frame3,
-            text=self.model["model_name"],
-            bg=self.theme["colors"].FRAME_COLOR.value,
-            fg=self.theme["colors"].HEADING_COLOR.value,
-            font=("Helvetica", 12),
-        )
-        label3.pack(side=TOP, pady=20)
-        chat_ui = ChatUI(
+        # label3 = Label(
+        #     self.frame3,
+        #     text=self.model["model_name"],
+        #     bg=self.theme["colors"].FRAME_COLOR.value,
+        #     fg=self.theme["colors"].HEADING_COLOR.value,
+        #     font=("Helvetica", 12),
+        # )
+        # label3.pack(side=TOP, pady=20)
+        
+        ChatUI(
             parent=self.frame3,
             model_name=self.model["model_name"],
             model_state="active",
