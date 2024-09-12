@@ -10,13 +10,13 @@ TEXT_COLOR = "#FFFFFF"
 HEADING_SIZE = 24
 
 class LibraryApp:
-    def __init__(self, parent, theme='Dark'):
+    def __init__(self, parent, theme):
         self.root = parent
         # self.root.geometry("400x600")
         # self.root.title("Library")
         self.theme = theme
-        customtkinter.set_appearance_mode("Dark")
-        customtkinter.set_default_color_theme("blue")
+        # customtkinter.set_appearance_mode("Dark")
+        # customtkinter.set_default_color_theme("blue")
         
         self.setup_layout()
         self.setup_styles()

@@ -147,7 +147,17 @@ def merge_summaries():
             f.write(summary)
             f.write("\n\n")
 
-def open_file(filepath, frame2, theme):
+def open_file(filepath,frame2,theme):
+    if filepath.endswith(".pdf"):
+        open_pdf(filepath,frame2,theme)
+    elif filepath.endswith(".md"):
+        open_markdown(filepath,frame2,theme)
+    elif filepath.endswith(".txt"):
+        open_text_editor(filepath,frame2,theme)
+    else:
+        logger.error("Unsupported file format")
+        
+def open_pdf(filepath, frame2, theme):
     logger.info("Open File Operation Initiated")
     logger.info(f"Opening file: {filepath}")
     # load_chat_model()
@@ -190,7 +200,60 @@ def open_file(filepath, frame2, theme):
     summary_label.pack(fill="both", expand=True)
     summary_label.fit_height()
 
+def open_markdown(filepath,frame2,theme):
+    with open(filepath, "r") as f:
+        content = f.read()
+        
+    html_text = markdown.markdown(content)
+    
+    for widget in frame2.winfo_children():
+        widget.destroy()
+        
+    # Create a CTkTabview widget
+    notebook = customtkinter.CTkTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
+    notebook.pack(fill=BOTH, expand=1)
+    
+    # Add tabs to the notebook
+    notebook.add("Preview")
+    notebook.add("Edit")
+    
+    viewer_tab = notebook.tab("Preview")
+    v1 = ShowPdf()
+    v2 = v1.pdf_view(viewer_tab, pdf_location=filepath, width=600, height=600, bar=False)
+    v2.pack()
+    
+    # Summary in "Summary" tab
+    edit_tab = notebook.tab("Edit")
+    edit_label = HTMLLabel(edit_tab, html=html_text, background=theme['colors'].BG_COLOR.value,foreground='white')
+    edit_label.pack(fill="both", expand=True)
+    edit_label.fit_height()
 
+def open_text_editor(filepath,frame2,theme):
+    with open(filepath, "r") as f:
+        content = f.read()
+        
+    for widget in frame2.winfo_children():
+        widget.destroy()
+        
+    # Create a CTkTabview widget
+    notebook = customtkinter.CTkTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
+    notebook.pack(fill=BOTH, expand=1)
+    
+    # Add tabs to the notebook
+    notebook.add("Preview")
+    notebook.add("Edit")
+    
+    viewer_tab = notebook.tab("Preview")
+    v1 = ShowPdf()
+    v2 = v1.pdf_view(viewer_tab, pdf_location=filepath, width=600, height=600, bar=False)
+    v2.pack()
+    
+    # Summary in "Summary" tab
+    edit_tab = notebook.tab("Edit")
+    edit_label = HTMLLabel(edit_tab, html=content, background=theme['colors'].BG_COLOR.value,foreground='white')
+    edit_label.pack(fill="both", expand=True)
+    edit_label.fit_height()
+    
 #* Model functions
 #* For specific paper
 # def get_specific_summary(filepath, chain_type='stuff'):

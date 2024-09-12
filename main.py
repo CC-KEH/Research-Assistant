@@ -5,8 +5,8 @@ from chat import ChatUI
 from settings import SettingsApp
 from src.utils.common import *
 from src.config.themes import *
-from src.utils.treeview import LibraryApp
-
+from src.components.treeview import LibraryApp
+from src.components.text_editor import TextEditor
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -68,7 +68,7 @@ class App(customtkinter.CTk):
         paned_window.add(self.frame2, minsize=700)
         paned_window.add(self.frame3, minsize=300)
 
-        # LibraryApp(self.frame1, self.theme)
+        LibraryApp(self.frame1, self.theme)
         
         # Frame 3
         # label3 = Label(
