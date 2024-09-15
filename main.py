@@ -6,7 +6,6 @@ from settings import SettingsApp
 from src.utils.common import *
 from src.config.themes import *
 from src.components.treeview import LibraryApp
-from src.components.text_editor import TextEditor
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -68,7 +67,7 @@ class App(customtkinter.CTk):
         paned_window.add(self.frame2, minsize=700)
         paned_window.add(self.frame3, minsize=300)
 
-        LibraryApp(self.frame1, self.theme)
+        LibraryApp(self.frame1, self.frame2, self.theme)
         
         # Frame 3
         # label3 = Label(
@@ -87,72 +86,7 @@ class App(customtkinter.CTk):
             theme=self.theme,
         )
     
-    def browse_files(self):
-        logger.info("Browse Operation Initiated")
-        file_paths = filedialog.askopenfilenames()
-        if file_paths:
-            self.library.extend(file_paths)
-            update_file_list(
-                frame1=self.frame1,
-                frame2=self.frame2,
-                library=self.library,
-                selected_files=self.selected_files,
-                theme=self.theme,
-                add_file_button=self.add_file_button,
-                delete_file_button=self.delete_file_button,
-                merge_files_button=self.merge_files_button,
-                summarize_all_files_button=self.summarize_all_files_button,
-            )
-        return self.library
-
-    def delete_selected_files(self):
-        logger.info("Delete Operation Initiated")
-        logger.info("Selected these files for deletion", self.selected_files)
-        print(self.selected_files)
-        for file in self.selected_files:
-            self.library.remove(file)
-            print(self.library)
-        self.selected_files = []
-        update_file_list(
-            frame1=self.frame1,
-            frame2=self.frame2,
-            library=self.library,
-            selected_files=self.selected_files,
-            theme=self.theme,
-            add_file_button=self.add_file_button,
-            delete_file_button=self.delete_file_button,
-            merge_files_button=self.merge_files_button,
-            summarize_all_files_button=self.summarize_all_files_button,
-        )
-        # Clear frame2
-        for widget in self.frame2.winfo_children():
-            widget.destroy()
-        return self.library, self.selected_files
-
-    def merge_files(self):
-        logger.info("Merge Operation Initiated")
-        logger.info("Selected these files for merge operation", self.selected_files)
-        merge_pdfs(self.selected_files)
-        self.selected_files = []
-        update_file_list(
-            frame1=self.frame1,
-            frame2=self.frame2,
-            library=self.library,
-            theme=self.theme,
-            add_file_button=self.add_file_button,
-            delete_file_button=self.delete_file_button,
-            merge_files_button=self.merge_files_button,
-            summarize_all_files_button=self.summarize_all_files_button,
-            selected_files=self.selected_files,
-        )
-
-        # Clear frame2
-        for widget in self.frame2.winfo_children():
-            widget.destroy()
-        return self.selected_files
-
-    def summarize_all_files(self):
-        pass
+    
 
 if __name__ == "__main__":
     app = App()

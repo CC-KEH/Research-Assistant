@@ -90,48 +90,6 @@ def load_settings():
             "prompt_template": "Default prompt...",
         }
 
-
-# TODO: Fix these functions
-
-def update_file_list(frame1, frame2, library, selected_files, theme, add_file_button, delete_file_button, merge_files_button, summarize_all_files_button):
-    for widget in frame1.winfo_children():
-        if isinstance(widget, customtkinter.CTkButton) and widget not in [add_file_button, delete_file_button, merge_files_button, summarize_all_files_button]:
-            widget.destroy()
-    for file in library:
-        file_button = customtkinter.CTkButton(frame1, text=file.split('/')[-1], corner_radius=5, fg_color=theme['colors'].BG_COLOR.value, text_color='white',border_color=theme['colors'].FRAME_COLOR.value, border_width=1, width=200, height=25)
-        file_button.pack(fill='x', padx=10)
-        file_button.bind('<Button-1>', lambda event, f=file: on_file_click(event, f, library, selected_files, frame1, frame2, theme))
-    return selected_files
-
-def on_file_click(event, filepath, library, selected_files, frame1, frame2, theme):
-    if event.state & 0x0001:  # Check if Shift key is pressed
-        # Handle shift-click selection
-        if selected_files:
-            start_index = library.index(selected_files[-1])
-            end_index = library.index(filepath)
-            if start_index > end_index:
-                start_index, end_index = end_index, start_index
-            selected_files = library[start_index:end_index + 1]
-        else:
-            selected_files.append(filepath)
-    else:
-        selected_files = [filepath]
-        open_file(filepath,frame2,theme)  # Open the file in frame2 when a single file is clicked
-    update_selection_ui(frame1, selected_files, theme)
-    return selected_files
-    
-def update_selection_ui(frame1, selected_files, theme):
-    logger.info("Updating selection UI")
-    logger.info("Selected files: ", selected_files)
-    for widget in frame1.winfo_children():
-        if isinstance(widget, customtkinter.CTkButton):
-            if widget.cget("text") in [file.split('/')[-1] for file in selected_files]:
-                widget.configure(border_color=theme['colors'].BUTTON_COLOR.value)  # Highlight selected files
-            else:
-                widget.configure(border_color=theme['colors'].FRAME_COLOR.value)  # Reset border color for non-selected files
-    
-# Library functions
-
 def save_summary(file_name, summary):
     os.makedirs(SUMMARIES_DIR, exist_ok=True)
     file_path = os.path.join(SUMMARIES_DIR, f"{file_name}_summary.md")
