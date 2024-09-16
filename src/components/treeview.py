@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
 from src.utils import logger
-from src.utils.common import update_file_list, merge_pdfs
+from src.utils.common import open_file
 
 BG_COLOR = "#1e1e1e"
 FG_COLOR = "#f8f8f2"
@@ -20,12 +20,12 @@ class LibraryApp:
                         "Summaries": [],
                         "Notes": []
                         }
-        self.selected_files = None
+        
         self.setup_layout()
         self.setup_styles()
         self.setup_treeview()
         # self.setup_buttons()
-        
+    
     def setup_layout(self):
         label = Label(
             self.root,
@@ -77,18 +77,18 @@ class LibraryApp:
             
         )
 
-        self.merge_files_button = customtkinter.CTkButton(
-            master=button_frame,
-            text="🔗",
-            command=self.merge_files,
-            width=25,
-            height=25,
-            corner_radius=10,
-            fg_color=self.theme["colors"].FRAME_COLOR.value,
-            bg_color=self.theme["colors"].FRAME_COLOR.value,
-            hover_color=self.theme["colors"].BUTTON_COLOR.value,
+        # self.merge_files_button = customtkinter.CTkButton(
+        #     master=button_frame,
+        #     text="🔗",
+        #     command=self.merge_files,
+        #     width=25,
+        #     height=25,
+        #     corner_radius=10,
+        #     fg_color=self.theme["colors"].FRAME_COLOR.value,
+        #     bg_color=self.theme["colors"].FRAME_COLOR.value,
+        #     hover_color=self.theme["colors"].BUTTON_COLOR.value,
             
-        )
+        # )
 
         self.summarize_all_files_button = customtkinter.CTkButton(
             master=button_frame,
@@ -102,11 +102,9 @@ class LibraryApp:
             hover_color=self.theme["colors"].BUTTON_COLOR.value,
             
         )
-        
-
         self.settings_button.pack(side=LEFT, padx=10)
         self.add_file_button.pack(side=LEFT, padx=10)
-        self.merge_files_button.pack(side=LEFT, padx=10)
+        # self.merge_files_button.pack(side=LEFT, padx=10)
         self.summarize_all_files_button.pack(side=LEFT, padx=10)
         self.delete_file_button.pack(side=LEFT, padx=10)
 
@@ -114,27 +112,19 @@ class LibraryApp:
         pass
     
     def browse_files(self):
-        logger.info("Browse Operation Initiated")
-        file_paths = filedialog.askopenfilenames()
-        if file_paths:
-            self.library['Papers'].append(file_paths)
-            print(self.library)
-            update_file_list(
-                frame1=self.frame1,
-                frame2=self.frame2,
-                library=self.library,
-                selected_files=self.selected_files,
-                theme=self.theme,
-                add_file_button=self.add_file_button,
-                delete_file_button=self.delete_file_button,
-                merge_files_button=self.merge_files_button,
-                summarize_all_files_button=self.summarize_all_files_button,
-            )
-        return self.library
+       logger.info("Browse Operation Initiated")
+       file_paths = filedialog.askopenfilenames()
+       if file_paths:
+           # Loop through each selected file and add it to the Papers list individually
+           for file_path in file_paths:
+               self.library['Papers'].append(file_path)  # Append each file individually
+
+           print(self.library)
+           self.load_library_into_treeview()  # Update the Treeview with the new files
+
 
     def summarize_all_files(self):
         pass
-    
     
     def setup_styles(self):
         self.treestyle = ttk.Style()
@@ -144,6 +134,7 @@ class LibraryApp:
         
     def setup_treeview(self):
         self.frame1 = Frame(self.root, bg=self.theme["colors"].FRAME_COLOR.value)
+        self.frame1.pack(fill=BOTH, expand=True)  # Ensure the frame is packed into the root window
         self.treeview = ttk.Treeview(self.frame1, height=20, show="tree", selectmode="extended")
         self.treeview.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
         self.frame1.grid_rowconfigure(1, weight=1)
@@ -151,47 +142,41 @@ class LibraryApp:
         self.treeview.insert('', '1', 'i1', text='Papers')
         self.treeview.insert('', '2', 'i2', text='Summaries')
         self.treeview.insert('', '3', 'i3', text='Notes')
+        
+        self.treeview.bind("<<TreeviewSelect>>", self.on_treeview_select)
 
-    def update_treeview(self):
-        pass
-    
-    def delete_selected_item(self):
-        selected_items = self.treeview.selection()
-        for item in selected_items:
-            self.treeview.delete(item)
+    def on_treeview_select(self, event):
+        selected_item = self.treeview.selection()  # Get selected item from Treeview
+        if selected_item:
+            item_text = self.treeview.item(selected_item[0], "text")  # Get the text (file path)
 
-    def get_selected_item(self):
-        selected_items = self.treeview.selection()
-        selected_files = []
-        for item in selected_items:
-            item_text = self.treeview.item(item, "text")
-            selected_files.append(item_text)
-            print(f"Selected Item: {item_text}")
-            # filepath = f"/path/to/your/files/{item_text}"  # Update with your actual file paths
-            # open_file(filepath, self.frame2, self.theme)
-        return selected_files
-    
-    def create_folder(self):
-        # Prompt user to input a folder name
-        folder_name = simpledialog.askstring("Input", "Enter new folder name:")
-        if folder_name:
-            # Insert the new folder at the root level of the Treeview
-            self.library[folder_name] = []
-            # TODO: Call update treeview function, instead of inserting directly into the treeview
-            self.treeview.insert('', 'end', text=folder_name)
+            # Ensure that a file (not folder) is selected
+            if item_text and not self.treeview.get_children(selected_item[0]):  # Checks if it has no children, meaning it's a file
+                folder_name = self.treeview.item(self.treeview.parent(selected_item[0]), "text")  # Get the parent folder name
+                if folder_name in self.library:
+                    filepath = item_text
+                    # Now call open_file with the selected file, frame2, and theme
+                    open_file(filepath, self.frame2, self.theme)
 
-    def create_file(self):
-        # Prompt user to input a file name
-        file_name = simpledialog.askstring("Input", "Enter new file name:")
-        if file_name:
-            selected_items = self.treeview.selection()
-            if selected_items:
-                for selected_item in selected_items:
-                    # Insert the new file under each selected folder
-                    self.treeview.insert(selected_item, 'end', text=file_name)
-            else:
-                # Insert the new file at the root level if no folder is selected
-                self.treeview.insert('', 'end', text=file_name)
+
+    def remove_from_library(self, item_name):
+        """Remove the item from the library (either file or folder)."""
+        for folder in self.library.keys():
+            if folder == item_name:
+                del self.library[folder]
+                break
+            elif item_name in self.library[folder]:
+                self.library[folder].remove(item_name)
+                break
+
+    def load_library_into_treeview(self):
+        """Load the library dictionary into the Treeview."""
+        self.treeview.delete(*self.treeview.get_children())  # Clear the treeview before loading new items
+
+        for folder, files in self.library.items():
+            folder_id = self.treeview.insert('', 'end', text=folder)
+            for file in files:
+                self.treeview.insert(folder_id, 'end', text=file)
     
     def update_treeview(self, new_data):
         for i, item in new_data.items():
@@ -204,6 +189,46 @@ class LibraryApp:
             else:
                 for j in item:
                     self.treeview.insert("i3", "end", text=j)
+    
+    def delete_selected_item(self):
+        selected_items = self.treeview.selection()
+        for item in selected_items:
+            item_text = self.treeview.item(item, "text")
+            self.treeview.delete(item)
+            self.remove_from_library(item_text)
+
+    def get_selected_item(self):
+        selected_items = self.treeview.selection()
+        selected_files = []
+        for item in selected_items:
+            item_text = self.treeview.item(item, "text")
+            selected_files.append(item_text)
+            print(f"Selected Item: {item_text}")
+        return selected_files
+
+    def create_folder(self):
+        # Prompt user to input a folder name
+        folder_name = simpledialog.askstring("Input", "Enter new folder name:")
+        if folder_name:
+            # Insert the new folder at the root level of the Treeview
+            self.treeview.insert('', 'end', text=folder_name)
+            self.library[folder_name] = []  # Add folder as a key in the dictionary
+
+    def create_file(self):
+        # Prompt user to input a file name
+        file_name = simpledialog.askstring("Input", "Enter new file name:")
+        if file_name:
+            selected_items = self.treeview.selection()
+            if selected_items:
+                for selected_item in selected_items:
+                    folder_name = self.treeview.item(selected_item, "text")
+                    if folder_name in self.library:
+                        self.library[folder_name].append(file_name)
+                        self.treeview.insert(selected_item, 'end', text=file_name)
+            else:
+                # Insert the new file at the root level (into Papers, Summaries, or Notes if nothing is selected)
+                self.library["Papers"].append(file_name)
+                self.treeview.insert('', 'end', text=file_name)
                     
 if __name__ == "__main__":
     root = customtkinter.CTk()
