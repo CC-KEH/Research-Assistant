@@ -19,13 +19,14 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 class Summarizer_Model:
-    def __init__(self, single=False, chain_type='stuff') -> None:
+    def __init__(self, model='gemini-pro', chain_type='stuff') -> None:
         self.llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=0.3)
         self.vs = VectorStorePipeline()
-        self.is_single = single
     
-    def summarize_single_chain(self,file_path):
-        content = self.vs.get_pdf_text(file_path,single=True)
+    def summarize_single_chain(self,file_path,content=None):
+        if content is None:
+            content = self.vs.get_pdf_text(file_path,single=True)
+            
         self.prompt = PromptTemplate(template=final_combine_template,input_variables=['text'])
         docs = [Document(page_content=content)]
         self.chain = load_summarize_chain(self.llm,
@@ -36,7 +37,7 @@ class Summarizer_Model:
         return output_summary
     
     
-    def summarize_all_chain(self):
+    def summarize_all_chain(self, pdfs=None, content=None):
         pdfs = self.vs.get_pdfs('library/')
         content = self.vs.get_pdf_text(pdfs)
         self.prompt = PromptTemplate(template=final_combine_template,input_variables=['text'])
@@ -71,12 +72,6 @@ class Summarizer_Model:
         output_summary = self.chain.run(docs)
         return output_summary            
     
-    def initiate_summarization(self,file_path=None):
-        if self.is_single:
-            return self.summarize_single_chain(file_path=file_path)
-        else:
-            return self.summarize_all_chain()
-        
 if __name__ == '__main__':
     types = ['stuff','map_reduce','refine']
     s_model = Summarizer_Model()

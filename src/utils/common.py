@@ -1,14 +1,15 @@
+from math import sin
 import os
 import json
-from typing import Type
 
 import markdown
 from tkinter import *
 import customtkinter
 from PyPDF2 import PdfMerger
+from requests import session
 from tkhtmlview import HTMLLabel
-from tkinter import filedialog
 
+import chat
 from src.utils import logger
 from src.constants import *
 from src.config.themes import *
@@ -96,45 +97,84 @@ def save_summary(file_name, summary):
     with open(file_path, "w") as f:
         f.write(summary)
 
-def merge_summaries():
-    summaries = [os.path.join(SUMMARIES_DIR, file) for file in os.listdir(SUMMARIES_DIR) if file.endswith(".md")]
-    for file in summaries:
-        with open(file, "r") as f:
-            summary = f.read()
-        with open("combined_summary.md", "a") as f:
-            f.write(summary)
-            f.write("\n\n")
-
-def open_file(filepath,frame2,theme):
+def open_file(library, filepath,frame2,theme):
     if filepath.endswith(".pdf"):
-        open_pdf(filepath,frame2,theme)
+        library = open_pdf(library,filepath,frame2,theme)
     elif filepath.endswith(".md"):
         open_markdown(filepath,frame2,theme)
     elif filepath.endswith(".txt"):
         open_text_editor(filepath,frame2,theme)
     else:
         logger.error("Unsupported file format")
+    return library
+
+def setup_single_chat(pdf_path):
+    brain = ChatModel(session_id='single',is_single=True)
+    vs = VectorStorePipeline()
+    text = vs.get_pdf_text(pdf_path,single=True)
+    chunks = vs.get_text_chunks(text)
+    vs.get_vector_store(chunks)
+    brain.initiate_chat_model()
+
+def setup_all_chat(pdfs_path):
+    brain = ChatModel()
+    vs = VectorStorePipeline()
+    pdfs = vs.get_pdfs(pdfs_path)
+    text = vs.get_pdf_text(pdfs)
+    chunks = vs.get_text_chunks(text)
+    vs.get_vector_store(chunks)
+    brain.initiate_chat_model()
+
+def load_models(filepath):
+    file_name = filepath.split('/')[-1].split('.')[0]
+    vs = VectorStorePipeline()
+    
+    # Keep the chat model running in the background
+    
+    
+    chat_model = ChatModel(model='gemini-pro', session_id=file_name, single=True)
+    pdfs = vs.get_pdfs(filepath)
+    text = vs.get_pdf_text(pdfs)
+    chunks = vs.get_text_chunks(text)
+    vs.get_vector_store(chunks)
+    chat_model.chat()
         
-def open_pdf(filepath, frame2, theme):
+    # Load Summarizer Model
+    summarizer = Summarizer_Model(model='gemini-pro',chain_type='stuff')
+    summary = summarizer.summarize_single_chain(file_path=filepath,content=text)
+    return summary
+
+def open_pdf(library,filepath, frame2, theme):
     logger.info("Open File Operation Initiated")
     logger.info(f"Opening file: {filepath}")
     # load_chat_model()
-    # summarizer = load_summary_model()
-    # summary = summarizer.summarize(filepath)
     
-    summary = f"""<b style="color:{theme['colors'].TEXT_COLOR.value}">
-    # Hello, CustomTkinter!
+    # load_models(filepath)
+    summary = f"""
+<b style="color:{theme['colors'].TEXT_COLOR.value}">
+# Topic
+Tidy Data
 
-    This is a **bold** text and this is *italic* text.
+# Prerequisites
+Basic understanding of data structures and data analysis concepts.
 
-    - List item 1
-    - List item 2
+# Introduction
+The "Tidy Data" paper by Hadley Wickham introduces a structured approach to organizing data for analysis, emphasizing the importance of maintaining a clear and consistent format.
 
-    [OpenAI](https://openai.com)</b>
-    """
-    save_summary(file_name=filepath.split('/')[-1].split('.')[0], summary=summary)
-    
+# Summary
+In this paper, Wickham defines tidy data as a format where each variable is a column, each observation is a row, and each type of observational unit forms a table. This organization streamlines data manipulation and visualization, making it easier for data scientists to work with datasets. The paper outlines the benefits of tidy data, including improved reproducibility and efficiency, and provides practical guidelines for transforming messy data into tidy formats.
+
+# Conclusion
+Wickham advocates for a standardized approach to data organization in order to enhance the effectiveness of data analysis workflows, ultimately suggesting that adopting tidy data principles can lead to better insights and more robust analyses.
+</b>
+"""
+
+    summary_name = filepath.split('/')[-1].split('.')[0]
+    save_summary(file_name=summary_name, summary=summary)
+    library['Summaries'].append(f"summaries/{summary_name}_summary.md")
+        
     html_text = markdown.markdown(summary)
+    
     for widget in frame2.winfo_children():
         widget.destroy()
     
@@ -157,6 +197,8 @@ def open_pdf(filepath, frame2, theme):
     summary_label = HTMLLabel(summary_tab, html=html_text, background=theme['colors'].BG_COLOR.value,foreground='white')
     summary_label.pack(fill="both", expand=True)
     summary_label.fit_height()
+    return library
+
 
 def open_markdown(filepath,frame2,theme):
     with open(filepath, "r") as f:

@@ -1,3 +1,4 @@
+import os
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
@@ -77,19 +78,6 @@ class LibraryApp:
             
         )
 
-        # self.merge_files_button = customtkinter.CTkButton(
-        #     master=button_frame,
-        #     text="🔗",
-        #     command=self.merge_files,
-        #     width=25,
-        #     height=25,
-        #     corner_radius=10,
-        #     fg_color=self.theme["colors"].FRAME_COLOR.value,
-        #     bg_color=self.theme["colors"].FRAME_COLOR.value,
-        #     hover_color=self.theme["colors"].BUTTON_COLOR.value,
-            
-        # )
-
         self.summarize_all_files_button = customtkinter.CTkButton(
             master=button_frame,
             text="📝",
@@ -126,12 +114,41 @@ class LibraryApp:
     def summarize_all_files(self):
         pass
     
+    # def setup_styles(self):
+    #     self.treestyle = ttk.Style()
+    #     self.treestyle.theme_use('default')
+    #     self.treestyle.configure("Treeview", background=FRAME_COLOR, foreground=TEXT_COLOR, fieldbackground=FRAME_COLOR, borderwidth=0)
+    #     self.treestyle.map('Treeview', background=[('selected', FRAME_COLOR)], foreground=[('selected', BUTTON_COLOR)])
+    
     def setup_styles(self):
         self.treestyle = ttk.Style()
+
+        # Use the default theme
         self.treestyle.theme_use('default')
-        self.treestyle.configure("Treeview", background=FRAME_COLOR, foreground=TEXT_COLOR, fieldbackground=FRAME_COLOR, borderwidth=0)
-        self.treestyle.map('Treeview', background=[('selected', FRAME_COLOR)], foreground=[('selected', BUTTON_COLOR)])
-        
+
+        # Configure Treeview background, foreground, and field background
+        self.treestyle.configure("Treeview", 
+            background=FRAME_COLOR, 
+            foreground=TEXT_COLOR, 
+            fieldbackground=FRAME_COLOR,
+            borderwidth=0,
+            rowheight=24,
+            font=("Helvetica", 12)
+        )
+
+        # Highlight selected items with custom colors
+        self.treestyle.map('Treeview', 
+            background=[('selected', FRAME_COLOR)],  # Dark grey for selected item
+            foreground=[('selected', BUTTON_COLOR)]  # Button color for selected text
+        )
+
+        # Modify the heading (column names) style
+        self.treestyle.configure("Treeview.Heading", 
+            background=FRAME_COLOR, 
+            foreground=TEXT_COLOR, 
+            font=("Helvetica", 16, 'bold')  # Bold, larger font for headings
+        )
+    
     def setup_treeview(self):
         self.frame1 = Frame(self.root, bg=self.theme["colors"].FRAME_COLOR.value)
         self.frame1.pack(fill=BOTH, expand=True)  # Ensure the frame is packed into the root window
@@ -156,7 +173,7 @@ class LibraryApp:
                 if folder_name in self.library:
                     filepath = item_text
                     # Now call open_file with the selected file, frame2, and theme
-                    open_file(filepath, self.frame2, self.theme)
+                    self.library = open_file(self.library,filepath, self.frame2, self.theme)
 
 
     def remove_from_library(self, item_name):
@@ -178,21 +195,11 @@ class LibraryApp:
             for file in files:
                 self.treeview.insert(folder_id, 'end', text=file)
     
-    def update_treeview(self, new_data):
-        for i, item in new_data.items():
-            if i == "Papers":
-                for j in item:
-                    self.treeview.insert("i1", "end", text=j)
-            elif i == "Summaries":
-                for j in item:
-                    self.treeview.insert("i2", "end", text=j)
-            else:
-                for j in item:
-                    self.treeview.insert("i3", "end", text=j)
-    
     def delete_selected_item(self):
         selected_items = self.treeview.selection()
         for item in selected_items:
+            if item == "i1" or item == "i2" or item == "i3":
+                continue
             item_text = self.treeview.item(item, "text")
             self.treeview.delete(item)
             self.remove_from_library(item_text)
@@ -207,15 +214,18 @@ class LibraryApp:
         return selected_files
 
     def create_folder(self):
-        # Prompt user to input a folder name
         folder_name = simpledialog.askstring("Input", "Enter new folder name:")
-        if folder_name:
+
+        if folder_name in self.library:
+            simpledialog.askstring("Error", "Folder already exists!")
+
+        elif folder_name:
             # Insert the new folder at the root level of the Treeview
             self.treeview.insert('', 'end', text=folder_name)
             self.library[folder_name] = []  # Add folder as a key in the dictionary
 
+            
     def create_file(self):
-        # Prompt user to input a file name
         file_name = simpledialog.askstring("Input", "Enter new file name:")
         if file_name:
             selected_items = self.treeview.selection()
@@ -225,11 +235,21 @@ class LibraryApp:
                     if folder_name in self.library:
                         self.library[folder_name].append(file_name)
                         self.treeview.insert(selected_item, 'end', text=file_name)
-            else:
+            elif file_name.endswith(".pdf") or file_name.endswith(".PDF") or file_name.endswith(".docx") or file_name.endswith(".DOCX"):
                 # Insert the new file at the root level (into Papers, Summaries, or Notes if nothing is selected)
                 self.library["Papers"].append(file_name)
                 self.treeview.insert('', 'end', text=file_name)
-                    
+            elif file_name.endswith(".txt"):
+                self.library["Notes"].append(file_name)
+                self.treeview.insert('', 'end', text=file_name)
+            elif file_name.endswith(".md"):
+                self.library["Summaries"].append(file_name)
+                self.treeview.insert('', 'end', text=file_name)
+            else:
+                simpledialog.askstring("Error", "Currently only supports .pdf, .docx, .txt, and .md files")                
+                logger.info("invalid file type")
+                
+                
 if __name__ == "__main__":
     root = customtkinter.CTk()
     app = LibraryApp(root)
@@ -238,7 +258,6 @@ if __name__ == "__main__":
         "Summaries": ["S1", "S2", "S3"],
         "Notes": ["N1", "N2", "N3"]
     }
-    app.update_treeview(new_data)
     root.mainloop()
     
 
