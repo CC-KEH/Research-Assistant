@@ -1,4 +1,3 @@
-from math import sin
 import os
 import json
 
@@ -9,16 +8,14 @@ from PyPDF2 import PdfMerger
 from requests import session
 from tkhtmlview import HTMLLabel
 
-import chat
 from src.utils import logger
 from src.constants import *
 from src.config.themes import *
+from src.components.chat import ChatUI
 from src.components.pdf_viewer import ShowPdf
-
-# from src.rag.components.chat_model import ChatModel
-# from src.rag.components.summarizer_model import Summarizer_Model
-# from src.rag.components.process_files import VectorStorePipeline
-
+from src.rag.components.chat_model import ChatModel
+from src.rag.components.summarizer_model import Summarizer_Model
+from src.rag.components.process_files import VectorStorePipeline
 
 def merge_pdfs(files):
     if not files or len(files) < 2:
@@ -97,42 +94,11 @@ def save_summary(file_name, summary):
     with open(file_path, "w") as f:
         f.write(summary)
 
-def open_file(library, filepath,frame2,theme):
-    if filepath.endswith(".pdf"):
-        library = open_pdf(library,filepath,frame2,theme)
-    elif filepath.endswith(".md"):
-        open_markdown(filepath,frame2,theme)
-    elif filepath.endswith(".txt"):
-        open_text_editor(filepath,frame2,theme)
-    else:
-        logger.error("Unsupported file format")
-    return library
-
-def setup_single_chat(pdf_path):
-    brain = ChatModel(session_id='single',is_single=True)
+def load_models(filepath, chat_ui):
     vs = VectorStorePipeline()
-    text = vs.get_pdf_text(pdf_path,single=True)
-    chunks = vs.get_text_chunks(text)
-    vs.get_vector_store(chunks)
-    brain.initiate_chat_model()
-
-def setup_all_chat(pdfs_path):
-    brain = ChatModel()
-    vs = VectorStorePipeline()
-    pdfs = vs.get_pdfs(pdfs_path)
-    text = vs.get_pdf_text(pdfs)
-    chunks = vs.get_text_chunks(text)
-    vs.get_vector_store(chunks)
-    brain.initiate_chat_model()
-
-def load_models(filepath):
-    file_name = filepath.split('/')[-1].split('.')[0]
-    vs = VectorStorePipeline()
-    
     # Keep the chat model running in the background
     
-    
-    chat_model = ChatModel(model='gemini-pro', session_id=file_name, single=True)
+    chat_model = ChatModel(model='gemini-pro', session_id='all', single=False)
     pdfs = vs.get_pdfs(filepath)
     text = vs.get_pdf_text(pdfs)
     chunks = vs.get_text_chunks(text)
@@ -144,12 +110,25 @@ def load_models(filepath):
     summary = summarizer.summarize_single_chain(file_path=filepath,content=text)
     return summary
 
-def open_pdf(library,filepath, frame2, theme):
+
+def open_file(library, filepath, frame2, chat_ui, theme):
+    if filepath.endswith(".pdf"):
+        library = open_pdf(library,filepath,frame2,chat_ui,theme)
+    elif filepath.endswith(".md"):
+        open_markdown(filepath,frame2,theme)
+    elif filepath.endswith(".txt"):
+        open_text_editor(filepath,frame2,theme)
+    else:
+        logger.error("Unsupported file format")
+    return library
+
+
+def open_pdf(library,filepath, frame2, chat_ui, theme):
     logger.info("Open File Operation Initiated")
     logger.info(f"Opening file: {filepath}")
-    # load_chat_model()
+
+    summary = load_models(filepath, chat_ui)
     
-    # load_models(filepath)
     summary = f"""
 <b style="color:{theme['colors'].TEXT_COLOR.value}">
 # Topic

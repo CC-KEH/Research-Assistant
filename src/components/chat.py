@@ -2,30 +2,37 @@ from customtkinter import *
 from PIL import Image
 import json
 import os
+from enum import Enum
 from datetime import datetime
 
+class DarkTheme(Enum):
+    BG_COLOR = "#1e1e1e"
+    FRAME_COLOR = "#151515"
+    TEXT_COLOR = "#FFFFFF"
+    HEADING_COLOR = "#6C7BFE"
+    BUTTON_COLOR = "#6C7BFE"
+    BUTTON_HOVER_COLOR = "#7F8DAD"
+
+
 class ChatUI:
-    def __init__(self, parent, model_name, model_state, theme, all_chat=False, history_file='chat_history.json'):
+    def __init__(self, parent, theme, model_name=None, all_chat=False, history_file='chat_history.json'):
         self.parent = parent
         self.width = 400
         self.height = 800
         self.theme = theme
-        self.all_chat = all_chat
-        if self.all_chat:
-            self.history_file = "all_chat_history.json"
-        else:
-            self.history_file = history_file
-
         # Initialize fonts after the root window is created
         self.FONT = CTkFont("Helvetica", 16)
         self.HEADING_FONT = CTkFont("Helvetica", self.theme['heading_size'])
 
-        self.model_name = model_name
-        self.model_state = model_state
+        self.model_name = model_name if model_name else "Gemini Pro"
         
         self._setup_main_window()
         self._load_chat_history()
 
+    def chats_option(choice):
+            print("optionmenu dropdown clicked:", choice)
+
+    
     def _setup_main_window(self):
         self.parent.configure(width=self.width, height=self.height, fg_color=self.theme['colors'].FRAME_COLOR.value)
         # Head label
@@ -38,7 +45,7 @@ class ChatUI:
             padx=10,
         )
         head_label.place(relwidth=1)
-
+        
         # Text widget with scrollbar
         # , bg_color=self.theme['colors'].FRAME_COLOR.value
         text_frame = CTkFrame(self.parent)
@@ -69,11 +76,11 @@ class ChatUI:
         self.msg_entry.place(relwidth=0.77, rely=0.940, relheight=0.05, relx=0.011)
 
         # Send button
-        send_img = CTkImage(Image.open("src/assets/send.png"), size=(20, 20))
+        # send_img = CTkImage(Image.open("src/assets/send.png"), size=(20, 20))
         send_button = CTkButton(
             self.parent,
-            text="",
-            image=send_img,
+            text="Send",
+            # image=send_img,
             fg_color=self.theme['colors'].HEADING_COLOR.value,
             font=self.HEADING_FONT,
             width=20,
@@ -142,3 +149,14 @@ class ChatUI:
 
     def _get_current_time(self):
         return datetime.now().strftime("%A %I:%M %p")
+
+if __name__ == "__main__":
+    theme_config = {}
+    theme_config['font_size'] = 12
+    theme_config['heading_size'] = 24
+    theme_config['font_family'] = "Arial"
+    theme_config['theme'] = "Dark"
+    theme_config['colors'] = DarkTheme
+    root = CTk()
+    chat_ui = ChatUI(root, theme=theme_config)
+    root.mainloop()

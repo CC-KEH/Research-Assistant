@@ -13,9 +13,10 @@ TEXT_COLOR = "#FFFFFF"
 HEADING_SIZE = 24
 
 class LibraryApp:
-    def __init__(self, parent, frame2, theme):
+    def __init__(self, parent, frame2, chat_ui, theme):
         self.root = parent
         self.frame2 = frame2
+        self.chat_ui = chat_ui
         self.theme = theme
         self.library = {"Papers": [], 
                         "Summaries": [],
@@ -25,6 +26,7 @@ class LibraryApp:
         self.setup_layout()
         self.setup_styles()
         self.setup_treeview()
+        self.setup_directories()
         # self.setup_buttons()
     
     def setup_layout(self):
@@ -96,6 +98,12 @@ class LibraryApp:
         self.summarize_all_files_button.pack(side=LEFT, padx=10)
         self.delete_file_button.pack(side=LEFT, padx=10)
 
+    def setup_directories(self):
+        os.makedirs("Library", exist_ok=True)
+        for folder, _ in self.library.items():
+            if not os.path.exists(folder):
+                os.makedirs(f"Library/{folder}", exist_ok=True)
+                
     def change_settings(self):
         pass
     
@@ -103,16 +111,21 @@ class LibraryApp:
        logger.info("Browse Operation Initiated")
        file_paths = filedialog.askopenfilenames()
        if file_paths:
-           # Loop through each selected file and add it to the Papers list individually
+           # Loop through each selected file and add them to the library, and create a copy in the respective folder
            for file_path in file_paths:
-               self.library['Papers'].append(file_path)  # Append each file individually
-
+                file_name = os.path.basename(file_path)
+                # Copy the pdf file to the Papers folder
+                os.system(f"cp {file_path} Library/Papers/{file_name}")
+                new_file_path = f"Library/Papers/{file_name}"
+                self.library['Papers'].append(new_file_path)
+            
            print(self.library)
            self.load_library_into_treeview()  # Update the Treeview with the new files
 
 
     def summarize_all_files(self):
         pass
+    
     
     # def setup_styles(self):
     #     self.treestyle = ttk.Style()
@@ -173,7 +186,7 @@ class LibraryApp:
                 if folder_name in self.library:
                     filepath = item_text
                     # Now call open_file with the selected file, frame2, and theme
-                    self.library = open_file(self.library,filepath, self.frame2, self.theme)
+                    self.library = open_file(self.library,filepath, self.frame2, self.chat_ui, self.theme)
 
 
     def remove_from_library(self, item_name):

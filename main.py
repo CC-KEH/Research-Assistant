@@ -1,7 +1,7 @@
 from tkinter import *
 import customtkinter
 
-from chat import ChatUI
+from src.components.chat import ChatUI
 from settings import SettingsApp
 from src.utils.common import *
 from src.config.themes import *
@@ -67,7 +67,16 @@ class App(customtkinter.CTk):
         paned_window.add(self.frame2, minsize=700)
         paned_window.add(self.frame3, minsize=300)
 
-        LibraryApp(self.frame1, self.frame2, self.theme)
+        
+        # Frame 3
+        chat_ui = ChatUI(
+            parent=self.frame3,
+            model_name=self.model["model_name"],
+            model_state="active",
+            theme=self.theme,
+        )
+        
+        LibraryApp(self.frame1, self.frame2, chat_ui, self.theme)
         
         # Frame 3
         # label3 = Label(
@@ -79,13 +88,10 @@ class App(customtkinter.CTk):
         # )
         # label3.pack(side=TOP, pady=20)
         
-        ChatUI(
-            parent=self.frame3,
-            model_name=self.model["model_name"],
-            model_state="active",
-            theme=self.theme,
-        )
-    
+        # Frame 2
+        # Placeholder for Preview Screen
+        
+        
     
 
 if __name__ == "__main__":
