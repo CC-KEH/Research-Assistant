@@ -22,9 +22,8 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 class ChatModel:
-    def __init__(self,model='gemini-pro', session_id='all', single=False) -> None:
+    def __init__(self,model='gemini-pro', session_id='all') -> None:
         self.llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=0.3)
-        self.is_single = single
         self.store = self.load_store()
         self.session_id = session_id
         self.config = {"configurable": {"session_id": self.session_id}}
@@ -65,13 +64,15 @@ class ChatModel:
         response = chain({"input_documents": docs,"question": question}, return_only_outputs=True)
         return response['output_text']
    
-    def chat(self):
-        while True:
+    def chat(self, question=None):
+        if question is None:
             question = input("Ask a question: ")
-            if question == 'exit':
-                break
-            response = self.process_user_input(question)
-            print(response)
+            
+        if question == 'exit':
+            return
+
+        response = self.process_user_input(question)
+        print(response)
     
 if __name__ == '__main__':
     brain = ChatModel()

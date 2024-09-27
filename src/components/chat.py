@@ -15,11 +15,12 @@ class DarkTheme(Enum):
 
 
 class ChatUI:
-    def __init__(self, parent, theme, model_name=None, all_chat=False, history_file='chat_history.json'):
+    def __init__(self, parent, theme, model_name=None, history_file='chat_history.json'):
         self.parent = parent
         self.width = 400
         self.height = 800
         self.theme = theme
+        self.history_file = history_file
         # Initialize fonts after the root window is created
         self.FONT = CTkFont("Helvetica", 16)
         self.HEADING_FONT = CTkFont("Helvetica", self.theme['heading_size'])
@@ -31,7 +32,6 @@ class ChatUI:
 
     def chats_option(choice):
             print("optionmenu dropdown clicked:", choice)
-
     
     def _setup_main_window(self):
         self.parent.configure(width=self.width, height=self.height, fg_color=self.theme['colors'].FRAME_COLOR.value)
@@ -92,13 +92,13 @@ class ChatUI:
     def _on_send_button_click(self):
         msg = self.msg_entry.get()
         if msg:
-            current_time = self._get_current_time()
-            self._insert_message(msg, "You", current_time)
+            
+            self._insert_message(msg, "You")
             # Process the message and get the response
-            response = self._process_message(msg)
-            self._insert_message(response, self.model_name, current_time)
+            return msg
 
-    def _insert_message(self, msg, sender, time):
+    def _insert_message(self, msg, sender):
+        time = self._get_current_time()
         self.text_widget.configure(state=NORMAL)
         self.time_widget = CTkLabel(
             self.text_widget,

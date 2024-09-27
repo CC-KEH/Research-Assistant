@@ -2,7 +2,6 @@ from tkinter import *
 import customtkinter
 
 from src.components.chat import ChatUI
-from settings import SettingsApp
 from src.utils.common import *
 from src.config.themes import *
 from src.components.treeview import LibraryApp
@@ -15,22 +14,10 @@ class App(customtkinter.CTk):
         self.resizable(width=True, height=True)
         self.load_settings()
         self.create_layout()
-        self.library = []
-        self.selected_files = []
 
     def load_settings(self):
         self.theme, self.model = load_config()
     
-    def change_settings(self):
-        # Create an instance of the Toplevel window
-        self.settings_window = Toplevel(self)
-        self.settings_window.title("Settings")
-        self.settings_window.geometry("800x600")
-    
-        # Create an instance of SettingsApp inside the Toplevel window
-        settings_app = SettingsApp(self.settings_window, self.theme, self.model)
-        settings_app.pack(expand=True, fill=BOTH)
-        
     def create_layout(self):
         paned_window = PanedWindow(
             self, orient=HORIZONTAL, bg=self.theme["colors"].BG_COLOR.value
@@ -69,28 +56,13 @@ class App(customtkinter.CTk):
 
         
         # Frame 3
-        chat_ui = ChatUI(
+        self.chat_ui = ChatUI(
             parent=self.frame3,
             model_name=self.model["model_name"],
-            model_state="active",
             theme=self.theme,
         )
         
-        LibraryApp(self.frame1, self.frame2, chat_ui, self.theme)
-        
-        # Frame 3
-        # label3 = Label(
-        #     self.frame3,
-        #     text=self.model["model_name"],
-        #     bg=self.theme["colors"].FRAME_COLOR.value,
-        #     fg=self.theme["colors"].HEADING_COLOR.value,
-        #     font=("Helvetica", 12),
-        # )
-        # label3.pack(side=TOP, pady=20)
-        
-        # Frame 2
-        # Placeholder for Preview Screen
-        
+        LibraryApp(self.frame1, self.frame2, self.chat_ui, self.theme)
         
     
 

@@ -13,9 +13,9 @@ from src.constants import *
 from src.config.themes import *
 from src.components.chat import ChatUI
 from src.components.pdf_viewer import ShowPdf
-from src.rag.components.chat_model import ChatModel
-from src.rag.components.summarizer_model import Summarizer_Model
-from src.rag.components.process_files import VectorStorePipeline
+# from src.rag.components.chat_model import ChatModel
+# from src.rag.components.summarizer_model import Summarizer_Model
+# from src.rag.components.process_files import VectorStorePipeline
 
 def merge_pdfs(files):
     if not files or len(files) < 2:
@@ -94,22 +94,6 @@ def save_summary(file_name, summary):
     with open(file_path, "w") as f:
         f.write(summary)
 
-def load_models(filepath, chat_ui):
-    vs = VectorStorePipeline()
-    # Keep the chat model running in the background
-    
-    chat_model = ChatModel(model='gemini-pro', session_id='all', single=False)
-    pdfs = vs.get_pdfs(filepath)
-    text = vs.get_pdf_text(pdfs)
-    chunks = vs.get_text_chunks(text)
-    vs.get_vector_store(chunks)
-    chat_model.chat()
-        
-    # Load Summarizer Model
-    summarizer = Summarizer_Model(model='gemini-pro',chain_type='stuff')
-    summary = summarizer.summarize_single_chain(file_path=filepath,content=text)
-    return summary
-
 
 def open_file(library, filepath, frame2, chat_ui, theme):
     if filepath.endswith(".pdf"):
@@ -122,12 +106,9 @@ def open_file(library, filepath, frame2, chat_ui, theme):
         logger.error("Unsupported file format")
     return library
 
-
-def open_pdf(library,filepath, frame2, chat_ui, theme):
-    logger.info("Open File Operation Initiated")
-    logger.info(f"Opening file: {filepath}")
-
-    summary = load_models(filepath, chat_ui)
+def get_summary(library, filepath, theme, chain_type='stuff'):
+    # model = Summarizer_Model(model='gemini-pro',chain_type=chain_type)
+    # summary = model.summarize_single_chain(file_path=filepath)
     
     summary = f"""
 <b style="color:{theme['colors'].TEXT_COLOR.value}">
@@ -147,11 +128,18 @@ In this paper, Wickham defines tidy data as a format where each variable is a co
 Wickham advocates for a standardized approach to data organization in order to enhance the effectiveness of data analysis workflows, ultimately suggesting that adopting tidy data principles can lead to better insights and more robust analyses.
 </b>
 """
-
     summary_name = filepath.split('/')[-1].split('.')[0]
     save_summary(file_name=summary_name, summary=summary)
     library['Summaries'].append(f"summaries/{summary_name}_summary.md")
-        
+    
+    return summary
+
+def open_pdf(library,filepath, frame2, chat_ui, theme):
+    logger.info("Open File Operation Initiated")
+    logger.info(f"Opening file: {filepath}")
+
+    summary = get_summary(library,filepath,theme,'stuff')
+    
     html_text = markdown.markdown(summary)
     
     for widget in frame2.winfo_children():
@@ -232,34 +220,3 @@ def open_text_editor(filepath,frame2,theme):
     edit_label = HTMLLabel(edit_tab, html=content, background=theme['colors'].BG_COLOR.value,foreground='white')
     edit_label.pack(fill="both", expand=True)
     edit_label.fit_height()
-    
-#* Model functions
-#* For specific paper
-# def get_specific_summary(filepath, chain_type='stuff'):
-#     summarizer = Summarizer_Model()
-#     summary = summarizer.initiate_summarization(file_path=filepath)
-#     return summary
-
-# def get_specific_chat_model(filepath=None,pdfs_path=None):
-#     chat_model = ChatModel(single=True)
-#     vs = VectorStorePipeline()
-#     pdfs = vs.get_pdfs(pdfs_path)
-#     text = vs.get_pdf_text(pdfs)
-#     chunks = vs.get_text_chunks(text)
-#     vs.get_vector_store(chunks)
-#     chat_model.initiate_chat_model()    
-
-# #* For all papers
-# def get_all_summary(filepath, chain_type='stuff'):
-#     summarizer = Summarizer_Model(single=False)
-#     summary = summarizer.initiate_summarization()
-#     return summary
-
-# def get_all_chat_model(filepath=None,pdfs_path=None):
-#     chat_model = ChatModel(single=False)
-#     vs = VectorStorePipeline()
-#     pdfs = vs.get_pdfs(pdfs_path)
-#     text = vs.get_pdf_text(pdfs)
-#     chunks = vs.get_text_chunks(text)
-#     vs.get_vector_store(chunks)
-#     chat_model.initiate_chat_model()

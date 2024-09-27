@@ -1,9 +1,14 @@
 import os
+import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
+from src.constants import PAPERS_DIR
+from src.rag.components.chat_model import ChatModel
+from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
 from src.utils.common import open_file
+from settings import SettingsApp
 
 BG_COLOR = "#1e1e1e"
 FG_COLOR = "#f8f8f2"
@@ -27,7 +32,6 @@ class LibraryApp:
         self.setup_styles()
         self.setup_treeview()
         self.setup_directories()
-        # self.setup_buttons()
     
     def setup_layout(self):
         label = Label(
@@ -101,12 +105,41 @@ class LibraryApp:
     def setup_directories(self):
         os.makedirs("Library", exist_ok=True)
         for folder, _ in self.library.items():
-            if not os.path.exists(folder):
+            if not os.path.exists(f"Library/{folder}"):
                 os.makedirs(f"Library/{folder}", exist_ok=True)
+                print(f"Created folder: {folder}")
                 
     def change_settings(self):
-        pass
+        # Create an instance of the Toplevel window
+        self.settings_window = Toplevel(self)
+        self.settings_window.title("Settings")
+        self.settings_window.geometry("800x600")
     
+        # Create an instance of SettingsApp inside the Toplevel window
+        settings_app = SettingsApp(self.settings_window, self.theme, self.model)
+        settings_app.pack(expand=True, fill=BOTH)
+    
+    def setup_chat(self):
+        vs = VectorStorePipeline()
+        pdfs = vs.get_pdfs(PAPERS_DIR)
+        text = vs.get_pdf_text(pdfs)
+        chunks = vs.get_text_chunks(text)
+        vs.get_vector_store(chunks)
+
+        model = ChatModel(model='gemini-pro', session_id='all')
+        self.run_chat(model)
+        
+    def run_chat(self, model):
+        # Run in background
+        self.chat_ui.insert_message("Welcome to the Library Chatbot! How can I help you today?", "Librarian")
+        self.chat_ui.insert_message("Type 'exit' to close the chatbot.", "Librarian")
+        while True:
+            msg = self.chat_ui._on_send_button_click()
+            response = model.chat(msg)
+            self._insert_message(response, self.model_name)
+
+        # TODO: Handle new chat, delete chat history, etc.
+        
     def browse_files(self):
        logger.info("Browse Operation Initiated")
        file_paths = filedialog.askopenfilenames()
@@ -114,8 +147,8 @@ class LibraryApp:
            # Loop through each selected file and add them to the library, and create a copy in the respective folder
            for file_path in file_paths:
                 file_name = os.path.basename(file_path)
-                # Copy the pdf file to the Papers folder
-                os.system(f"cp {file_path} Library/Papers/{file_name}")
+                # Copy the pdf file to the Papers folder runs in powershell
+                shutil.copy(file_path, f"Library/Papers/{file_name}")          
                 new_file_path = f"Library/Papers/{file_name}"
                 self.library['Papers'].append(new_file_path)
             
@@ -272,41 +305,3 @@ if __name__ == "__main__":
         "Notes": ["N1", "N2", "N3"]
     }
     root.mainloop()
-    
-
-    # def setup_buttons(self):
-    #     self.delete_button = customtkinter.CTkButton(
-    #         master=self.frame1,
-    #         text="Delete Selected",
-    #         command=self.delete_selected_item,
-    #         fg_color=BUTTON_COLOR,
-    #         text_color=TEXT_COLOR
-    #     )
-    #     self.delete_button.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
-
-    #     self.get_selected_button = customtkinter.CTkButton(
-    #         master=self.frame1,
-    #         text="Get Selected",
-    #         command=self.get_selected_item,
-    #         fg_color=BUTTON_COLOR,
-    #         text_color=TEXT_COLOR
-    #     )
-    #     self.get_selected_button.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
-
-    #     self.create_folder_button = customtkinter.CTkButton(
-    #         master=self.frame1,
-    #         text="Create Folder",
-    #         command=self.create_folder,
-    #         fg_color=BUTTON_COLOR,
-    #         text_color=TEXT_COLOR
-    #     )
-    #     self.create_folder_button.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
-        
-    #     self.create_file_button = customtkinter.CTkButton(
-    #         master=self.frame1,
-    #         text="Create File",
-    #         command=self.create_file,
-    #         fg_color=BUTTON_COLOR,
-    #         text_color=TEXT_COLOR
-    #     )
-    #     self.create_file_button.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky="ew")
