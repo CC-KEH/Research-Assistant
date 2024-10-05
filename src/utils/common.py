@@ -29,25 +29,9 @@ def merge_pdfs(files):
     merger.write("combined.pdf")
     merger.close()
 
-def load_config():
+def load_config(config):
     theme_config = {}
     model_config = {}
-    
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-    else:
-        config = {
-            "font_size": "12",
-            "heading_size": "24",
-            "font_family": "Arial",
-            "theme": "Dark",
-            "model_name": "Model A",
-            "model_api": "",
-            "model_secretid": "",
-            "response_template": "Default response template...",
-            "prompt_template": "Default prompt...",
-        }
         
     theme_config['font_size'] = int(config["font_size"])
     theme_config['heading_size'] = int(config["heading_size"])
@@ -70,23 +54,6 @@ def load_config():
     model_config['prompt_template'] = config["prompt_template"]
     
     return theme_config, model_config
-
-
-def load_settings():
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as f:
-            return json.load(f)
-    else:
-        return {
-            "font_size": "12",
-            "font_family": "Arial",
-            "theme": "Light",
-            "model": "Model A",
-            "model_api": "",
-            "model_secretid": "",
-            "response_template": "Default response template...",
-            "prompt_template": "Default prompt...",
-        }
 
 def save_summary(file_name, summary):
     os.makedirs(SUMMARIES_DIR, exist_ok=True)

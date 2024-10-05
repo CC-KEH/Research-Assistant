@@ -2,23 +2,22 @@ from tkinter import BOTH
 import customtkinter as ctk
 import json
 import os
+from src.constants import PROJECTS_CONFIG
+import numpy as np
 
-CONFIG_FILE = "settings.json"
 FONT_SIZES = ["10", "12", "14", "16", "18", "20"]
 FONT_FAMILIES = ["Arial", "Helvetica", "Times", "Courier", "Verdana"]
 THEMES = ["Light", "Dark", "System"]
 MODELS = ["Gemini Pro", "ChatGPT", "Claude"]
 
-# Save and load settings functions
-def save_settings(settings):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(settings, f)
+
 
 class SettingsApp(ctk.CTkFrame):
-    def __init__(self, parent=None, theme_config=None, model_config=None):
+    def __init__(self, parent=None, project_name="", theme_config=None, model_config=None):
         super().__init__(parent)
         # self.title("Settings")
         # self.geometry("400x500")
+        self.project_name = project_name
         self.theme_config = theme_config
         self.model_config = model_config
         self.configure(fg_color=self.theme_config["colors"].FRAME_COLOR.value)  # Set the background color
@@ -35,6 +34,14 @@ class SettingsApp(ctk.CTkFrame):
         self.create_text_fields()
         self.create_buttons()
 
+        # Save and load settings functions
+    def save_settings(self,new_config):
+        with open(PROJECTS_CONFIG, "w") as f:
+            configs_list = json.load(f)
+            project_config = np.where(configs_list["project_name"] == self.project_name)
+            project_config['config'] = new_config
+            json.dump(configs_list, f, indent=4)
+    
     def create_dropdowns(self):
         # Font Size
         self.add_label_and_dropdown("Font Size", FONT_SIZES, "font_size", self.theme_config["font_size"])
@@ -129,7 +136,7 @@ class SettingsApp(ctk.CTkFrame):
         self.settings["prompt_template"] = self.prompt_entry.get()
 
         # Save the updated settings
-        save_settings(self.settings)
+        self.save_settings(self.settings)
 
     def reset_settings(self):
         # Reset settings to default

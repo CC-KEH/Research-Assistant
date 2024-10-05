@@ -4,10 +4,10 @@ from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
 from src.constants import PAPERS_DIR
-from src.rag.components.chat_model import ChatModel
-from src.rag.components.process_files import VectorStorePipeline
+# from src.rag.components.chat_model import ChatModel
+# from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
-from src.utils.common import open_file
+from src.utils.common import open_file, load_config
 from settings import SettingsApp
 
 BG_COLOR = "#1e1e1e"
@@ -18,20 +18,28 @@ TEXT_COLOR = "#FFFFFF"
 HEADING_SIZE = 24
 
 class LibraryApp:
-    def __init__(self, parent, frame2, chat_ui, theme):
+    def __init__(self, parent, frame2, chat_ui, project_config):
         self.root = parent
         self.frame2 = frame2
         self.chat_ui = chat_ui
-        self.theme = theme
         self.library = {"Papers": [], 
                         "Summaries": [],
                         "Notes": []
                         }
-        
+
+        self.project_name = project_config["project_name"]
+        self.project_path = project_config["project_path"]
+        self.config = project_config["config"]
+        self.load_settings()
         self.setup_layout()
         self.setup_styles()
         self.setup_treeview()
         self.setup_directories()
+    
+    def load_settings(self):
+        self.theme, self.model_config = load_config(config=self.config)
+        self.model_name = self.model_config["model_name"]
+        self.theme["heading_size"] = HEADING_SIZE
     
     def setup_layout(self):
         label = Label(
@@ -43,7 +51,7 @@ class LibraryApp:
         )
         label.pack(side=TOP, pady=20)
         
-        button_frame = Frame(self.root, bg=self.theme["colors"].FRAME_COLOR.value)
+        button_frame = Frame(self.root, bg=self.theme["colors"].FRAME_COLOR.value,highlightthickness=0)
         button_frame.pack(pady=20)
 
         self.settings_button = customtkinter.CTkButton(
@@ -96,6 +104,7 @@ class LibraryApp:
             hover_color=self.theme["colors"].BUTTON_COLOR.value,
             
         )
+        
         self.settings_button.pack(side=LEFT, padx=10)
         self.add_file_button.pack(side=LEFT, padx=10)
         # self.merge_files_button.pack(side=LEFT, padx=10)
@@ -116,18 +125,18 @@ class LibraryApp:
         self.settings_window.geometry("800x600")
     
         # Create an instance of SettingsApp inside the Toplevel window
-        settings_app = SettingsApp(self.settings_window, self.theme, self.model)
+        settings_app = SettingsApp(self.settings_window, self.project_name, self.theme, self.model)
         settings_app.pack(expand=True, fill=BOTH)
     
-    def setup_chat(self):
-        vs = VectorStorePipeline()
-        pdfs = vs.get_pdfs(PAPERS_DIR)
-        text = vs.get_pdf_text(pdfs)
-        chunks = vs.get_text_chunks(text)
-        vs.get_vector_store(chunks)
+    # def setup_chat(self):
+    #     vs = VectorStorePipeline()
+    #     pdfs = vs.get_pdfs(PAPERS_DIR)
+    #     text = vs.get_pdf_text(pdfs)
+    #     chunks = vs.get_text_chunks(text)
+    #     vs.get_vector_store(chunks)
 
-        model = ChatModel(model='gemini-pro', session_id='all')
-        self.run_chat(model)
+    #     model = ChatModel(model='gemini-pro', session_id='all')
+    #     self.run_chat(model)
         
     def run_chat(self, model):
         # Run in background
