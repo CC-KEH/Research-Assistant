@@ -4,11 +4,13 @@ from tkinter import filedialog
 import customtkinter
 import json
 from main import App
+from src.utils import logger
+
 class Welcome(customtkinter.CTk):
     def __init__(self):
         super().__init__()
         self.project_path = None
-        self.project_config = [{"project_name": "New Project",
+        self.project_config = {"project_name": "New Project",
                                 "project_path": os.getcwd(),
                                 "config": {
                                             "font_size": "12",
@@ -21,7 +23,7 @@ class Welcome(customtkinter.CTk):
                                             "response_template": "Default response template...",
                                             "prompt_template": "Default prompt...",
                                         }
-                                }]
+                                }
         self.old_project_configs = self.load_json_config()
         self.load_project()
         self.ask_to_load_project()
@@ -31,7 +33,11 @@ class Welcome(customtkinter.CTk):
 
     def create_json_config(self):
         with open("projects_config.json", "w") as f:
-            json.dump(self.project_config, f, indent=4)
+            if self.old_project_configs == []:
+                json.dump([self.project_config], f, indent=4)
+            else:
+                self.old_project_configs.append(self.project_config)
+                json.dump(self.old_project_configs, f, indent=4)
     
     def load_json_config(self):
         if not os.path.exists("projects_config.json"):
@@ -39,7 +45,7 @@ class Welcome(customtkinter.CTk):
                 json.dump(self.project_config, f, indent=4)
                 
         with open("projects_config.json", "r") as f:
-            self.old_project_configs = json.load(f)
+            self.old_project_configs = [json.load(f)]
         
         if self.old_project_configs == []:
             self.old_project_configs = self.project_config
@@ -53,7 +59,7 @@ class Welcome(customtkinter.CTk):
         project_path = os.path.join(project_path, project_name)
         os.makedirs(project_path, exist_ok=True)
         self.project_path = project_path
-        self.project_config.append({"project_name": project_name,
+        self.project_config.update({"project_name": project_name,
                                     "project_path": project_path,
                                     "config": {
                                         "font_size": "12",
@@ -67,12 +73,14 @@ class Welcome(customtkinter.CTk):
                                         "prompt_template": "Default prompt...",
                                     }
                                     })
+        logger.info(f"New project created: {project_name}")
         self.create_json_config()
         self.destroy()
         app = App(self.project_config)
         app.mainloop()
 
     def select_previous_project(self):
+        logger.info("Loading previous project")
         project_name = self.project_list.get(self.project_list.curselection())
         for project in self.old_project_configs:
             if project["project_name"] == project_name:
@@ -80,7 +88,7 @@ class Welcome(customtkinter.CTk):
                 self.destroy()
                 app = App(self.project_config)
                 app.mainloop()
-
+        
     def ask_to_load_project(self):
         # Welcome text
         self.welcome_text = customtkinter.CTkLabel(

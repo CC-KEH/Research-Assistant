@@ -62,9 +62,9 @@ def save_summary(file_name, summary):
         f.write(summary)
 
 
-def open_file(library, filepath, frame2, chat_ui, theme):
+def open_file(library,project_path, filepath, frame2, chat_ui, theme):
     if filepath.endswith(".pdf"):
-        library = open_pdf(library,filepath,frame2,chat_ui,theme)
+        library = open_pdf(library,project_path,filepath,frame2,chat_ui,theme)
     elif filepath.endswith(".md"):
         open_markdown(filepath,frame2,theme)
     elif filepath.endswith(".txt"):
@@ -73,7 +73,7 @@ def open_file(library, filepath, frame2, chat_ui, theme):
         logger.error("Unsupported file format")
     return library
 
-def get_summary(library, filepath, theme, chain_type='stuff'):
+def get_summary(library, project_path, filepath, theme, chain_type='stuff'):
     # model = Summarizer_Model(model='gemini-pro',chain_type=chain_type)
     # summary = model.summarize_single_chain(file_path=filepath)
     
@@ -96,16 +96,16 @@ Wickham advocates for a standardized approach to data organization in order to e
 </b>
 """
     summary_name = filepath.split('/')[-1].split('.')[0]
-    save_summary(file_name=summary_name, summary=summary)
-    library['Summaries'].append(f"summaries/{summary_name}_summary.md")
+    # save_summary(file_name=summary_name, summary=summary)
+    library['Summaries'].append(project_path+f"/Summaries/{summary_name}_summary.md")
     
     return summary
 
-def open_pdf(library,filepath, frame2, chat_ui, theme):
+def open_pdf(library, project_path, filepath, frame2, chat_ui, theme):
     logger.info("Open File Operation Initiated")
     logger.info(f"Opening file: {filepath}")
 
-    summary = get_summary(library,filepath,theme,'stuff')
+    summary = get_summary(library,project_path,filepath,theme,'stuff')
     
     html_text = markdown.markdown(summary)
     
