@@ -38,10 +38,10 @@ class VectorStorePipeline:
         return chunks
 
 
-    def get_vector_store(self,text_chunks):
+    def get_vector_store(self,text_chunks,store_path):
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-        vector_store.save_local("faiss_index")
+        vector_store.save_local(store_path)
         
     def run_pipeline(self,pdfs_path):
         pdfs = self.get_pdfs(pdfs_path)

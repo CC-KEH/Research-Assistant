@@ -5,6 +5,7 @@ import customtkinter
 import json
 from main import App
 from src.utils import logger
+from src.rag.components.prompts import final_combine_template, chat_template
 
 class Welcome(customtkinter.CTk):
     def __init__(self):
@@ -21,7 +22,8 @@ class Welcome(customtkinter.CTk):
                                             "model_api": "",
                                             "model_secretid": "",
                                             "response_template": "Default response template...",
-                                            "prompt_template": "Default prompt...",
+                                            "prompt_templates": [chat_template],
+                                            "summary_templates": [final_combine_template],
                                         }
                                 }
         self.old_project_configs = self.load_json_config()
@@ -45,7 +47,9 @@ class Welcome(customtkinter.CTk):
                 json.dump(self.project_config, f, indent=4)
                 
         with open("projects_config.json", "r") as f:
-            self.old_project_configs = [json.load(f)]
+            # self.old_project_configs = [json.load(f)]
+            self.old_project_configs = json.load(f)
+
         
         if self.old_project_configs == []:
             self.old_project_configs = self.project_config
@@ -61,17 +65,6 @@ class Welcome(customtkinter.CTk):
         self.project_path = project_path
         self.project_config.update({"project_name": project_name,
                                     "project_path": project_path,
-                                    "config": {
-                                        "font_size": "12",
-                                        "heading_size": "24",
-                                        "font_family": "Arial",
-                                        "theme": "Dark",
-                                        "model_name": "Model A",
-                                        "model_api": "",
-                                        "model_secretid": "",
-                                        "response_template": "Default response template...",
-                                        "prompt_template": "Default prompt...",
-                                    }
                                     })
         logger.info(f"New project created: {project_name}")
         self.create_json_config()

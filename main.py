@@ -16,7 +16,7 @@ class App(customtkinter.CTk):
         self.project_path = config["project_path"]
         self.config = config["config"]
         self.project_config = config
-
+        
         self.title("Research Assistant")
         self.geometry("1400x800")
         self.resizable(width=True, height=True)

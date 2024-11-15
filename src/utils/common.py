@@ -1,3 +1,4 @@
+from logging import PlaceHolder
 import os
 import json
 
@@ -5,6 +6,7 @@ import markdown
 from tkinter import *
 import customtkinter
 from PyPDF2 import PdfMerger
+from numpy import place
 from requests import session
 from tkhtmlview import HTMLLabel
 
@@ -51,7 +53,8 @@ def load_config(config):
     model_config['model_api'] = config["model_api"]
     model_config['model_secretid'] = config["model_secretid"]
     model_config['response_template'] = config["response_template"]
-    model_config['prompt_template'] = config["prompt_template"]
+    model_config['prompt_templates'] = config["prompt_templates"]
+    model_config['summary_templates'] = config["summary_templates"]
     
     return theme_config, model_config
 
@@ -62,7 +65,7 @@ def save_summary(file_name, summary):
         f.write(summary)
 
 
-def open_file(library,project_path, filepath, frame2, chat_ui, theme):
+def open_file(library, project_path, filepath, frame2, chat_ui, theme):
     if filepath.endswith(".pdf"):
         library = open_pdf(library,project_path,filepath,frame2,chat_ui,theme)
     elif filepath.endswith(".md"):
@@ -73,10 +76,37 @@ def open_file(library,project_path, filepath, frame2, chat_ui, theme):
         logger.error("Unsupported file format")
     return library
 
+
+
 def get_summary(library, project_path, filepath, theme, chain_type='stuff'):
+    summary_name = filepath.split('/')[-1].split('.')[0]  # Example summary name generation
+    summary_exists = any(summary_name in file for file in library['Summaries'])
+    placeholder_summary = f"""
+<b style="color:{theme['colors'].TEXT_COLOR.value}">
+# Topic
+Summary of {summary_name}
+
+# Prerequisites
+Pre-requisite knowledge of the topic.
+
+# Introduction
+Introduction to the topic.
+
+# Summary
+Summary of the topic.
+
+# Conclusion
+Conclusion of the topic.
+</b>
+"""
+    if summary_exists:
+        return True, open(library['Summaries'][0], "r").read()
+    else:
+        return False, placeholder_summary
+
+def create_summary(library, project_path, filepath, theme, chain_type='stuff'):
     # model = Summarizer_Model(model='gemini-pro',chain_type=chain_type)
     # summary = model.summarize_single_chain(file_path=filepath)
-    
     summary = f"""
 <b style="color:{theme['colors'].TEXT_COLOR.value}">
 # Topic
@@ -95,25 +125,29 @@ In this paper, Wickham defines tidy data as a format where each variable is a co
 Wickham advocates for a standardized approach to data organization in order to enhance the effectiveness of data analysis workflows, ultimately suggesting that adopting tidy data principles can lead to better insights and more robust analyses.
 </b>
 """
-    summary_name = filepath.split('/')[-1].split('.')[0]
-    # save_summary(file_name=summary_name, summary=summary)
+    summary_name = filepath.split('/')[-1].split('.')[0]  # Example summary name generation
+    save_summary(file_name=summary_name, summary=summary)
     library['Summaries'].append(project_path+f"/Summaries/{summary_name}_summary.md")
-    
-    return summary
+    return library
+
 
 def open_pdf(library, project_path, filepath, frame2, chat_ui, theme):
     logger.info("Open File Operation Initiated")
     logger.info(f"Opening file: {filepath}")
 
-    summary = get_summary(library,project_path,filepath,theme,'stuff')
+    status, summary = get_summary(library,project_path,filepath,theme,'stuff')
+    
+    if status is False:
+        print("Summary does not exist for this Document.")
+        create_summary_popup(library, project_path, filepath, theme)
     
     html_text = markdown.markdown(summary)
     
     for widget in frame2.winfo_children():
         widget.destroy()
     
-    # Create a CTkTabview widget
-    notebook = customtkinter.CTkTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
+    # Create a customtkinterTabview widget
+    notebook = customtkinter.customtkinterTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
     notebook.pack(fill=BOTH, expand=1)
     
     # Add tabs to the notebook
@@ -143,8 +177,8 @@ def open_markdown(filepath,frame2,theme):
     for widget in frame2.winfo_children():
         widget.destroy()
         
-    # Create a CTkTabview widget
-    notebook = customtkinter.CTkTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
+    # Create a customtkinterTabview widget
+    notebook = customtkinter.customtkinterTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
     notebook.pack(fill=BOTH, expand=1)
     
     # Add tabs to the notebook
@@ -169,8 +203,8 @@ def open_text_editor(filepath,frame2,theme):
     for widget in frame2.winfo_children():
         widget.destroy()
         
-    # Create a CTkTabview widget
-    notebook = customtkinter.CTkTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
+    # Create a customtkinterTabview widget
+    notebook = customtkinter.customtkinterTabview(frame2,segmented_button_selected_color=theme['colors'].HEADING_COLOR.value,segmented_button_unselected_color=theme['colors'].BG_COLOR.value,segmented_button_fg_color=theme['colors'].BG_COLOR.value,fg_color=theme['colors'].BG_COLOR.value)
     notebook.pack(fill=BOTH, expand=1)
     
     # Add tabs to the notebook
@@ -187,3 +221,22 @@ def open_text_editor(filepath,frame2,theme):
     edit_label = HTMLLabel(edit_tab, html=content, background=theme['colors'].BG_COLOR.value,foreground='white')
     edit_label.pack(fill="both", expand=True)
     edit_label.fit_height()
+
+
+def create_summary_popup(library, project_path, filepath, theme):
+    """Create a popup to ask user if they want to generate the summary."""
+    popup = customtkinter.CTkToplevel()
+    popup.title("Generate Summary")
+    popup.geometry("400x200")
+    
+    instructions = customtkinter.CTkLabel(popup, text="No summary found for this PDF. Do you want to generate one?")
+    instructions.pack(pady=10)
+    
+    # Show Prompt Template
+    template = library['Model_Config']['prompt_template']
+    
+    generate_button = customtkinter.CTkButton(popup, text="Generate Summary", command=lambda: create_summary(library, project_path, filepath, theme, popup))
+    generate_button.pack(pady=10)
+    
+    cancel_button = customtkinter.CTkButton(popup, text="Cancel", command=popup.destroy)
+    cancel_button.pack(pady=10)

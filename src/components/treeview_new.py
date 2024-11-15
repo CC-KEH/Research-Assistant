@@ -1,5 +1,4 @@
 import os
-import json
 import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
@@ -8,7 +7,7 @@ from src.constants import PAPERS_DIR
 # from src.rag.components.chat_model import ChatModel
 from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
-from src.utils.common_new import FileManager, load_config
+from src.utils.common_new import open_file, load_config
 from settings import SettingsApp
 
 BG_COLOR = "#1e1e1e"
@@ -128,11 +127,8 @@ class LibraryApp:
                 logger.info(f"Created folder: {folder}")
         
         os.makedirs(self.project_path+"/VectorStore", exist_ok=True)
-
-        with open(self.project_path + "/project_config.json", "w") as f:
-            json.dump(self.config, f, indent=4)
-
-        logger.info("VectorStore, Config and Library Directories Created Successfully")
+        
+        logger.info("VectorStore and Library Directories Created Successfully")
         
         
     def change_settings(self):
@@ -251,7 +247,12 @@ class LibraryApp:
                 if folder_name in self.library:
                     filepath = item_text
                     # Now call open_file with the selected file, frame2, and theme
-                    self.library = FileManager.open_file(self.library,self.project_path, filepath, self.frame2, self.chat_ui, self.theme)
+                    self.library = open_file(self.library,
+                                             self.project_path,
+                                             filepath,
+                                             self.frame2,
+                                             self.chat_ui,
+                                             self.theme)
 
 
     def remove_from_library(self, item_name):

@@ -22,21 +22,18 @@ final_combine_template = """
             Each topic after their explanation must have a simple example to explain further. \n\n
             Text: \n {text}\n
             Summary: 
+                # Topic
+                {topic}
 
+                # Prerequisites
+                {prerequisites}
+
+                # Introduction
+                {introduction}
+
+                # Summary
+                {summary}
+
+                # Conclusion
+                {conclusion}
             """
-summary_template ="""
-    # Topic
-    {topic}
-    
-    # Prerequisites
-    {prerequisites}
-    
-    # Introduction
-    {introduction}
-    
-    # Summary
-    {summary}
-    
-    # Conclusion
-    {conclusion}
-"""
