@@ -22,10 +22,11 @@ class Welcome(customtkinter.CTk):
                                             "model_api": "",
                                             "model_secretid": "",
                                             "response_template": "Default response template...",
-                                            "prompt_templates": [chat_template],
-                                            "summary_templates": [final_combine_template],
+                                            "prompt_templates": {"default":chat_template},
+                                            "summary_templates": {"default":final_combine_template},
                                         }
                                 }
+        
         self.old_project_configs = self.load_json_config()
         self.load_project()
         self.ask_to_load_project()
@@ -44,7 +45,7 @@ class Welcome(customtkinter.CTk):
     def load_json_config(self):
         if not os.path.exists("projects_config.json"):
             with open("projects_config.json", "w") as f:
-                json.dump(self.project_config, f, indent=4)
+                json.dump([], f)
                 
         with open("projects_config.json", "r") as f:
             # self.old_project_configs = [json.load(f)]
@@ -148,8 +149,14 @@ class Welcome(customtkinter.CTk):
         self.project_list = Listbox(self, width=50, height=15,
                                     font=("Helvetica", 12), fg="white", borderwidth=0, activestyle="none", selectmode=SINGLE, 
                                     highlightthickness=0, bg="#1e1e1e", selectforeground="white", selectbackground="#6C7BFE")
+        
         for project in self.old_project_configs:
-            self.project_list.insert(END, project["project_name"])
+            if os.path.exists(project["project_path"]):
+                self.project_list.insert(END, project["project_name"])
+            else:
+                self.old_project_configs.remove(project)
+        self.create_json_config()
+        
         self.project_list.pack(side=LEFT, fill=BOTH, expand=1, padx=10)
 
 if __name__ == "__main__":

@@ -4,11 +4,11 @@ import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
-from src.constants import PAPERS_DIR
+from src.constants import DIRECTORIES_PATH, PAPERS_DIR
 # from src.rag.components.chat_model import ChatModel
 from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
-from src.utils.common_new import FileManager, load_config
+from src.utils.common_new import FileManager, load_config, Treeview_utils
 from settings import SettingsApp
 
 BG_COLOR = "#1e1e1e"
@@ -97,10 +97,23 @@ class LibraryApp:
             
         )
 
-        self.summarize_all_files_button = customtkinter.CTkButton(
+        self.create_file_button = customtkinter.CTkButton(
             master=button_frame,
             text="📝",
-            command=self.summarize_all_files,
+            command=self.create_file,
+            width=25,
+            height=25,
+            corner_radius=10,
+            fg_color=self.theme["colors"].FRAME_COLOR.value,
+            bg_color=self.theme["colors"].FRAME_COLOR.value,
+            hover_color=self.theme["colors"].BUTTON_COLOR.value,
+            
+        )
+        
+        self.create_folder_button = customtkinter.CTkButton(
+            master=button_frame,
+            text="📝",
+            command=self.create_folder,
             width=25,
             height=25,
             corner_radius=10,
@@ -113,26 +126,10 @@ class LibraryApp:
         self.settings_button.pack(side=LEFT, padx=10)
         self.add_file_button.pack(side=LEFT, padx=10)
         # self.merge_files_button.pack(side=LEFT, padx=10)
-        self.summarize_all_files_button.pack(side=LEFT, padx=10)
+        self.create_file_button.pack(side=LEFT, padx=10)
+        self.create_folder_button.pack(side=LEFT, padx=10)
         self.delete_file_button.pack(side=LEFT, padx=10)
         logger.info("Library Layout Setup Complete")
-        
-        
-    def setup_directories(self):
-        logger.info("Setting up Library Directories")
-        library_path = os.path.join(self.project_path, "Library")        
-        os.makedirs(library_path, exist_ok=True)
-        for folder, _ in self.library.items():
-            if not os.path.exists(library_path + f"/{folder}"):
-                os.makedirs(library_path + f"/{folder}", exist_ok=True)
-                logger.info(f"Created folder: {folder}")
-        
-        os.makedirs(self.project_path+"/VectorStore", exist_ok=True)
-
-        with open(self.project_path + "/project_config.json", "w") as f:
-            json.dump(self.config, f, indent=4)
-
-        logger.info("VectorStore, Config and Library Directories Created Successfully")
         
         
     def change_settings(self):
@@ -171,12 +168,8 @@ class LibraryApp:
             # Loop through each selected file and add them to the library, and create a copy in the respective folder
             for file_path in file_paths:
                  file_name = os.path.basename(file_path)
-                 # Copy the pdf file to the Papers folder runs in powershell
-                 # shutil.copy(file_path, f"Library/Papers/{file_name}")
-                 shutil.copy(file_path,self.project_path + f"/Library/Papers/{file_name}")          
-                 # new_file_path = f"Library/Papers/{file_name}"
-                 new_file_path = self.project_path + f"/Library/Papers/{file_name}"
-                 self.library['Papers'].append(new_file_path)
+                 shutil.copy(file_path, self.project_path + f"/Library/Papers/{file_name}")          
+                 self.library['Papers'].append(file_name)
 
             logger.info("Currently Library:",self.library)
             self.load_library_into_treeview()  # Update the Treeview with the new files
@@ -188,9 +181,6 @@ class LibraryApp:
             self.vector_store.get_vector_store(chunks, self.project_path + "/VectorStore/faiss_index")
 
         logger.info("Browse Operation Complete")
-
-    def summarize_all_files(self):
-        pass
     
     
     def setup_styles(self):
@@ -249,9 +239,10 @@ class LibraryApp:
             if item_text and not self.treeview.get_children(selected_item[0]):  # Checks if it has no children, meaning it's a file
                 folder_name = self.treeview.item(self.treeview.parent(selected_item[0]), "text")  # Get the parent folder name
                 if folder_name in self.library:
-                    filepath = item_text
+                    filepath = self.project_path + f"/{DIRECTORIES_PATH}{folder_name}/{item_text}"
+                    logger.info(f"Selected file: {filepath}")
                     # Now call open_file with the selected file, frame2, and theme
-                    self.library = FileManager.open_file(self.library,self.project_path, filepath, self.frame2, self.chat_ui, self.theme)
+                    self.library = FileManager.open_file(self.library, self.project_path, filepath, self.frame2, self.chat_ui, self.theme)
 
 
     def remove_from_library(self, item_name):
@@ -264,16 +255,25 @@ class LibraryApp:
             elif item_name in self.library[folder]:
                 self.library[folder].remove(item_name)
                 break
+    
+    def setup_directories(self):
+        logger.info("Setting up Library Directories")
+        library_path = os.path.join(self.project_path, "Library")        
+        os.makedirs(library_path, exist_ok=True)
+        for folder, _ in self.library.items():
+            if not os.path.exists(library_path + f"/{folder}"):
+                os.makedirs(library_path + f"/{folder}", exist_ok=True)
+                logger.info(f"Created folder: {folder}")
+        
+        os.makedirs(self.project_path+"/VectorStore", exist_ok=True)
 
-    def load_library_into_treeview(self):
-        logger.info("Loading Library into Treeview")
-        """Load the library dictionary into the Treeview."""
-        self.treeview.delete(*self.treeview.get_children())  # Clear the treeview before loading new items
+        with open(self.project_path + "/project_config.json", "w") as f:
+            json.dump(self.config, f, indent=4)
 
-        for folder, files in self.library.items():
-            folder_id = self.treeview.insert('', 'end', text=folder)
-            for file in files:
-                self.treeview.insert(folder_id, 'end', text=file)
+        logger.info("VectorStore, Config and Library Directories Created Successfully")
+        self.library = Treeview_utils.load_filesystem_to_library(self.library, self.project_path)
+        self.load_library_into_treeview()
+    
     
     def delete_selected_item(self):
         logger.info("Deleting Selected Item")
@@ -285,15 +285,18 @@ class LibraryApp:
             self.treeview.delete(item)
             self.remove_from_library(item_text)
 
-    def get_selected_item(self):
-        logger.info("Getting Selected Item")
-        selected_items = self.treeview.selection()
-        selected_files = []
-        for item in selected_items:
-            item_text = self.treeview.item(item, "text")
-            selected_files.append(item_text)
-            logger.info(f"Selected Item: {item_text}")
-        return selected_files
+
+
+    def load_library_into_treeview(self):
+        logger.info("Loading Library into Treeview")
+        """Load the library dictionary into the Treeview."""
+        self.treeview.delete(*self.treeview.get_children())  # Clear the treeview before loading new items
+
+        for folder, files in self.library.items():
+            folder_id = self.treeview.insert('', 'end', text=folder)
+            for file in files:
+                self.treeview.insert(folder_id, 'end', text=file)
+
 
     def create_folder(self):
         logger.info("Creating New Folder")
@@ -306,6 +309,9 @@ class LibraryApp:
             # Insert the new folder at the root level of the Treeview
             self.treeview.insert('', 'end', text=folder_name)
             self.library[folder_name] = []  # Add folder as a key in the dictionary
+            
+            Treeview_utils.sync_library(self.library, self.project_path)
+            
         logger.info(f"New folder created: {folder_name}")
             
     def create_file(self):
@@ -319,16 +325,24 @@ class LibraryApp:
                     if folder_name in self.library:
                         self.library[folder_name].append(file_name)
                         self.treeview.insert(selected_item, 'end', text=file_name)
+                        Treeview_utils.sync_library(self.library, self.project_path)
+            
             elif file_name.endswith(".pdf") or file_name.endswith(".PDF") or file_name.endswith(".docx") or file_name.endswith(".DOCX"):
                 # Insert the new file at the root level (into Papers, Summaries, or Notes if nothing is selected)
                 self.library["Papers"].append(file_name)
                 self.treeview.insert('', 'end', text=file_name)
+                Treeview_utils.sync_library(self.library, self.project_path)
+            
             elif file_name.endswith(".txt"):
                 self.library["Notes"].append(file_name)
                 self.treeview.insert('', 'end', text=file_name)
+                Treeview_utils.sync_library(self.library, self.project_path)
+            
             elif file_name.endswith(".md"):
                 self.library["Summaries"].append(file_name)
                 self.treeview.insert('', 'end', text=file_name)
+                Treeview_utils.sync_library(self.library, self.project_path)
+            
             else:
                 simpledialog.askstring("Error", "Currently only supports .pdf, .docx, .txt, and .md files")                
                 logger.info("invalid file type")
@@ -338,3 +352,28 @@ if __name__ == "__main__":
     root = customtkinter.CTk()
     app = LibraryApp(root)
     root.mainloop()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+        # def get_selected_item(self):
+    #     logger.info("Getting Selected Item")
+    #     selected_items = self.treeview.selection()
+    #     selected_files = []
+    #     for item in selected_items:
+    #         item_text = self.treeview.item(item, "text")
+    #         selected_files.append(item_text)
+    #         logger.info(f"Selected Item: {item_text}")
+    #     return selected_files

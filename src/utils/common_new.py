@@ -1,5 +1,8 @@
 import os
 import json
+import shutil
+from tkinter.ttk import Treeview
+from tkinter import ttk, simpledialog, filedialog
 import markdown
 import customtkinter
 from PyPDF2 import PdfMerger
@@ -69,21 +72,24 @@ class SummaryManager:
         summary_exists = any(summary_name in file for file in library['Summaries'])
         placeholder_summary = SummaryManager._generate_placeholder_summary(summary_name, theme)
         if summary_exists:
-            return True, open(library['Summaries'][0], "r").read()
+            return True, open(os.path.join(project_path,SUMMARIES_DIR,library['Summaries'][0]), "r").read()
         return False, placeholder_summary
 
     @staticmethod
     def create_summary(library, project_path, filepath, theme, summary_template, chain_type='stuff'):
         summary_name = os.path.basename(filepath).split('.')[0]
-        summary = SummaryManager._generate_sample_summary()
-        SummaryManager._save_summary(summary_name, summary)
-        library['Summaries'].append(os.path.join(project_path, f"Summaries/{summary_name}_summary.md"))
+        summary = SummaryManager._generate_sample_summary(theme)
+        SummaryManager._save_summary(summary_name, project_path, summary)
+        library['Summaries'].append(f"{summary_name}_summary.md")
+        
+        # TODO: Update the treeview with the new summary
+        
         return library
-
+    
     @staticmethod
-    def _save_summary(file_name, summary):
-        os.makedirs(SUMMARIES_DIR, exist_ok=True)
-        file_path = os.path.join(SUMMARIES_DIR, f"{file_name}_summary.md")
+    def _save_summary(file_name, project_path, summary):
+        os.makedirs(os.path.join(project_path, SUMMARIES_DIR), exist_ok=True)
+        file_path = os.path.join(project_path, f"{SUMMARIES_DIR}/{file_name}_summary.md")
         with open(file_path, "w") as f:
             f.write(summary)
 
@@ -109,9 +115,9 @@ Conclusion of the topic.
 """
 
     @staticmethod
-    def _generate_sample_summary():
-        return """
-<b style="color:{{theme['colors'].TEXT_COLOR.value}}">
+    def _generate_sample_summary(theme):
+        return f"""
+<b style="color:{theme['colors'].TEXT_COLOR.value}">
 # Topic
 Tidy Data
 
@@ -149,23 +155,36 @@ class GUIManager:
     def create_summary_popup(library, project_path, filepath, theme):
         popup = customtkinter.CTkToplevel()
         popup.title("Generate Summary")
-        popup.geometry("700x500")
+        popup.geometry("300x400")
+
         instructions = customtkinter.CTkLabel(popup, text="No summary found for this PDF. Do you want to generate one?")
         instructions.pack(pady=10)
+
         # Display previous summary templates, select one and generate the summary using the selected template
         config = json.load(open(os.path.join(project_path, CONFIG_FILE), "r"))
-        summary_templates = config["summary_templates"]
+        summary_templates = config["summary_templates"].keys()
+        summary_templates = list(summary_templates)
+
         summary_template_label = customtkinter.CTkLabel(popup, text="Select a summary template:")
         summary_template_label.pack(pady=10)
+
         summary_template = customtkinter.CTkComboBox(popup, values=summary_templates)
         summary_template.pack(pady=10)
-        
-        #TODO destroy the popup, when the user clicks on the generate button
-        generate_button = customtkinter.CTkButton(popup, text="Generate Summary",
-                                                  command=lambda: SummaryManager.create_summary(library, project_path, filepath, theme, summary_template.get()))
+
+        def generate_and_close():
+            selected_template = summary_template.get()
+            if selected_template:  # Ensure a template is selected
+                SummaryManager.create_summary(
+                    library, project_path, filepath, theme, config["summary_templates"][selected_template]
+                )
+            popup.destroy()  # Close the popup
+
+        generate_button = customtkinter.CTkButton(popup, text="Generate Summary", command=generate_and_close)
         generate_button.pack(pady=10)
+
         cancel_button = customtkinter.CTkButton(popup, text="Cancel", command=popup.destroy)
         cancel_button.pack(pady=10)
+
 
     @staticmethod
     def display_pdf_summary(filepath, summary, frame2, theme):
@@ -221,3 +240,66 @@ class GUIManager:
         preview_label = HTMLLabel(preview_tab, html=html_text, background=theme['colors'].BG_COLOR.value, foreground='white')
         preview_label.pack(fill="both", expand=True)
         preview_label.fit_height()
+
+
+class Treeview_utils:
+    @staticmethod
+    def sync_library(library, project_path):
+        # Sync the library with the file system
+        notes: list[str] = os.listdir(os.path.join(project_path, NOTES_DIR))
+        summaries = os.listdir(os.path.join(project_path, SUMMARIES_DIR))
+        
+        # add notes from library to the file system
+        for note in library['Notes']:
+            if note not in notes:
+                # Create a new file in the file system
+                with open(os.path.join(project_path, NOTES_DIR, note), "w") as f:
+                    f.write("")            
+                logger.info(f"Added {note} to the file system")
+                
+        for summary in library['Summaries']:
+            if summary not in summaries:
+                shutil.copy(summary, os.path.join(project_path, SUMMARIES_DIR))
+
+        for directory_name in library.keys():
+            if directory_name not in ['Papers', 'Notes', 'Summaries']:
+                for file in library[directory_name]:
+                    os.makedirs(os.path.join(project_path, DIRECTORIES_PATH, directory_name), exist_ok=True)
+                    
+                    if file not in os.listdir(os.path.join(project_path, DIRECTORIES_PATH, directory_name)):
+                        open(os.path.join(project_path, DIRECTORIES_PATH, directory_name, os.path.basename(file)), "w").close()
+                        logger.info(f"Added {file} to the file system")
+                    else:
+                        logger.info(f"{file} already exists in the file system")
+                        # check if the file has been modified
+                        # if modified, update the file in the file system
+                        # if not, do nothing
+                        
+        
+    @staticmethod            
+    def load_filesystem_to_library(library, project_path):
+        directories: list[str] = os.listdir(os.path.join(project_path,DIRECTORIES_PATH))
+        
+        for directory in directories:
+            directory_name = os.path.basename(directory)
+            if directory_name not in library:
+                library[directory_name] = []
+            files = os.listdir(os.path.join(project_path, DIRECTORIES_PATH, directory))
+            for file in files:
+                if file not in library[directory_name]:
+                    library[directory_name].append(file)
+                    logger.info(f"Added {file} to the library")
+
+        return library
+    
+    
+    @staticmethod
+    def load_library_to_treeview(library, treeview):
+        treeview.delete(*treeview.get_children())  # Clear the treeview before loading new items
+
+        for folder, files in library.items():
+            folder_id = treeview.insert('', 'end', text=folder)
+            for file in files:
+                treeview.insert(folder_id, 'end', text=file)
+        
+        return treeview

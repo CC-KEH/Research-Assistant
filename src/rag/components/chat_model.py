@@ -6,6 +6,11 @@ from langchain.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
+
+# OpenAI
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+
 from dotenv import load_dotenv
 
 # Chat history
@@ -22,11 +27,30 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 class ChatModel:
-    def __init__(self,model='gemini-pro', session_id='all') -> None:
-        self.llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=0.3)
+    def __init__(self, model='gemini-pro', temperature=0.3, session_id='all') -> None:
+        self.llm= self.get_llm(model,temperature)
+        self.embeddings = self.get_embeddings(model)
         self.store = self.load_store()
         self.session_id = session_id
         self.config = {"configurable": {"session_id": self.session_id}}
+    
+    def get_llm(self, model, temperature):
+        if model == 'gemini-pro':
+            llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=temperature)
+        elif model == 'openai':
+            llm = ChatOpenAI(model="gpt-4o",temperature=temperature)
+        else:
+            raise ValueError('Model not supported')
+        return llm
+    
+    def get_embeddings(self,model):
+        if model == 'gemini-pro':
+            embeddings = GoogleGenerativeAIEmbeddings(model='models/embedding-001')
+        elif model == 'openai':
+            embeddings = OpenAIEmbeddings(model='text-embedding-3-large')
+        else:
+            raise ValueError('Model not supported')
+        return embeddings
     
     def load_store(self):
         try:
@@ -56,14 +80,13 @@ class ChatModel:
         self.chain = load_qa_chain(self.llm,chain_type='stuff',prompt=self.prompt)
         return self.chain
         
-    def process_user_input(self,question):
-        embeddings = GoogleGenerativeAIEmbeddings(model='models/embedding-001')
-        new_db = FAISS.load_local('faiss_index',embeddings,allow_dangerous_deserialization=True)
+    def process_user_input(self, question):
+        new_db = FAISS.load_local('faiss_index',self.embeddings,allow_dangerous_deserialization=True)
         docs = new_db.similarity_search(question)
         chain = self.get_conversational_chain()
         response = chain({"input_documents": docs,"question": question}, return_only_outputs=True)
         return response['output_text']
-   
+    
     def chat(self, question=None):
         if question is None:
             question = input("Ask a question: ")

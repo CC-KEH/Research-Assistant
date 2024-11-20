@@ -54,6 +54,21 @@ class SettingsApp(ctk.CTkFrame):
 
         # Model
         self.add_label_and_dropdown("Model", MODELS, "model", self.model_config["model_name"])
+        
+        # Model API Key
+        self.add_label_and_entry("Model API Key", "model_api", self.model_config["model_api"])
+        
+        # Model Secret ID
+        self.add_label_and_entry("Model Secret ID", "model_secretid", self.model_config["model_secretid"])
+        
+        # Model Temperature
+        self.add_label_and_entry("Model Temperature", "model_temperature", self.model_config["model_temperature"])
+        
+        # Response Template
+        self.add_label_and_entry("Response Template", "response_template", self.model_config["response_template"])
+        
+        
+        
 
     def add_label_and_dropdown(self, label_text, values, setting_key, current_value):
         # Create a frame for each label-dropdown pair
