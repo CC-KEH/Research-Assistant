@@ -4,11 +4,11 @@ import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
-from src.constants import DIRECTORIES_PATH, PAPERS_DIR
-# from src.rag.components.chat_model import ChatModel
+from src.constants import DIRECTORIES_PATH
+from src.rag.components.chat_model import ChatModel
 from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
-from src.utils.common_new import FileManager, load_config, Treeview_utils
+from src.utils.common import FileManager, load_config, Treeview_utils
 from settings import SettingsApp
 
 BG_COLOR = "#1e1e1e"
@@ -27,7 +27,7 @@ class LibraryApp:
                         "Summaries": [],
                         "Notes": []
                         }
-
+        self.project_config = project_config
         self.project_name = project_config["project_name"]
         self.project_path = project_config["project_path"]
         self.config = project_config["config"]
@@ -134,19 +134,16 @@ class LibraryApp:
         
     def change_settings(self):
         logger.info("Opening Settings Window")
-        # Create an instance of the Toplevel window
-        self.settings_window = Toplevel(self)
-        self.settings_window.title("Settings")
-        self.settings_window.geometry("800x600")
-    
         # Create an instance of SettingsApp inside the Toplevel window
-        settings_app = SettingsApp(self.settings_window, self.project_name, self.theme, self.model)
-        settings_app.pack(expand=True, fill=BOTH)
+        settings_app = SettingsApp(self.project_name, self.project_path, self.theme, self.model_config)
+        settings_app.mainloop()
         logger.info("Settings Window Opened")
         
-    # def setup_chat(self):
-    #     model = ChatModel(model='gemini-pro', session_id='all')
-    #     self.run_chat(model)
+    def setup_chat(self):
+        logger.info("Setting up Chat")
+        api_key = self.config["model_api"]
+        model = ChatModel(model='gemini-pro', session_id='all', api_key=api_key)
+        self.run_chat(model)
         
     def run_chat(self, model):
         logger.info("Running Chat")
@@ -172,8 +169,7 @@ class LibraryApp:
                  self.library['Papers'].append(file_name)
 
             logger.info("Currently Library:",self.library)
-            self.load_library_into_treeview()  # Update the Treeview with the new files
-
+            Treeview_utils.load_library_into_treeview(self.library,self.treeview)
             # Save the selected files to VectorStore
             pdfs = self.vector_store.get_pdfs(self.project_path + "/Library/Papers/")
             text = self.vector_store.get_pdf_text(pdfs)
@@ -181,7 +177,6 @@ class LibraryApp:
             self.vector_store.get_vector_store(chunks, self.project_path + "/VectorStore/faiss_index")
 
         logger.info("Browse Operation Complete")
-    
     
     def setup_styles(self):
         logger.info("Setting up Library Styles")
@@ -229,7 +224,6 @@ class LibraryApp:
         self.treeview.bind("<<TreeviewSelect>>", self.on_treeview_select)
         logger.info("Library Treeview Setup Complete")
         
-        
     def on_treeview_select(self, event):
         selected_item = self.treeview.selection()  # Get selected item from Treeview
         if selected_item:
@@ -242,8 +236,7 @@ class LibraryApp:
                     filepath = self.project_path + f"/{DIRECTORIES_PATH}{folder_name}/{item_text}"
                     logger.info(f"Selected file: {filepath}")
                     # Now call open_file with the selected file, frame2, and theme
-                    self.library = FileManager.open_file(self.library, self.project_path, filepath, self.frame2, self.chat_ui, self.theme)
-
+                    self.library = FileManager.open_file(self.library, self.treeview, self.project_path, filepath, self.frame2, self.chat_ui, self.theme)
 
     def remove_from_library(self, item_name):
         logger.info(f"Removing {item_name} from Library")
@@ -268,11 +261,11 @@ class LibraryApp:
         os.makedirs(self.project_path+"/VectorStore", exist_ok=True)
 
         with open(self.project_path + "/project_config.json", "w") as f:
-            json.dump(self.config, f, indent=4)
+            json.dump(self.project_config, f, indent=4)
 
         logger.info("VectorStore, Config and Library Directories Created Successfully")
         self.library = Treeview_utils.load_filesystem_to_library(self.library, self.project_path)
-        self.load_library_into_treeview()
+        Treeview_utils.load_library_into_treeview(self.library,self.treeview)
     
     
     def delete_selected_item(self):
@@ -284,19 +277,6 @@ class LibraryApp:
             item_text = self.treeview.item(item, "text")
             self.treeview.delete(item)
             self.remove_from_library(item_text)
-
-
-
-    def load_library_into_treeview(self):
-        logger.info("Loading Library into Treeview")
-        """Load the library dictionary into the Treeview."""
-        self.treeview.delete(*self.treeview.get_children())  # Clear the treeview before loading new items
-
-        for folder, files in self.library.items():
-            folder_id = self.treeview.insert('', 'end', text=folder)
-            for file in files:
-                self.treeview.insert(folder_id, 'end', text=file)
-
 
     def create_folder(self):
         logger.info("Creating New Folder")
@@ -318,15 +298,26 @@ class LibraryApp:
         logger.info("Creating New File")
         file_name = simpledialog.askstring("Input", "Enter new file name:")
         if file_name:
-            selected_items = self.treeview.selection()
-            if selected_items:
-                for selected_item in selected_items:
-                    folder_name = self.treeview.item(selected_item, "text")
-                    if folder_name in self.library:
-                        self.library[folder_name].append(file_name)
-                        self.treeview.insert(selected_item, 'end', text=file_name)
-                        Treeview_utils.sync_library(self.library, self.project_path)
+            if file_name.endswith(".md"):
+                selected_items = self.treeview.selection()
+                if selected_items:
+                    for selected_item in selected_items:
+                        folder_name = self.treeview.item(selected_item, "text")
+                        if folder_name in self.library:
+                            self.library[folder_name].append(file_name)
+                            self.treeview.insert(selected_item, 'end', text=file_name)
+                            Treeview_utils.sync_library(self.library, self.project_path)
+            elif file_name.endswith(".txt"):
+                selected_items = self.treeview.selection()
+                if selected_items:
+                    for selected_item in selected_items:
+                        folder_name = self.treeview.item(selected_item, "text")
+                        if folder_name in self.library:
+                            self.library[folder_name].append(file_name)
+                            self.treeview.insert(selected_item, 'end', text=file_name)
+                            Treeview_utils.sync_library(self.library, self.project_path)
             
+                            
             elif file_name.endswith(".pdf") or file_name.endswith(".PDF") or file_name.endswith(".docx") or file_name.endswith(".DOCX"):
                 # Insert the new file at the root level (into Papers, Summaries, or Notes if nothing is selected)
                 self.library["Papers"].append(file_name)
@@ -343,9 +334,27 @@ class LibraryApp:
                 self.treeview.insert('', 'end', text=file_name)
                 Treeview_utils.sync_library(self.library, self.project_path)
             
-            else:
-                simpledialog.askstring("Error", "Currently only supports .pdf, .docx, .txt, and .md files")                
-                logger.info("invalid file type")
+            # File name does not have an extension
+            elif "." not in file_name:
+                file_name+=".md"
+                selected_items = self.treeview.selection()
+                if selected_items:
+                    for selected_item in selected_items:
+                        folder_name = self.treeview.item(selected_item, "text")
+                        if folder_name in self.library:
+                            self.library[folder_name].append(file_name)
+                            self.treeview.insert(selected_item, 'end', text=file_name)
+                            Treeview_utils.sync_library(self.library, self.project_path)
+                else:
+                    self.library["Notes"].append(file_name)
+                    self.treeview.insert('', 'end', text=file_name)
+                    Treeview_utils.sync_library(self.library, self.project_path)      
+        else:
+            file_name = "new_file.md"
+            self.library["Notes"].append(file_name)
+            self.treeview.insert('', 'end', text=file_name)
+            Treeview_utils.sync_library(self.library, self.project_path)
+
         logger.info(f"New file created: {file_name}")    
                 
 if __name__ == "__main__":

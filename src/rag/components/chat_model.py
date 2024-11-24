@@ -27,7 +27,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 class ChatModel:
-    def __init__(self, model='gemini-pro', temperature=0.3, session_id='all') -> None:
+    def __init__(self, model='gemini-pro', temperature=0.3, session_id='all', api_key="") -> None:
         self.llm= self.get_llm(model,temperature)
         self.embeddings = self.get_embeddings(model)
         self.store = self.load_store()

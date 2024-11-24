@@ -5,6 +5,11 @@ import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 
+
+# OpenAI
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+
 # For Stuff Documents Chain
 from langchain.docstore.document import Document
 from langchain.chains.summarize import load_summarize_chain
@@ -19,9 +24,23 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 class Summarizer_Model:
-    def __init__(self, model='gemini-pro', chain_type='stuff') -> None:
-        self.llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=0.3)
+    def __init__(self, model='gemini-pro', api_key="", temperature=0.3, template=final_combine_template, chain_type='stuff') -> None:
+        self.llm = self.get_llm(model,api_key,temperature)
         self.vs = VectorStorePipeline()
+        self.chain_type = chain_type
+        self.template = template
+            
+    def get_llm(self, model, api_key, temperature):
+        if model == 'gemini-pro':
+            llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=temperature,api_key=api_key)
+        
+        elif model == 'openai':
+            llm = ChatOpenAI(model="gpt-4o",temperature=temperature,api_key=api_key)
+        
+        else:
+            raise ValueError('Model not supported')
+        
+        return llm
     
     def summarize_single_chain(self,file_path,content=None):
         if content is None:
@@ -38,9 +57,10 @@ class Summarizer_Model:
     
     
     def summarize_all_chain(self, pdfs=None, content=None):
-        pdfs = self.vs.get_pdfs('library/')
+        if pdfs is None:
+            pdfs = self.vs.get_pdfs('library/')
         content = self.vs.get_pdf_text(pdfs)
-        self.prompt = PromptTemplate(template=final_combine_template,input_variables=['text'])
+        self.prompt = PromptTemplate(template=self.template,input_variables=['text'])
         
         if self.chain_type == 'stuff':
             docs = [Document(page_content=content)]
@@ -75,4 +95,4 @@ class Summarizer_Model:
 if __name__ == '__main__':
     types = ['stuff','map_reduce','refine']
     s_model = Summarizer_Model()
-    s_model.summarize_chain(chain_type=types[0])
+    

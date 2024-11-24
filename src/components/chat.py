@@ -38,7 +38,7 @@ class ChatUI:
         # Head label
         head_label = CTkLabel(
             self.parent,
-            text=self.model_name,
+            text=str.upper(self.model_name),
             text_color=self.theme['colors'].HEADING_COLOR.value,
             font=self.HEADING_FONT,
             pady=20,

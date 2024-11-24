@@ -9,13 +9,24 @@ from src.config.themes import *
 from src.components.treeview import LibraryApp
 
 class App(customtkinter.CTk):
-    def __init__(self,config):
+    def __init__(self,project_info,project_config=None):
         super().__init__()
         
-        self.project_name = config["project_name"]
-        self.project_path = config["project_path"]
-        self.config = config["config"]
-        self.project_config = config
+        self.project_name = project_info["project_name"]
+        self.project_path = project_info["project_path"]
+        
+        # New Project Created
+        if project_config is not None:
+            self.project_config = project_config
+            self.complete_project_config = {
+                "project_name": self.project_name,
+                "project_path": self.project_path,
+                "config": self.project_config,
+            }
+        else:
+            self.complete_project_config = get_project_config(self.project_path)
+            
+        self.config = self.complete_project_config["config"]
         
         self.title("Research Assistant")
         self.geometry("1400x800")
@@ -24,6 +35,7 @@ class App(customtkinter.CTk):
         self.create_layout()
 
     def load_settings(self):
+        logger.info("Loading settings...")
         self.theme, self.model = load_config(config=self.config)
     
     def create_layout(self):
@@ -70,7 +82,7 @@ class App(customtkinter.CTk):
             theme=self.theme,
         )
         
-        LibraryApp(self.frame1, self.frame2, self.chat_ui, self.project_config)
+        LibraryApp(self.frame1, self.frame2, self.chat_ui, self.complete_project_config)
         
     
 
