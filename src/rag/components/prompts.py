@@ -1,10 +1,10 @@
 chat_template = """
-            Answer the question as detailed as possible from the provided context, make sure to provide all the details, if the answer is not if __name__ == "__main__":
-            provided context just say, "answer is not available in the context", don't provide the wrong answer \n\n 
-            Context: \n {context}?\n 
-            Question: \n {question}\n
-            
-            Answer: 
+            "You are an assistant for question-answering tasks. "
+            "Use the following pieces of retrieved context to answer the question "
+            "If you don't know the answer, say that you don't know."
+            "Use three sentences maximum and keep the answer concise."
+            "\n\n"
+            "{context}"
 
             """
 
@@ -15,25 +15,26 @@ chunks_template = """
             Summary: 
 
             """
-            
+
 final_combine_template = """
             You are an expert assistant with expertise in summarizing research papers,
             Provide a complete summary of the entire Research Paper without missing any topic, in a simple language,
             Each topic after their explanation must have a simple example to explain further. \n\n
+            Summary must be in markdown format. \n\n
             Text: \n {text}\n
             Summary: 
-                # Topic
-                {topic}
+                # Topic 
+                topic here
 
                 # Prerequisites
-                {prerequisites}
+                prerequisites here
 
                 # Introduction
-                {introduction}
+                introduction here
 
                 # Summary
-                {summary}
+                summary here
 
                 # Conclusion
-                {conclusion}
+                conclusion here
             """

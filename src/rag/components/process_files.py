@@ -1,13 +1,26 @@
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 import os
 
+
+
 class VectorStorePipeline:
     
-    def __init__(self):
-        pass
+    def __init__(self,model="",api_key=None):
+        self.embeddings = self.get_embeddings(model,api_key)
+    
+    
+    def get_embeddings(self,model,api_key):
+        if model == 'gemini-1.5-pro-latest':
+            embeddings = GoogleGenerativeAIEmbeddings(model='models/embedding-001', google_api_key=api_key)
+        elif model == 'openai':
+            embeddings = OpenAIEmbeddings(model='text-embedding-3-large', openai_api_key=api_key)
+        else:
+            raise ValueError('Model not supported')
+        return embeddings
     
     def get_pdfs(self,pdfs_path):
         pdfs = []
@@ -39,10 +52,9 @@ class VectorStorePipeline:
 
 
     def get_vector_store(self,text_chunks,store_path):
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+        vector_store = FAISS.from_texts(text_chunks, embedding=self.embeddings)
         vector_store.save_local(store_path)
-        
+    
     def run_pipeline(self,pdfs_path):
         pdfs = self.get_pdfs(pdfs_path)
         text = self.get_pdf_text(pdfs)

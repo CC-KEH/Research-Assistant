@@ -98,17 +98,12 @@ class SummaryManager:
 
     @staticmethod
     def create_summary(
-        library,
-        treeview,
-        project_path,
-        filepath,
-        theme,
-        summary_template,
-        chain_type="stuff",
+        library,treeview,project_path,filepath,theme,
+        summary_template,chain_type="stuff",is_single=True,
     ):
         summary_name = os.path.basename(filepath).split(".")[0]
         
-        summary = SummaryManager._generate_summary(project_path,filepath,summary_template,chain_type,is_single=True)
+        summary = SummaryManager._generate_summary(project_path,filepath,summary_template,chain_type,is_single=is_single)
         # summary = SummaryManager._generate_sample_summary(theme)
         
         SummaryManager._save_summary(summary_name, project_path, summary)
@@ -148,25 +143,23 @@ Conclusion of the topic.
 """
 
     @staticmethod
-    def _generate_summary(project_path,filepath,summary_template,chain_type,is_single):
-        # TODO: Implement the summarization logic here
+    def _generate_summary(project_path, filepath, summary_template, chain_type, is_single):
         with open(os.path.join(project_path, "project_config.json"), "r") as f:
             store = json.load(f)
-            api_key = store["model_api"]
-            model_name = store["model_name"]
-            temperature = store["model_temperature"]
+            api_key = store["config"]["model_api"]
+            model_name = store["config"]["model_name"]
+            temperature = store["config"]["model_temperature"]
             
         summarizer = Summarizer_Model(model=model_name, api_key=api_key, temperature=temperature,
                                       template=summary_template, chain_type=chain_type)
         # Summarize single file
         if is_single:
             summary = summarizer.summarize_single_chain(file_path=filepath)
-        
+
         else:
             summary = summarizer.summarize_all_chain(file_path=filepath)
         
-        return summary
-    
+        return summary['output_text']
         # Summarize multiple files
         # summary = summarizer.summarize_all_chain(pdfs)
         
@@ -259,7 +252,13 @@ class GUIManager:
 
     @staticmethod
     def display_pdf_summary(filepath, summary, frame2, theme):
-        html_text = markdown.markdown(summary)
+        html_text = Parser.markdown_to_html(summary, theme)
+        cover = (
+            f'<b style="color:{theme["colors"].TEXT_COLOR.value}; user-select: text;">'
+        )
+        html_text = cover + html_text + "</b>"
+        
+        print(html_text)
         for widget in frame2.winfo_children():
             widget.destroy()
 
@@ -270,6 +269,7 @@ class GUIManager:
             segmented_button_fg_color=theme["colors"].BG_COLOR.value,
             fg_color=theme["colors"].BG_COLOR.value,
         )
+        
         notebook.pack(fill="both", expand=1)
         notebook.add("PDF Viewer")
         notebook.add("Summary")
@@ -369,7 +369,6 @@ class GUIManager:
                 updated_html = markdown.markdown(updated_content)
                 preview_label.set_html(updated_html)
                 preview_label.fit_height()
-                print("Preview refreshed.")
 
             elif view_type == "Text Editor":
                 with open(filepath, "r") as f:
@@ -481,6 +480,10 @@ class Parser:
             "####": f'<h4 style="color:{theme["colors"].HEADING_COLOR.value}">',
             "#####": f'<h5 style="color:{theme["colors"].HEADING_COLOR.value}">',
             "######": f'<h6 style="color:{theme["colors"].HEADING_COLOR.value}">',
+            "**": f'<b style="color:{theme["colors"].TEXT_COLOR.value}">',
+            "*": f'<i style="color:{theme["colors"].TEXT_COLOR.value}">',
+            "`": f'<code style="color:{theme["colors"].TEXT_COLOR.value}">',
+            "```": f'<code style="color:{theme["colors"].TEXT_COLOR.value}">',
         }
 
         for markdown_tag, html_tag in markdown_to_html.items():
@@ -490,3 +493,19 @@ class Parser:
             html_content = html_content.replace(f"</{markdown_tag}>", closing_tag)
 
         return html_content
+
+
+class ChatHistoryUtils:
+    @staticmethod
+    def get_session_id(project_path):
+        chat_history_path = os.path.join(project_path, CHAT_HISTORY_DIR)
+        
+        # Ensure the directory exists
+        if not os.path.exists(chat_history_path):
+            os.makedirs(chat_history_path)
+        
+        # Get list of previous sessions
+        prev_chat_sessions = os.listdir(chat_history_path)
+        session_id = len(prev_chat_sessions)
+        return f"session_{session_id}"
+    

@@ -4,6 +4,10 @@ import json
 import os
 from enum import Enum
 from datetime import datetime
+import threading
+
+from src.constants import CHAT_HISTORY_DIR
+from src.utils import logger
 
 class DarkTheme(Enum):
     BG_COLOR = "#1e1e1e"
@@ -15,25 +19,31 @@ class DarkTheme(Enum):
 
 
 class ChatUI:
-    def __init__(self, parent, theme, model_name=None, history_file='chat_history.json'):
+    def __init__(self, parent, project_path, model_name=None, chat_model=None, session_id=None, theme=None):
         self.parent = parent
         self.width = 400
         self.height = 800
         self.theme = theme
-        self.history_file = history_file
-        # Initialize fonts after the root window is created
-        self.FONT = CTkFont("Helvetica", 16)
+        
+        self.FONT = CTkFont("Helvetica", 14, weight="normal")
         self.HEADING_FONT = CTkFont("Helvetica", self.theme['heading_size'])
 
-        self.model_name = model_name if model_name else "Gemini Pro"
+        self.model_name = model_name if model_name else "LLM"
+        self.chat_model = chat_model
         
+        self.session_id = session_id
+        self.project_path = project_path
+        
+        self.history_file = f"{self.project_path} + {CHAT_HISTORY_DIR} + {self.session_id} + _chat_history.json"
+        self.message_count = 0
         self._setup_main_window()
         self._load_chat_history()
 
     def chats_option(choice):
-            print("optionmenu dropdown clicked:", choice)
+            print("option menu dropdown clicked:", choice)
     
     def _setup_main_window(self):
+        logger.info("Setting up chat window")
         self.parent.configure(width=self.width, height=self.height, fg_color=self.theme['colors'].FRAME_COLOR.value)
         # Head label
         head_label = CTkLabel(
@@ -92,11 +102,17 @@ class ChatUI:
     def _on_send_button_click(self):
         msg = self.msg_entry.get()
         if msg:
-            
             self._insert_message(msg, "You")
-            # Process the message and get the response
-            return msg
-
+            self.msg_entry.delete(0, END)  # Clear the entry box
+            
+            # Fetch response from ChatModel in a separate thread
+            threading.Thread(target=self._get_model_response, args=(msg,), daemon=True).start()
+    
+    def _get_model_response(self, msg):
+        if self.chat_model:
+            response = self.chat_model.chat(msg)
+            self._insert_message(response, self.model_name)
+            
     def _insert_message(self, msg, sender):
         time = self._get_current_time()
         self.text_widget.configure(state=NORMAL)
@@ -107,35 +123,20 @@ class ChatUI:
             fg_color=self.theme['colors'].HEADING_COLOR.value,
             bg_color=self.theme['colors'].FRAME_COLOR.value,
         )
+        
         # TODO: Add the time widget to the text widget
         
         self.text_widget.insert(END, f"{sender} : {msg}\n\n")
         self.text_widget.configure(state=DISABLED)
         self.text_widget.yview(END)
         self.msg_entry.delete(0, END)
+        self.message_count += 1
+        # Save to history after every 5 messages
+        if self.message_count % 3 == 0:
+            self.chat_model.save_messages_locally()
 
-    def _process_message(self, msg):
-        # TODO: Implement the model request and response here
-        # Send the message to model chain
-        # Get the response from the model chain
-        # Return the response
-        
-        processed_msg = msg.upper()  # Placeholder for actual processing
-        return processed_msg
 
-    def _save_message_to_history(self, sender, msg, time, file_path=None):
-        chat_entry = {"sender": sender, "message": msg, "time": time, "paper": self.file_path}
-        if os.path.exists(self.history_file):
-            with open(self.history_file, "r") as file:
-                chat_history = json.load(file)
-        else:
-            chat_history = []
-
-        chat_history.append(chat_entry)
-
-        with open(self.history_file, "w") as file:
-            json.dump(chat_history, file, indent=4)
-
+            
     def _load_chat_history(self):
         if os.path.exists(self.history_file):
             with open(self.history_file, "r") as file:
@@ -146,7 +147,8 @@ class ChatUI:
                 self.text_widget.insert(END, f"{entry['sender']} [{entry['time']}]: {entry['message']}\n\n")
             self.text_widget.configure(state=DISABLED)
             self.text_widget.yview(END)
-
+                
+              
     def _get_current_time(self):
         return datetime.now().strftime("%A %I:%M %p")
 

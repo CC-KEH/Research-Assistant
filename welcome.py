@@ -22,7 +22,7 @@ class Welcome(customtkinter.CTk):
                 "heading_size": "24",
                 "font_family": "Arial",
                 "theme": "Dark",
-                "model_name": "gemini-pro",
+                "model_name": "gemini-1.5-pro-latest",
                 "model_api": "",
                 "model_secretkey": "",
                 "model_temperature": 0.3,

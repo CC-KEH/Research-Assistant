@@ -1,9 +1,6 @@
 from tkinter import *
-from tkinter import filedialog
 import customtkinter
 
-from src import config
-from src.components.chat import ChatUI
 from src.utils.common import *
 from src.config.themes import *
 from src.components.treeview import LibraryApp
@@ -11,7 +8,7 @@ from src.components.treeview import LibraryApp
 class App(customtkinter.CTk):
     def __init__(self,project_info,project_config=None):
         super().__init__()
-        
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.project_name = project_info["project_name"]
         self.project_path = project_info["project_path"]
         
@@ -75,17 +72,11 @@ class App(customtkinter.CTk):
         paned_window.add(self.frame3, minsize=300)
 
         
-        # Frame 3
-        self.chat_ui = ChatUI(
-            parent=self.frame3,
-            model_name=self.model["model_name"],
-            theme=self.theme,
-        )
+        LibraryApp(self.frame1, self.frame2, self.frame3, self.complete_project_config)
         
-        LibraryApp(self.frame1, self.frame2, self.chat_ui, self.complete_project_config)
-        
+    def on_closing(self):
+        pass
     
-
 if __name__ == "__main__":
     app = App()
     app.mainloop()

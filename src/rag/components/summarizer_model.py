@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 
+from langchain.chains.combine_documents.base import BaseCombineDocumentsChain
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 
@@ -24,18 +25,18 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 class Summarizer_Model:
-    def __init__(self, model='gemini-pro', api_key="", temperature=0.3, template=final_combine_template, chain_type='stuff') -> None:
+    def __init__(self, model='gemini-1.5-pro-latest', api_key="", temperature=0.3, template=final_combine_template, chain_type='stuff') -> None:
         self.llm = self.get_llm(model,api_key,temperature)
-        self.vs = VectorStorePipeline()
+        self.vs = VectorStorePipeline(model=model, api_key=api_key)
         self.chain_type = chain_type
         self.template = template
             
     def get_llm(self, model, api_key, temperature):
-        if model == 'gemini-pro':
-            llm = ChatGoogleGenerativeAI(model='gemini-pro',temperature=temperature,api_key=api_key)
+        if model == 'gemini-1.5-pro-latest':
+            llm = ChatGoogleGenerativeAI(model='gemini-1.5-pro-latest', temperature=temperature, google_api_key=api_key)
         
         elif model == 'openai':
-            llm = ChatOpenAI(model="gpt-4o",temperature=temperature,api_key=api_key)
+            llm = ChatOpenAI(model="gpt-4o", temperature=temperature, openai_api_key=api_key)
         
         else:
             raise ValueError('Model not supported')
@@ -48,11 +49,11 @@ class Summarizer_Model:
             
         self.prompt = PromptTemplate(template=final_combine_template,input_variables=['text'])
         docs = [Document(page_content=content)]
-        self.chain = load_summarize_chain(self.llm,
-                                          self.prompt,
-                                          chain_type='stuff',
+        self.chain: BaseCombineDocumentsChain = load_summarize_chain(llm=self.llm,
+                                              prompt=self.prompt,
+                                          chain_type=self.chain_type,
                                           verbose=False)
-        output_summary = self.chain.run(docs)
+        output_summary = self.chain.invoke(docs)
         return output_summary
     
     
@@ -64,8 +65,8 @@ class Summarizer_Model:
         
         if self.chain_type == 'stuff':
             docs = [Document(page_content=content)]
-            self.chain = load_summarize_chain(self.llm,
-                                              self.prompt,
+            self.chain = load_summarize_chain(llm=self.llm,
+                                              prompt=self.prompt,
                                               chain_type=self.chain_type,
                                               verbose=False)
         
@@ -89,7 +90,7 @@ class Summarizer_Model:
         else:
             raise ValueError('Invalid Chain Type')
         
-        output_summary = self.chain.run(docs)
+        output_summary = self.chain.invoke(docs)
         return output_summary            
     
 if __name__ == '__main__':

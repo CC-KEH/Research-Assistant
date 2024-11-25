@@ -4,11 +4,14 @@ import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
-from src.constants import DIRECTORIES_PATH
+from openai import embeddings
+
+from src.constants import DIRECTORIES_PATH, VECTOR_STORE_PATH
+from src.components.chat import ChatUI
 from src.rag.components.chat_model import ChatModel
 from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
-from src.utils.common import FileManager, load_config, Treeview_utils
+from src.utils.common import ChatHistoryUtils, FileManager, load_config, Treeview_utils
 from settings import SettingsApp
 
 BG_COLOR = "#1e1e1e"
@@ -19,10 +22,10 @@ TEXT_COLOR = "#FFFFFF"
 HEADING_SIZE = 24
 
 class LibraryApp:
-    def __init__(self, parent, frame2, chat_ui, project_config):
+    def __init__(self, parent, frame2, frame3, project_config):
         self.root = parent
         self.frame2 = frame2
-        self.chat_ui = chat_ui
+        self.frame3 = frame3
         self.library = {"Papers": [], 
                         "Summaries": [],
                         "Notes": []
@@ -31,12 +34,13 @@ class LibraryApp:
         self.project_name = project_config["project_name"]
         self.project_path = project_config["project_path"]
         self.config = project_config["config"]
-        self.vector_store = VectorStorePipeline()
+        self.vector_store = VectorStorePipeline(model=self.config["model_name"], api_key=self.config["model_api"])
         self.load_settings()
         self.setup_layout()
         self.setup_styles()
         self.setup_treeview()
         self.setup_directories()
+        self.setup_chat()
     
     def load_settings(self):
         logger.info("Loading Library Settings")
@@ -141,21 +145,12 @@ class LibraryApp:
         
     def setup_chat(self):
         logger.info("Setting up Chat")
+        model_name = self.config["model_name"]
         api_key = self.config["model_api"]
-        model = ChatModel(model='gemini-pro', session_id='all', api_key=api_key)
-        self.run_chat(model)
-        
-    def run_chat(self, model):
-        logger.info("Running Chat")
-        # Run in background
-        self.chat_ui.insert_message("Welcome to the Library Chatbot! How can I help you today?", "Librarian")
-        self.chat_ui.insert_message("Type 'exit' to close the chatbot.", "Librarian")
-        while True:
-            msg = self.chat_ui._on_send_button_click()
-            response = model.chat(msg)
-            self._insert_message(response, self.model_name)
-
-        # TODO: Handle new chat, delete chat history, etc.
+        session_id = ChatHistoryUtils.get_session_id(self.project_path)
+        chat_model = ChatModel(model=model_name, session_id=session_id, api_key=api_key, vector_store_path = self.project_path + VECTOR_STORE_PATH, project_path=self.project_path)
+        self.chat_ui = ChatUI(parent=self.frame3, project_path=self.project_path, model_name=model_name, chat_model=chat_model, session_id=session_id, theme=self.theme)
+        logger.info("Chat Setup Complete")
         
     def browse_files(self):
         logger.info("Browse Operation Initiated")
@@ -174,7 +169,7 @@ class LibraryApp:
             pdfs = self.vector_store.get_pdfs(self.project_path + "/Library/Papers/")
             text = self.vector_store.get_pdf_text(pdfs)
             chunks = self.vector_store.get_text_chunks(text)
-            self.vector_store.get_vector_store(chunks, self.project_path + "/VectorStore/faiss_index")
+            self.vector_store.get_vector_store(chunks, self.project_path + VECTOR_STORE_PATH)
 
         logger.info("Browse Operation Complete")
     
@@ -361,28 +356,3 @@ if __name__ == "__main__":
     root = customtkinter.CTk()
     app = LibraryApp(root)
     root.mainloop()
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        # def get_selected_item(self):
-    #     logger.info("Getting Selected Item")
-    #     selected_items = self.treeview.selection()
-    #     selected_files = []
-    #     for item in selected_items:
-    #         item_text = self.treeview.item(item, "text")
-    #         selected_files.append(item_text)
-    #         logger.info(f"Selected Item: {item_text}")
-    #     return selected_files
