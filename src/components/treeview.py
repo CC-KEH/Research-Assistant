@@ -4,25 +4,37 @@ import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
-from openai import embeddings
-
+from openai import api_key, chat, embeddings
 from src.constants import DIRECTORIES_PATH, VECTOR_STORE_PATH
 from src.components.chat import ChatUI
+from src.exceptions import CustomAppException
 from src.rag.components.chat_model import ChatModel
 from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
 from src.utils.common import ChatHistoryUtils, FileManager, load_config, Treeview_utils
 from settings import SettingsApp
 
-BG_COLOR = "#1e1e1e"
-FG_COLOR = "#f8f8f2"
-FRAME_COLOR = "#151515"
-BUTTON_COLOR = "#6C7BFE"
-TEXT_COLOR = "#FFFFFF"
+# BG_COLOR = "#1e1e1e"
+# FG_COLOR = "#f8f8f2"
+# FRAME_COLOR = "#151515"
+# BUTTON_COLOR = "#6C7BFE"
+# TEXT_COLOR = "#FFFFFF"
+
 HEADING_SIZE = 24
 
 class LibraryApp:
     def __init__(self, parent, frame2, frame3, project_config):
+        """LibraryApp Constructor
+
+        Args:
+            frame2 (CTKFrame): User will be able to view the content of the selected file in this frame
+            frame3 (CTKFrame): User will be able to chat with the model in this frame
+        
+        Description:
+            This class is responsible for setting up the Library UI. It allows the user to browse files, create new files, and delete files.
+            The user can also create new folders and delete folders. The user can also view the content of the selected file in the frame2.
+            The user can chat with the model in the frame3.
+        """
         self.root = parent
         self.frame2 = frame2
         self.frame3 = frame3
@@ -34,14 +46,15 @@ class LibraryApp:
         self.project_name = project_config["project_name"]
         self.project_path = project_config["project_path"]
         self.config = project_config["config"]
-        self.vector_store = VectorStorePipeline(model=self.config["model_name"], api_key=self.config["model_api"])
+        self.is_api_key_valid = False
+        self.chat_ui_exists = False
+        self.vector_store = self.setup_vector_store()
         self.load_settings()
         self.setup_layout()
         self.setup_styles()
         self.setup_treeview()
         self.setup_directories()
-        self.setup_chat()
-    
+        
     def load_settings(self):
         logger.info("Loading Library Settings")
         self.theme, self.model_config = load_config(config=self.config)
@@ -135,23 +148,69 @@ class LibraryApp:
         self.delete_file_button.pack(side=LEFT, padx=10)
         logger.info("Library Layout Setup Complete")
         
-        
     def change_settings(self):
         logger.info("Opening Settings Window")
         # Create an instance of SettingsApp inside the Toplevel window
         settings_app = SettingsApp(self.project_name, self.project_path, self.theme, self.model_config)
         settings_app.mainloop()
         logger.info("Settings Window Opened")
-        
+    
+    def setup_vector_store(self):
+        try:
+            # Validate configuration before proceeding
+            model_name = self.config["model_name"]
+            api_key = self.config["embedding_model_api"]
+
+            if not model_name or not api_key:
+                self.is_api_key_valid = False
+                raise CustomAppException(
+                    "API Key or Model Name is missing. Vector store cannot be initialized.",
+                    parent_window=self.root
+                )
+
+            # Initialize the vector store
+            self.vector_store = VectorStorePipeline(api_key=api_key, model=model_name)
+            self.is_api_key_valid = True
+            return self.vector_store
+
+        except CustomAppException as e:
+            logger.error(f"Error initializing vector store: {str(e)}")
+
+            
     def setup_chat(self):
-        logger.info("Setting up Chat")
-        model_name = self.config["model_name"]
-        api_key = self.config["model_api"]
-        session_id = ChatHistoryUtils.get_session_id(self.project_path)
-        chat_model = ChatModel(model=model_name, session_id=session_id, api_key=api_key, vector_store_path = self.project_path + VECTOR_STORE_PATH, project_path=self.project_path)
-        self.chat_ui = ChatUI(parent=self.frame3, project_path=self.project_path, model_name=model_name, chat_model=chat_model, session_id=session_id, theme=self.theme)
-        logger.info("Chat Setup Complete")
-        
+        if self.is_api_key_valid:
+            logger.info("Setting up Chat")
+            model_name = self.config["model_name"]
+            llm_api_key = self.config["model_api"]
+            embedding_api_key = self.config["embedding_model_api"]
+            session_id = ChatHistoryUtils.get_session_id(self.project_path)
+            self.vector_store = VectorStorePipeline(api_key=embedding_api_key, model=model_name)
+            chat_model = ChatModel(model=model_name, session_id=session_id, llm_api_key=llm_api_key, embedding_api_key=embedding_api_key, vector_store_path = self.project_path + VECTOR_STORE_PATH, project_path=self.project_path)
+            self.chat_ui = ChatUI(parent=self.frame3, project_path=self.project_path, model_name=model_name, chat_model=chat_model, session_id=session_id, theme=self.theme)
+            self.chat_ui_exists = True
+            logger.info("Chat Setup Complete")
+        else:
+            if not self.chat_ui_exists:
+                return
+            # Add a label to the frame to display the error message
+            label1 = Label(
+                self.frame3,
+                text="API Key Error! \n Chat cannot be initialized.",
+                bg=self.theme["colors"].FRAME_COLOR.value,
+                fg=self.theme["colors"].HEADING_COLOR.value,
+                font=("Helvetica", 22),
+            )
+            label2 = Label(
+                self.frame3,
+                text="Please check the API Key in the settings.",
+                bg=self.theme["colors"].FRAME_COLOR.value,
+                fg=self.theme["colors"].HEADING_COLOR.value,
+                font=("Helvetica", 16),
+            )
+            label1.pack(side=TOP, pady=20)
+            label2.pack(side=TOP, pady=30)
+            logger.error("Incorrect API Key. Chat cannot be initialized")
+            
     def browse_files(self):
         logger.info("Browse Operation Initiated")
         file_paths = filedialog.askopenfilenames()
@@ -166,10 +225,13 @@ class LibraryApp:
             logger.info("Currently Library:",self.library)
             Treeview_utils.load_library_into_treeview(self.library,self.treeview)
             # Save the selected files to VectorStore
-            pdfs = self.vector_store.get_pdfs(self.project_path + "/Library/Papers/")
-            text = self.vector_store.get_pdf_text(pdfs)
-            chunks = self.vector_store.get_text_chunks(text)
-            self.vector_store.get_vector_store(chunks, self.project_path + VECTOR_STORE_PATH)
+            if self.vector_store is not None:
+                pdfs = self.vector_store.get_pdfs(self.project_path + "/Library/Papers/")
+                text = self.vector_store.get_pdf_text(pdfs)
+                chunks = self.vector_store.get_text_chunks(text)
+                self.vector_store.get_vector_store(chunks, self.project_path + VECTOR_STORE_PATH)
+            
+            self.setup_chat()
 
         logger.info("Browse Operation Complete")
     
@@ -182,9 +244,13 @@ class LibraryApp:
 
         # Configure Treeview background, foreground, and field background
         self.treestyle.configure("Treeview", 
-            background=FRAME_COLOR, 
-            foreground=TEXT_COLOR, 
-            fieldbackground=FRAME_COLOR,
+            # background=FRAME_COLOR, 
+            # foreground=TEXT_COLOR, 
+            # fieldbackground=FRAME_COLOR,
+            # borderwidth=0,
+            background=self.theme["colors"].FRAME_COLOR.value, 
+            foreground=self.theme["colors"].TEXT_COLOR.value, 
+            fieldbackground=self.theme["colors"].FRAME_COLOR.value,
             borderwidth=0,
             rowheight=24,
             font=("Helvetica", 12)
@@ -192,14 +258,14 @@ class LibraryApp:
 
         # Highlight selected items with custom colors
         self.treestyle.map('Treeview', 
-            background=[('selected', FRAME_COLOR)],  # Dark grey for selected item
-            foreground=[('selected', BUTTON_COLOR)]  # Button color for selected text
+            background=[('selected', self.theme["colors"].FRAME_COLOR.value)],  # Dark grey for selected item
+            foreground=[('selected', self.theme["colors"].BUTTON_COLOR.value)]  # Button color for selected text
         )
 
         # Modify the heading (column names) style
         self.treestyle.configure("Treeview.Heading", 
-            background=FRAME_COLOR, 
-            foreground=TEXT_COLOR, 
+            background=self.theme["colors"].FRAME_COLOR.value, 
+            foreground=self.theme["colors"].HEADING_COLOR.value, 
             font=("Helvetica", 16, 'bold')  # Bold, larger font for headings
         )
         logger.info("Library Styles Setup Complete")
@@ -231,16 +297,20 @@ class LibraryApp:
                     filepath = self.project_path + f"/{DIRECTORIES_PATH}{folder_name}/{item_text}"
                     logger.info(f"Selected file: {filepath}")
                     # Now call open_file with the selected file, frame2, and theme
-                    self.library = FileManager.open_file(self.library, self.treeview, self.project_path, filepath, self.frame2, self.chat_ui, self.theme)
-
+                    self.library = FileManager.open_file(self.library, self.treeview, self.project_path, filepath, self.frame2, self.theme, self.is_api_key_valid)
+                    if not self.chat_ui_exists and self.is_api_key_valid:
+                        self.setup_chat()
+                        
     def remove_from_library(self, item_name):
         logger.info(f"Removing {item_name} from Library")
         """Remove the item from the library (either file or folder)."""
         for folder in self.library.keys():
             if folder == item_name:
+                Treeview_utils.remove_folder_from_filesystem(self.library, folder)
                 del self.library[folder]
                 break
             elif item_name in self.library[folder]:
+                Treeview_utils.remove_file_from_filesystem(self.library, folder, item_name)
                 self.library[folder].remove(item_name)
                 break
     

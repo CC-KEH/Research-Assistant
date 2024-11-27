@@ -25,9 +25,9 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 class Summarizer_Model:
-    def __init__(self, model='gemini-1.5-pro-latest', api_key="", temperature=0.3, template=final_combine_template, chain_type='stuff') -> None:
-        self.llm = self.get_llm(model,api_key,temperature)
-        self.vs = VectorStorePipeline(model=model, api_key=api_key)
+    def __init__(self, model='gemini-1.5-pro-latest', llm_api_key="",embedding_api_key="", temperature=0.3, template=final_combine_template, chain_type='stuff') -> None:
+        self.llm = self.get_llm(model,llm_api_key,temperature)
+        self.vs = VectorStorePipeline(model=model, api_key=embedding_api_key)
         self.chain_type = chain_type
         self.template = template
             

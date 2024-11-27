@@ -1,3 +1,4 @@
+from venv import create
 from customtkinter import *
 from PIL import Image
 import json
@@ -25,7 +26,7 @@ class ChatUI:
         self.height = 800
         self.theme = theme
         
-        self.FONT = CTkFont("Helvetica", 14, weight="normal")
+        self.FONT = CTkFont("Segoe UI", 12, weight="normal")
         self.HEADING_FONT = CTkFont("Helvetica", self.theme['heading_size'])
 
         self.model_name = model_name if model_name else "LLM"
@@ -40,8 +41,18 @@ class ChatUI:
         self._load_chat_history()
 
     def chats_option(choice):
-            print("option menu dropdown clicked:", choice)
+        print("option menu dropdown clicked:", choice)
     
+    def create_new_session(self):
+        self.reset_chat()
+        self.chat_model.create_new_session()
+        
+    def reset_chat(self):
+        self.text_widget.configure(state=NORMAL)
+        self.text_widget.delete(1.0, END)
+        self.text_widget.configure(state=DISABLED)
+        self.message_count = 0
+        
     def _setup_main_window(self):
         logger.info("Setting up chat window")
         self.parent.configure(width=self.width, height=self.height, fg_color=self.theme['colors'].FRAME_COLOR.value)
@@ -52,9 +63,20 @@ class ChatUI:
             text_color=self.theme['colors'].HEADING_COLOR.value,
             font=self.HEADING_FONT,
             pady=20,
-            padx=10,
+            padx=10
         )
         head_label.place(relwidth=1)
+        
+        create_new_session_button = CTkButton(
+            self.parent,
+            text="+",
+            fg_color=self.theme['colors'].HEADING_COLOR.value,
+            border_color=self.theme['colors'].HEADING_COLOR.value,
+            font=self.FONT,
+            width=20,
+            command=self.create_new_session,
+            hover_color=self.theme['colors'].BUTTON_COLOR.value,
+        )
         
         # Text widget with scrollbar
         # , bg_color=self.theme['colors'].FRAME_COLOR.value
@@ -89,7 +111,7 @@ class ChatUI:
         # send_img = CTkImage(Image.open("src/assets/send.png"), size=(20, 20))
         send_button = CTkButton(
             self.parent,
-            text="Send",
+            text=">",
             # image=send_img,
             fg_color=self.theme['colors'].HEADING_COLOR.value,
             font=self.HEADING_FONT,
@@ -97,7 +119,8 @@ class ChatUI:
             command=self._on_send_button_click,
             hover_color=self.theme['colors'].BUTTON_COLOR.value,
         )
-        send_button.place(relx=0.80, rely=0.940, relheight=0.05, relwidth=0.185)
+        send_button.place(relx=0.80, rely=0.940, relheight=0.05, relwidth=0.1)
+        create_new_session_button.place(relx=0.91, rely=0.940, relheight=0.05, relwidth=0.1)
 
     def _on_send_button_click(self):
         msg = self.msg_entry.get()
@@ -126,10 +149,9 @@ class ChatUI:
         
         # TODO: Add the time widget to the text widget
         
-        self.text_widget.insert(END, f"{sender} : {msg}\n\n")
+        self.text_widget.insert(END, f"{str.upper(sender)} : {msg}\n\n")
         self.text_widget.configure(state=DISABLED)
         self.text_widget.yview(END)
-        self.msg_entry.delete(0, END)
         self.message_count += 1
         # Save to history after every 5 messages
         if self.message_count % 3 == 0:

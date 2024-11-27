@@ -1,13 +1,11 @@
-try:
-    import tkinter as tk
-    import fitz
-    from tkinter import ttk
-    from threading import Thread
-    import math
-    from PIL import Image, ImageTk
-    import platform
-except Exception as e:
-    print(f"This error occured while importing neccesary modules or library {e}")
+import tkinter as tk
+import fitz
+from tkinter import ttk
+from threading import Thread
+import math
+from PIL import Image, ImageTk
+import platform
+
 
 class ShowPdf():
     img_object_li = []

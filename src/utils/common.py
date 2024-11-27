@@ -1,13 +1,13 @@
 import os
 import json
 import shutil
-from textwrap import wrap
-from tkinter.ttk import Treeview
-from tkinter import ttk, simpledialog, filedialog, Text
+from tkinter import Scrollbar, ttk, simpledialog, filedialog, Text
 import markdown
 import customtkinter
 from PyPDF2 import PdfMerger
+from tenacity import retry
 from tkhtmlview import HTMLLabel
+from src.exceptions import CustomAppException
 from src.utils import logger
 from src.constants import *
 from src.config.themes import *
@@ -17,36 +17,32 @@ from src.rag.components.summarizer_model import Summarizer_Model
 def load_config(config):
     theme_config = {}
     model_config = {}
-
     theme_config["font_size"] = int(config["font_size"])
     theme_config["heading_size"] = int(config["heading_size"])
     theme_config["font_family"] = config["font_family"]
     theme_config["theme"] = config["theme"]
-
     if config["theme"] == "Dark":
         theme_config["colors"] = DarkTheme
-
     elif config["theme"] == "Light":
         theme_config["colors"] = LightTheme
-
     else:
         theme_config["colors"] = TokyoCityDarkerTheme
-
     model_config["model_name"] = config["model_name"]
     model_config["model_api"] = config["model_api"]
-    model_config["model_secretkey"] = config["model_secretkey"]
+    model_config["embedding_model_api"] = config["embedding_model_api"]
     model_config["model_temperature"] = config["model_temperature"]
-    model_config["response_template"] = config["response_template"]
     model_config["prompt_templates"] = config["prompt_templates"]
     model_config["summary_templates"] = config["summary_templates"]
-
     return theme_config, model_config
-
+    
 
 def get_project_config(project_path):
-    config = json.load(open(os.path.join(project_path, CONFIG_FILE), "r"))
-    return config
-
+    try:
+        config = json.load(open(os.path.join(project_path, CONFIG_FILE), "r"))
+        return config
+    except CustomAppException as e:
+        logger.error(f"Error loading project config: {e}")
+        
 
 class PDFManager:
     @staticmethod
@@ -61,19 +57,20 @@ class PDFManager:
         merger.close()
 
     @staticmethod
-    def open_pdf(library, treeview, project_path, filepath, frame2, chat_ui, theme):
-        logger.info("Open File Operation Initiated")
+    def open_pdf(library, treeview, project_path, filepath, frame2, theme, is_api_key_valid):
         logger.info(f"Opening file: {filepath}")
-
         status, summary = SummaryManager.get_summary(
             library, project_path, filepath, theme
         )
-        if not status:
-            print("Summary does not exist for this Document.")
+        if not status and is_api_key_valid:
+            logger.info("Summary does not exist for this Document.")
             GUIManager.create_summary_popup(
                 library, treeview, project_path, filepath, theme
             )
-
+            
+        elif not is_api_key_valid:
+            summary = SummaryManager._generate_placeholder_summary()
+            
         GUIManager.display_pdf_summary(filepath, summary, frame2, theme)
         return library
 
@@ -83,9 +80,7 @@ class SummaryManager:
     def get_summary(library, project_path, filepath, theme, chain_type="stuff"):
         summary_name = os.path.basename(filepath).split(".")[0]
         summary_exists = any(summary_name in file for file in library["Summaries"])
-        placeholder_summary = SummaryManager._generate_placeholder_summary(
-            summary_name, theme
-        )
+        placeholder_summary = SummaryManager._generate_placeholder_summary()
         if summary_exists:
             return (
                 True,
@@ -102,13 +97,10 @@ class SummaryManager:
         summary_template,chain_type="stuff",is_single=True,
     ):
         summary_name = os.path.basename(filepath).split(".")[0]
-        
         summary = SummaryManager._generate_summary(project_path,filepath,summary_template,chain_type,is_single=is_single)
-        # summary = SummaryManager._generate_sample_summary(theme)
         
         SummaryManager._save_summary(summary_name, project_path, summary)
         library["Summaries"].append(f"{summary_name}_summary.md")
-        # Add summaries to treeview
         Treeview_utils.load_library_into_treeview(library, treeview)
         return library
 
@@ -122,76 +114,45 @@ class SummaryManager:
             f.write(summary)
 
     @staticmethod
-    def _generate_placeholder_summary(summary_name, theme):
+    def _generate_placeholder_summary():
         return f"""
-<b style="color:{theme['colors'].TEXT_COLOR.value}">
-# Topic
-Summary of {summary_name}
+# Summary Not Found
 
-# Prerequisites
-Pre-requisite knowledge of the topic.
-
-# Introduction
-Introduction to the topic.
-
-# Summary
-Summary of the topic.
-
-# Conclusion
-Conclusion of the topic.
-</b>
+Please check your API key and try again.
 """
 
     @staticmethod
     def _generate_summary(project_path, filepath, summary_template, chain_type, is_single):
         with open(os.path.join(project_path, "project_config.json"), "r") as f:
             store = json.load(f)
-            api_key = store["config"]["model_api"]
+            llm_api_key = store["config"]["model_api"]
+            embedding_api_key = store["config"]["embedding_model_api"]
             model_name = store["config"]["model_name"]
             temperature = store["config"]["model_temperature"]
-            
-        summarizer = Summarizer_Model(model=model_name, api_key=api_key, temperature=temperature,
-                                      template=summary_template, chain_type=chain_type)
+        
+        if llm_api_key == "" or embedding_api_key == "":
+            summary = SummaryManager._generate_placeholder_summary()  
+            return summary
+        
+        summarizer = Summarizer_Model(model=model_name, llm_api_key=llm_api_key, embedding_api_key=embedding_api_key,
+                                      temperature=temperature, template=summary_template, chain_type=chain_type)
         # Summarize single file
         if is_single:
             summary = summarizer.summarize_single_chain(file_path=filepath)
-
         else:
             summary = summarizer.summarize_all_chain(file_path=filepath)
-        
         return summary['output_text']
+            
         # Summarize multiple files
         # summary = summarizer.summarize_all_chain(pdfs)
         
     
-    @staticmethod
-    def _generate_sample_summary(theme):
-        return f"""
-<b style="color:{theme['colors'].TEXT_COLOR.value}">
-# Topic
-Tidy Data
-
-# Prerequisites
-Basic understanding of data structures and data analysis concepts.
-
-# Introduction
-The "Tidy Data" paper by Hadley Wickham introduces a structured approach to organizing data for analysis, emphasizing the importance of maintaining a clear and consistent format.
-
-# Summary
-In this paper, Wickham defines tidy data as a format where each variable is a column, each observation is a row, and each type of observational unit forms a table. This organization streamlines data manipulation and visualization, making it easier for data scientists to work with datasets. The paper outlines the benefits of tidy data, including improved reproducibility and efficiency, and provides practical guidelines for transforming messy data into tidy formats.
-
-# Conclusion
-Wickham advocates for a standardized approach to data organization in order to enhance the effectiveness of data analysis workflows, ultimately suggesting that adopting tidy data principles can lead to better insights and more robust analyses.
-</b>
-"""
-
-
 class FileManager:
     @staticmethod
-    def open_file(library, treeview, project_path, filepath, frame2, chat_ui, theme):
+    def open_file(library, treeview, project_path, filepath, frame2, theme, is_api_key_valid):
         if filepath.endswith(".pdf"):
             return PDFManager.open_pdf(
-                library, treeview, project_path, filepath, frame2, chat_ui, theme
+                library, treeview, project_path, filepath, frame2, theme, is_api_key_valid
             )
         elif filepath.endswith(".md"):
             GUIManager.open_markdown(filepath, frame2, theme)
@@ -207,7 +168,7 @@ class GUIManager:
     def create_summary_popup(library, treeview, project_path, filepath, theme):
         popup = customtkinter.CTkToplevel()
         popup.title("Generate Summary")
-        popup.geometry("300x400")
+        popup.geometry("500x400")
 
         instructions = customtkinter.CTkLabel(
             popup, text="No summary found for this PDF. Do you want to generate one?"
@@ -229,6 +190,7 @@ class GUIManager:
 
         def generate_and_close():
             selected_template = summary_template.get()
+            logger.info(f"Selected Template: {selected_template}")
             if selected_template:  # Ensure a template is selected
                 SummaryManager.create_summary(
                     library,
@@ -258,7 +220,6 @@ class GUIManager:
         )
         html_text = cover + html_text + "</b>"
         
-        print(html_text)
         for widget in frame2.winfo_children():
             widget.destroy()
 
@@ -350,7 +311,7 @@ class GUIManager:
                 f.write(
                     text_editor.get("1.0", "end-1c")
                 )  # Save the content of the text widget
-            print("File saved:", filepath)  # Optional feedback for debugging
+            logger.info("File saved:", filepath)  # Optional feedback for debugging
 
         text_editor.bind("<Control-s>", save_file)
         cover = (
@@ -508,4 +469,3 @@ class ChatHistoryUtils:
         prev_chat_sessions = os.listdir(chat_history_path)
         session_id = len(prev_chat_sessions)
         return f"session_{session_id}"
-    

@@ -1,7 +1,8 @@
 import json
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
-from langchain.vectorstores import FAISS
+# from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -14,7 +15,8 @@ from langchain_openai import OpenAIEmbeddings
 
 # Chat history
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain.memory import ChatMessageHistory
+# from langchain.memory import ChatMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import MessagesPlaceholder
@@ -31,19 +33,33 @@ class ChatModel:
         model="gemini-1.5-pro-latest",
         temperature=0.3,
         session_id="",
-        api_key="",
+        llm_api_key="",
+        embedding_api_key="",
         vector_store_path="",
         project_path="",
     ) -> None:
-        self.llm = self.get_llm(model, temperature, api_key)
-        self.embeddings = self.get_embeddings(model, api_key)
+        self.llm = self.get_llm(model, temperature, llm_api_key)
+        self.embeddings = self.get_embeddings(model, embedding_api_key)
         self.vector_store_path = vector_store_path
         self.store = {}
         self.session_id = session_id
         self.project_path = project_path
         self.config = {"configurable": {"session_id": self.session_id}}
         self.chat_template = chat_template
+        self.retriever = FAISS.load_local(
+            self.vector_store_path,
+            self.embeddings,
+            allow_dangerous_deserialization=True,
+        ).as_retriever()
 
+        self.chain = self.get_conversational_chain()
+    
+    def get_session_ids(self):
+        return len(self.store)
+    
+    def get_current_session_id(self):
+        return self.session_id
+    
     def get_llm(self, model, temperature, api_key):
         if model == "gemini-1.5-pro-latest":
             llm = ChatGoogleGenerativeAI(
@@ -73,7 +89,12 @@ class ChatModel:
         return embeddings
 
 
+    
+    
     def save_messages_locally(self):
+        if self.session_id not in self.store:
+            return None
+        
         local_history = {}
         for message in self.store[self.session_id].messages:
             if isinstance(message, AIMessage):
@@ -92,11 +113,24 @@ class ChatModel:
         with open(self.project_path + CHAT_HISTORY_DIR + self.session_id + "_chat_history.json", "w") as f:
             json.dump(local_history, f)
     
+    
     def get_session_history(self) -> BaseChatMessageHistory:
         if self.session_id not in self.store:
             self.store[self.session_id] = ChatMessageHistory()
         return self.store[self.session_id]
-
+    
+    
+    def change_session(self, session_id):
+        self.session_id = session_id
+        self.config = {"configurable": {"session_id": self.session_id}}
+        self.session_changed = True
+        logger.info(f"Session changed to {self.session_id}")
+    
+    def create_new_session(self):
+        self.session_id = "session_" +  str(int(self.session_id.split("_")[1]) + 1)
+        self.config = {"configurable": {"session_id": self.session_id}}
+        self.session_changed = True
+        logger.info("New session created with id: " + self.session_id)
 
     def get_conversational_chain(self):
         # Retriever setup
@@ -147,25 +181,16 @@ class ChatModel:
     #     response = chain({"input_documents": docs,"question": question}, return_only_outputs=True)
     #     return response['output_text']
 
+    
     def process_user_input(self, question):
-        self.retriever = FAISS.load_local(
-            self.vector_store_path,
-            self.embeddings,
-            allow_dangerous_deserialization=True,
-        ).as_retriever()
-
-        chain = self.get_conversational_chain()
-
-        response = chain.invoke(
+        response = self.chain.invoke(
             {"input": question},
-            config={
-                "configurable": {"session_id": self.session_id}
-            },
+            config=self.config,
         )["answer"]
 
         return response
 
-    def chat(self, question=None):
+    def chat(self, question=""):
         if question is None:
             question = input("Ask a question: ")
 
@@ -181,6 +206,7 @@ class ChatModel:
 if __name__ == "__main__":
     brain = ChatModel()
     vs = VectorStorePipeline()
+    pdfs_path = "pdfs/"
     pdfs = vs.get_pdfs(pdfs_path)
     text = vs.get_pdf_text(pdfs)
     chunks = vs.get_text_chunks(text)
