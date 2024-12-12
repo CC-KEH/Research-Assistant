@@ -1,5 +1,7 @@
 # Research Assistant
 
+## Demo: [YouTube](https://www.youtube.com/watch?v=ZvhKDMrs6zM&ab_channel=Arbash)
+
 ![alt text](image-2.png) 
 ![alt text](image-3.png)
 
@@ -34,7 +36,6 @@ Research Assistant is a powerful tool designed to assist researchers in managing
         ├── settings.py
         ├── src/
         │   ├── __init__.py
-        │   ├── assets/
         │   ├── components/
         │   │   ├── __init__.py
         │   │   ├── chat.py

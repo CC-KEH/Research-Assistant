@@ -108,7 +108,6 @@ class ChatUI:
         self.msg_entry.place(relwidth=0.77, rely=0.940, relheight=0.05, relx=0.011)
 
         # Send button
-        # send_img = CTkImage(Image.open("src/assets/send.png"), size=(20, 20))
         send_button = CTkButton(
             self.parent,
             text=">",
