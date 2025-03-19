@@ -4,7 +4,6 @@ import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
 import customtkinter
-from openai import api_key, chat, embeddings
 from src.constants import DIRECTORIES_PATH, VECTOR_STORE_PATH
 from src.components.chat import ChatUI
 from src.exceptions import CustomAppException
@@ -13,12 +12,6 @@ from src.rag.components.process_files import VectorStorePipeline
 from src.utils import logger
 from src.utils.common import ChatHistoryUtils, FileManager, load_config, Treeview_utils
 from settings import SettingsApp
-
-# BG_COLOR = "#1e1e1e"
-# FG_COLOR = "#f8f8f2"
-# FRAME_COLOR = "#151515"
-# BUTTON_COLOR = "#6C7BFE"
-# TEXT_COLOR = "#FFFFFF"
 
 HEADING_SIZE = 24
 
@@ -336,12 +329,20 @@ class LibraryApp:
     def delete_selected_item(self):
         logger.info("Deleting Selected Item")
         selected_items = self.treeview.selection()
+        protected_dirs = {"Papers", "Summaries", "Notes"}  # Directories that cannot be deleted
+    
         for item in selected_items:
-            if item == "i1" or item == "i2" or item == "i3":
-                continue
             item_text = self.treeview.item(item, "text")
+    
+            # Prevent deletion of main directories
+            if item_text in protected_dirs:
+                logger.warning(f"Cannot delete protected folder: {item_text}")
+                continue  # Skip deletion of protected directories
+            
             self.treeview.delete(item)
             self.remove_from_library(item_text)
+            logger.info(f"Deleted item: {item_text}")
+    
 
     def create_folder(self):
         logger.info("Creating New Folder")
@@ -420,9 +421,4 @@ class LibraryApp:
             self.treeview.insert('', 'end', text=file_name)
             Treeview_utils.sync_library(self.library, self.project_path)
 
-        logger.info(f"New file created: {file_name}")    
-                
-if __name__ == "__main__":
-    root = customtkinter.CTk()
-    app = LibraryApp(root)
-    root.mainloop()
+        logger.info(f"New file created: {file_name}")
