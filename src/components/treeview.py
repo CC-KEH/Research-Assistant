@@ -96,7 +96,7 @@ class LibraryApp:
 
         self.delete_file_button = customtkinter.CTkButton(
             master=button_frame,
-            text="🗑️",
+            text="❌",
             command=self.delete_selected_item,
             width=25,
             height=25,
@@ -104,7 +104,6 @@ class LibraryApp:
             fg_color=self.theme["colors"].FRAME_COLOR.value,
             bg_color=self.theme["colors"].FRAME_COLOR.value,
             hover_color=self.theme["colors"].BUTTON_COLOR.value,
-            
         )
 
         self.create_file_button = customtkinter.CTkButton(
@@ -122,7 +121,7 @@ class LibraryApp:
         
         self.create_folder_button = customtkinter.CTkButton(
             master=button_frame,
-            text="📝",
+            text="📁",
             command=self.create_folder,
             width=25,
             height=25,
@@ -135,7 +134,6 @@ class LibraryApp:
         
         self.settings_button.pack(side=LEFT, padx=10)
         self.add_file_button.pack(side=LEFT, padx=10)
-        # self.merge_files_button.pack(side=LEFT, padx=10)
         self.create_file_button.pack(side=LEFT, padx=10)
         self.create_folder_button.pack(side=LEFT, padx=10)
         self.delete_file_button.pack(side=LEFT, padx=10)
