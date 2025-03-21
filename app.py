@@ -5,8 +5,22 @@ from tkinter import filedialog, Listbox, SINGLE, END, StringVar
 from src.constants import LLMS
 from src.rag.components.prompts import final_combine_template, chat_template
 from src import utils
+from src.utils.font_manager import FontManager
 from main import App
+import ctypes
 
+ctypes.windll.shcore.SetProcessDpiAwareness(1)
+update_notes = """
+📌 Latest Updates 
+━━━━━━━━━━━━━━━━━━━━
+✅ Shifting to LangGraph.
+
+✅ User can now have multiple chat sessions. 
+
+✅ Added support for multiple Claude and Grok.  
+
+✅ Improved UI, Various bug fixes.
+"""
 
 class Welcome(customtkinter.CTk):
     """
@@ -41,7 +55,7 @@ class Welcome(customtkinter.CTk):
         self.old_projects_info = self.load_projects_info()
         self.setup_ui()
         self.title("Research Assistant")
-        self.geometry("600x500")
+        self.geometry("700x500")
         self.resizable(width=True, height=True)
 
     def load_projects_info(self):
@@ -63,14 +77,19 @@ class Welcome(customtkinter.CTk):
 
     def setup_ui(self):
         """Sets up the UI components."""
-        customtkinter.CTkLabel(self, text="Research Assistant", font=("Arial", 20)).pack(side="top", pady=20)
+        # customtkinter.CTkLabel(self, text="Research Assistant", font=("Arial", 20)).pack(side="top", pady=20)
+        gideon_font = FontManager.get_font("Gideon Roman", size=50, weight="bold")
+        nunito_font = FontManager.get_font("Nunito", size=20, weight="bold")
+        customtkinter.CTkLabel(self, text="Research Assistant", font=gideon_font).pack(side="top", pady=10)
 
-        customtkinter.CTkButton(
-            self, text="Load Project", command=self.select_previous_project,
-            width=200, height=40, corner_radius=20, fg_color="#6C7BFE", hover_color="#7F8DAD"
-        ).pack(side="top", pady=20)
-
-        customtkinter.CTkLabel(self, text="", height=50).pack()
+        
+        self.text_label = customtkinter.CTkLabel(self, text=update_notes, 
+                                       font=("Arial", 13), 
+                                       text_color="white",
+                                       justify="left",
+                                       wraplength=450)
+        self.text_label.pack(padx=15, pady=5)
+        
 
         self.project_list = Listbox(
             self, width=50, height=15, font=("Helvetica", 12),
@@ -80,8 +99,8 @@ class Welcome(customtkinter.CTk):
         )
         self.load_project_list()
         self.project_list.pack(side="left", fill="both", expand=1, padx=10)
-
-        customtkinter.CTkLabel(self, text="Create a new project", font=("Arial", 20)).pack(side="top", pady=20)
+        
+        customtkinter.CTkLabel(self, text="Create a new project", font=("Arial", 20)).pack(side="top", pady=1)
 
         self.project_name_entry = customtkinter.CTkEntry(
             self, width=200, height=30, corner_radius=15,
@@ -94,6 +113,12 @@ class Welcome(customtkinter.CTk):
             width=200, height=40, corner_radius=20, fg_color="#6C7BFE", hover_color="#7F8DAD"
         ).pack(side="top", pady=20)
 
+        customtkinter.CTkButton(
+            self, text="Load Project", command=self.select_previous_project,
+            width=200, height=40, corner_radius=20, fg_color="#6C7BFE", hover_color="#7F8DAD"
+        ).pack(side="top", pady=5)
+
+        
     def load_project_list(self):
         """Loads projects into the listbox and removes invalid paths."""
         valid_projects = [p for p in self.old_projects_info if os.path.exists(p["project_path"])]
@@ -143,7 +168,7 @@ class ProjectConfigWindow(customtkinter.CTk):
         self.project_info = project_info
         self.project_config = default_project_config
         self.title("Project Configuration")
-        self.geometry("500x600")
+        self.geometry("500x550")
         self.resizable(width=True, height=True)
 
         self.setup_ui()

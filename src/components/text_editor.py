@@ -25,6 +25,12 @@ class TextEditor:
         self.scrollbar = Scrollbar(self.main_frame)
         self.scrollbar.pack(side=RIGHT,fill=Y)
         
+        # Title Text
+        self.title_text = Text(self.main_frame, width=TEXT_AREA_WIDTH,height=1,
+                                 font=(FONT, FONT_SIZE),selectbackground=SELECT_COLOR,selectforeground=SELECT_FOREGROUND)
+        self.title_text.insert(1.0, "Title")
+        self.title_text.pack(pady=5)
+        
         # Text Widget
         self.main_text = Text(self.main_frame, width=TEXT_AREA_WIDTH,height=TEXT_AREA_HEIGHT,
                               font=(FONT, FONT_SIZE),selectbackground=SELECT_COLOR,selectforeground=SELECT_FOREGROUND,
