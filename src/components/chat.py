@@ -1,6 +1,4 @@
-from venv import create
 from customtkinter import *
-from PIL import Image
 import json
 import os
 from enum import Enum
@@ -26,7 +24,8 @@ class ChatUI:
         self.height = 800
         self.theme = theme
         
-        self.FONT = CTkFont("Segoe UI", 12, weight="normal")
+        self.FONT = CTkFont("Poppins", 12, weight="normal")
+        # self.FONT = CTkFont("Segoe UI", 12, weight="normal")
         self.HEADING_FONT = CTkFont("Helvetica", self.theme['heading_size'])
 
         self.model_name = model_name if model_name else "LLM"

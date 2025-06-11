@@ -1,297 +1,224 @@
 import os
-from tkinter import *
-from tkinter import filedialog
-import customtkinter
 import json
-from main import App
-from src.utils import logger
-from src.rag.components.prompts import final_combine_template, chat_template
+import customtkinter
+from tkinter import filedialog, Listbox, SINGLE, END, StringVar
 
+from numpy import pad
+from src.constants import CHAT_LLMS
+from src.rag.components.prompts import final_combine_template, chat_template
+from src import utils
+from src.utils.font_manager import FontManager
+from src.config.themes import DarkTheme
+from main import App
+import ctypes
+
+ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
 class Welcome(customtkinter.CTk):
-    """Welcome screen for the Research Assistant application.
-
-    Description:
-        - The welcome screen allows users to either load a previous project or create a new project.
-        - If the user chooses to load a previous project, the application will load the selected project.
-        - If the user chooses to create a new project, the application will ask for the project name and create a new project directory.
-        - The user will then be asked to configure the project settings such as model name, model API, etc.
     """
+    Welcome screen for the Research Assistant application.
+
+    - Users can load a previous project or create a new one.
+    - On creating a new project, it prompts for configuration settings.
+    """
+
+
     def __init__(self):
         super().__init__()
         self.project_path = None
-
         self.project_info = {
             "project_name": "xxxxxxxxxxxxxx",
             "project_path": os.getcwd(),
         }
-        self.default_project_config =  {
-                "font_size": "12",
-                "heading_size": "24",
-                "font_family": "Arial",
-                "theme": "Dark",
-                "model_name": "gemini-1.5-pro-latest",
-                "model_api": "",
-                "embedding_model_api": "",
-                "model_temperature": 0.3,
-                "prompt_templates": {"default": chat_template},
-                "summary_templates": {"default": final_combine_template},
-            }
-        
+        self.default_project_config = {
+            "font_size": "12",
+            "heading_size": "24",
+            "font_family": "Arial",
+            "theme": "Dark",
+            "LLM": "Google",
+            "model_name": CHAT_LLMS["Google"][0],
+            "model_api": "",
+            "embedding_model_api": "",
+            "model_temperature": 0.3,
+            "prompt_templates": {"default": chat_template},
+            "summary_templates": {"default": final_combine_template},
+        }
 
         self.old_projects_info = self.load_projects_info()
-        self.load_project()
-        self.ask_to_load_project()
+        self.setup_ui()
         self.title("Research Assistant")
-        self.geometry("600x500")
+        self.geometry("750x500")
         self.resizable(width=True, height=True)
 
-    def save_projects_info(self):
-        # Avoid duplicate entries for the same project
-        project_names = {project["project_name"] for project in self.old_projects_info}
-
-        # Add the current project only if it's not already in the config
-        if (
-            self.project_info["project_name"] != "xxxxxxxxxxxxxx"
-            and self.project_info["project_name"] not in project_names
-        ):
-            self.old_projects_info.append(self.project_info)
-
-        # Write all valid configurations to the file
-        with open("projects.json", "w") as f:
-            json.dump(self.old_projects_info, f, indent=4)
-
     def load_projects_info(self):
+        """Loads existing project configurations from `projects.json`."""
         if not os.path.exists("projects.json") or os.path.getsize("projects.json") == 0:
             with open("projects.json", "w") as f:
                 json.dump([], f)
             return []
-
         with open("projects.json", "r") as f:
-            # self.old_projects_info = [json.load(f)]
-            self.old_projects_info = json.load(f)
+            return json.load(f)
 
-        return self.old_projects_info
+    def save_projects_info(self):
+        """Saves project configurations to `projects.json`, avoiding duplicates."""
+        project_names = {project["project_name"] for project in self.old_projects_info}
+        if self.project_info["project_name"] != "xxxxxxxxxxxxxx" and self.project_info["project_name"] not in project_names:
+            self.old_projects_info.append(self.project_info)
+        with open("projects.json", "w") as f:
+            json.dump(self.old_projects_info, f, indent=4)
 
-    def create_new_project(self):
-        project_path = filedialog.askdirectory()
-        project_name = self.project_name_entry.get()
-        project_name += "_ra"
-        project_path = os.path.join(project_path, project_name)
-        os.makedirs(project_path, exist_ok=True)
-        self.project_path = project_path
-        self.project_info.update(
-            {
-                "project_name": project_name,
-                "project_path": project_path,
-            }
-        )
-        logger.info(f"New project created: {project_name}")
-        self.save_projects_info()
-        self.destroy()
-        config_window = ProjectConfigWindow(self, self.project_info, self.default_project_config)
-        config_window.mainloop()
+    def setup_ui(self):
+        """Sets up the UI components."""
+        # customtkinter.CTkLabel(self, text="Research Assistant", font=("Arial", 20)).pack(side="top", pady=20)
+        gideon_font = FontManager.get_font("Gideon Roman", size=50, weight="bold")
+        nunito_font = FontManager.get_font("Nunito", size=20, weight="bold")
+        customtkinter.CTkLabel(self, text="Research Assistant", font=gideon_font, text_color=DarkTheme.HEADING_COLOR.value ).pack(side="top", pady=10)
+
         
-        # self.destroy()
-        # app = App(project_info=self.project_info, project_config=self.default_project_config)
-        # app.mainloop()
-
-    def select_previous_project(self):
-        logger.info("Loading previous project")
-        project_name = self.project_list.get(self.project_list.curselection())
-        for project in self.old_projects_info:
-            if project["project_name"] == project_name:
-                self.project_info = project
-                self.destroy()
-                app = App(self.project_info)
-                app.mainloop()
-
-    def ask_to_load_project(self):
-        # Welcome text
-        self.welcome_text = customtkinter.CTkLabel(
-            master=self,
-            text="Research Assistant",
-            font=("Arial", 20),
+        projects_frame = customtkinter.CTkFrame(self, fg_color=DarkTheme.FRAME_COLOR.value)
+        projects_frame.pack(side="left", fill="both", expand=1, padx=20, pady=20)
+        
+        self.projects_label = customtkinter.CTkLabel(
+            projects_frame, text="Previous Projects", font=("Arial", 20), 
+            text_color=DarkTheme.HEADING_COLOR.value
+        ).pack(side="top", pady=10)
+        
+        self.project_list = Listbox(
+            projects_frame, width=50, height=15, font=("Helvetica", 10),
+            fg=DarkTheme.TEXT_COLOR.value, borderwidth=0, activestyle="none",
+            selectmode=SINGLE, highlightthickness=0, bg=DarkTheme.FRAME_COLOR.value,
+            selectforeground=DarkTheme.BUTTON_HOVER_COLOR.value, selectbackground=DarkTheme.FRAME_COLOR.value
         )
-        self.welcome_text.pack(side=TOP, pady=20)
-
-        # Load project button
-        self.load_project_button = customtkinter.CTkButton(
-            master=self,
-            text="Load Project",
-            command=self.select_previous_project,
-            width=200,
-            height=40,
-            corner_radius=20,
-            fg_color="#6C7BFE",
-            hover_color="#7F8DAD",
-        )
-        self.load_project_button.pack(side=TOP, pady=20)
-
-        # Adding extra spacing between "Load Project" and "Create New Project"
-        self.empty_space = customtkinter.CTkLabel(
-            master=self,
-            text="",
-            height=100,  # You can adjust this height to control the space
-        )
-        self.empty_space.pack()
-
-        # Create new project text and input field
-        self.menu_text = customtkinter.CTkLabel(
-            master=self,
-            text="Create a new project",
-            font=("Arial", 20),
-        )
-        self.menu_text.pack(side=TOP, pady=20)
+        self.load_project_list()
+        self.project_list.pack(side="left", fill="both", expand=1, padx=10)
+        
+        customtkinter.CTkLabel(self, text="Create a new project", font=("Arial", 20)).pack(side="top", pady=20)
 
         self.project_name_entry = customtkinter.CTkEntry(
-            master=self,
-            width=200,
-            height=30,
-            corner_radius=15,
-            fg_color="black",
-            placeholder_text="Enter project name",
+            self, width=200, height=30, corner_radius=15,
+            fg_color=DarkTheme.FRAME_COLOR.value, placeholder_text="New Project"
         )
-        self.project_name_entry.pack(side=TOP, pady=10, padx=10)
+        
+        self.project_name_entry.pack(side="top", pady=10, padx=10)
 
-        # Create new project button
-        self.create_new_project_button = customtkinter.CTkButton(
-            master=self,
-            text="Create New Project",
-            command=self.create_new_project,
-            width=200,
-            height=40,
-            corner_radius=20,
-            fg_color="#6C7BFE",
-            hover_color="#7F8DAD",
-        )
-        self.create_new_project_button.pack(side=TOP, pady=20)
+        customtkinter.CTkButton(
+            self, text="Create New Project", command=self.create_new_project,
+            width=200, height=40, corner_radius=20,
+            text_color=DarkTheme.FRAME_COLOR.value, fg_color=DarkTheme.BUTTON_COLOR.value, hover_color=DarkTheme.BUTTON_HOVER_COLOR.value
+        ).pack(side="top", pady=20)
 
-    def load_project(self):
-        valid_projects = []
-        self.project_list = Listbox(
-            self,
-            width=50,
-            height=15,
-            font=("Helvetica", 12),
-            fg="white",
-            borderwidth=0,
-            activestyle="none",
-            selectmode=SINGLE,
-            highlightthickness=0,
-            bg="#1e1e1e",
-            selectforeground="white",
-            selectbackground="#6C7BFE",
-        )
+        customtkinter.CTkButton(
+            self, text="Load Project", command=self.select_previous_project,
+            width=200, height=40, corner_radius=20,
+            text_color=DarkTheme.FRAME_COLOR.value, fg_color=DarkTheme.BUTTON_COLOR.value, hover_color=DarkTheme.BUTTON_HOVER_COLOR.value
+        ).pack(side="top", pady=5)
 
-        for project in self.old_projects_info:
-            if os.path.exists(project["project_path"]):
-                self.project_list.insert(END, project["project_name"])
-                valid_projects.append(project)
-            else:
-                logger.info(f"Project not found: {project['project_name']}")
-
+    def load_project_list(self):
+        """Loads projects into the listbox and removes invalid paths."""
+        valid_projects = [p for p in self.old_projects_info if os.path.exists(p["project_path"])]
+        for i, project in enumerate(valid_projects):
+            # insert no. project name in the listbox
+            self.project_list.insert(END, f"{i+1}. {project['project_name']}")
         if len(valid_projects) != len(self.old_projects_info):
             self.old_projects_info = valid_projects
             self.save_projects_info()
 
-        self.project_list.pack(side=LEFT, fill=BOTH, expand=1, padx=10)
+    def create_new_project(self):
+        """Creates a new project and opens the configuration window."""
+        project_dir = filedialog.askdirectory()
+        project_name = self.project_name_entry.get().strip()
+
+        if not project_name:
+            utils.show_error(self,"Project name cannot be empty!")
+            return
+
+        project_name += "_ra"
+        project_path = os.path.join(project_dir, project_name)
+
+        os.makedirs(project_path, exist_ok=True)
+        self.project_info.update({"project_name": project_name, "project_path": project_path})
+        self.save_projects_info()
+        self.destroy()
+        ProjectConfigWindow(self.project_info, self.default_project_config).mainloop()
+
+    def select_previous_project(self):
+        """Loads the selected project and opens the main application."""
+        try:
+            project_name = self.project_list.get(self.project_list.curselection()).split(". ")[1]
+            for project in self.old_projects_info:
+                if project["project_name"] == project_name:
+                    self.project_info = project
+                    self.destroy()
+                    App(self.project_info).mainloop()
+                    return
+        except:
+            utils.show_error(self,"No project selected!")
 
 
 class ProjectConfigWindow(customtkinter.CTk):
-    def __init__(self, parent, project_info, default_project_config):
+    """Configuration window for project settings."""
+
+    def __init__(self, project_info, default_project_config):
         super().__init__()
-        # self.parent = parent
         self.project_info = project_info
         self.project_config = default_project_config
         self.title("Project Configuration")
-        self.geometry("500x600")
+        self.geometry("500x550")
         self.resizable(width=True, height=True)
 
-        # Create input fields for project configuration
-        self.create_config_widgets()
+        self.setup_ui()
 
-    def create_config_widgets(self):
-        # Theme selection
-        # self.theme_label = customtkinter.CTkLabel(master=self, text="Theme")
-        # self.theme_label.pack(pady=5)
-        # self.theme_var = StringVar(value=self.project_config["theme"])
-        # self.theme_dropdown = customtkinter.CTkOptionMenu(
-            # master=self,
-            # values=["Light", "Dark"],
-            # variable=self.theme_var
-        # )
-        # self.theme_dropdown.pack(pady=10)
+    def setup_ui(self):
+        """Creates UI components for project settings."""
+        # LLM Selection
+        self.llm_var = StringVar(value="Google")
+        self.create_dropdown("LLM", list(CHAT_LLMS.keys()), self.llm_var, self.update_model_name)
 
-        # Model name input
-        self.model_name_label = customtkinter.CTkLabel(master=self, text="Model Name")
-        self.model_name_label.pack(pady=5)
-        self.model_name_entry = customtkinter.CTkEntry(
-            master=self,
-            width=200,
-            height=30,
-            corner_radius=15,
-            fg_color="black",
-            placeholder_text="Enter model name",
-        )
-        self.model_name_entry.insert(0, self.project_config["model_name"])
-        self.model_name_entry.pack(pady=10)
+        # Model Name (This will update dynamically when LLM changes)
+        self.model_name_entry = self.create_entry("Model Name", CHAT_LLMS[self.llm_var.get()][0])
 
-        # Model API input
-        self.model_api_label = customtkinter.CTkLabel(master=self, text="Model API")
-        self.model_api_label.pack(pady=5)
-        self.model_api_entry = customtkinter.CTkEntry(
-            master=self,
-            width=200,
-            height=30,
-            corner_radius=15,
-            fg_color="black",
-            placeholder_text="Enter model API",
-        )
-        self.model_api_entry.insert(0, self.project_config["model_api"])
-        self.model_api_entry.pack(pady=10)
+        # Model API Key
+        self.model_api_entry = self.create_entry("Model API", self.project_config["model_api"])
 
-        # Embedding model API input
-        self.embedding_model_api_label = customtkinter.CTkLabel(master=self, text="Embedding Model API")
-        self.embedding_model_api_label.pack(pady=5)
-        self.embedding_api_key = customtkinter.CTkEntry(
-            master=self,
-            width=200,
-            height=30,
-            corner_radius=15,
-            fg_color="black",
-            placeholder_text="Enter embedding model API",
-        )
-        self.embedding_api_key.insert(0, self.project_config["embedding_model_api"])
-        self.embedding_api_key.pack(pady=10)
+        # Embedding Model API Key
+        self.embedding_api_entry = self.create_entry("Embedding Model API", self.project_config["embedding_model_api"])
 
-        # Save button
-        self.save_button = customtkinter.CTkButton(
-            master=self,
-            text="Save Configuration",
-            command=self.save_configuration,
-            width=200,
-            height=40,
-            corner_radius=20,
-            fg_color="#6C7BFE",
-            hover_color="#7F8DAD",
-        )
-        self.save_button.pack(pady=20)
+        # Save Button
+        customtkinter.CTkButton(
+            self, text="Save Configuration", command=self.save_configuration,
+            width=200, height=40, corner_radius=20,
+            text_color=DarkTheme.FRAME_COLOR.value,fg_color=DarkTheme.BUTTON_COLOR.value, hover_color=DarkTheme.BUTTON_HOVER_COLOR.value
+        ).pack(pady=20)
+
+    def create_dropdown(self, label_text, options, variable, command=None):
+        """Helper method to create dropdown menus with an optional event listener."""
+        customtkinter.CTkLabel(self, text=label_text).pack(pady=5)
+        dropdown = customtkinter.CTkOptionMenu(self, values=options, variable=variable, command=command)
+        dropdown.pack(pady=10)
+
+    def create_entry(self, label_text, default_value):
+        """Helper method to create entry fields."""
+        customtkinter.CTkLabel(self, text=label_text).pack(pady=5)
+        entry = customtkinter.CTkEntry(self, width=200, height=30, corner_radius=15, fg_color=DarkTheme.FRAME_COLOR.value)
+        entry.insert(0, default_value)
+        entry.pack(pady=10)
+        return entry
+
+    def update_model_name(self, selected_llm):
+        """Updates the model name field based on the selected LLM."""
+        self.model_name_entry.delete(0, 'end')  # Clear current model name
+        self.model_name_entry.insert(0, CHAT_LLMS[selected_llm][0])  # Insert new model name
 
     def save_configuration(self):
-        # Update the project configuration with user inputs
-        # self.project_config["theme"] = self.theme_var.get()
-        self.project_config["model_name"] = self.model_name_entry.get()
-        self.project_config["model_api"] = self.model_api_entry.get()
-        self.project_config["embedding_model_api"] = self.embedding_api_key.get()
-
-        # Save updated project configuration back to the parent window
-        logger.info(f"Configuration saved for project: {self.project_info['project_name']}")
-        # self.parent.destroy()
+        """Saves the configuration and starts the main application."""
+        self.project_config.update({
+            "model_name": self.model_name_entry.get(),
+            "model_api": self.model_api_entry.get(),
+            "embedding_model_api": self.embedding_api_entry.get(),
+        })
         self.destroy()
-        app = App(project_info=self.project_info, project_config=self.project_config)
-        app.mainloop()
+        App(self.project_info, self.project_config).mainloop()
+
 
 if __name__ == "__main__":
-    welcome = Welcome()
-    welcome.mainloop()
+    Welcome().mainloop()

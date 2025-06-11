@@ -174,13 +174,6 @@ class ChatModel:
         )
         return self.main_chain
 
-    # def process_user_input(self, question):
-    #     new_db = FAISS.load_local(self.vector_store_path, self.embeddings, allow_dangerous_deserialization=True)
-    #     docs = new_db.similarity_search(question)
-    #     chain = self.get_conversational_chain()
-    #     response = chain({"input_documents": docs,"question": question}, return_only_outputs=True)
-    #     return response['output_text']
-
     
     def process_user_input(self, question):
         response = self.chain.invoke(

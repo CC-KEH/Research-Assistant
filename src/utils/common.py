@@ -301,6 +301,7 @@ class GUIManager:
             bg=theme["colors"].BG_COLOR.value,
             fg="white",
             insertbackground="white",
+            font=(theme["font_family"], theme["font_size"]),
         )
         text_editor.pack(fill="both", expand=True)
         text_editor.insert("1.0", content)  # Insert file content into text editor

@@ -127,4 +127,3 @@ If you have any questions or need further assistance, feel free to open an issue
 ---
 
 Thank you for contributing to Research Assistant! Together, we can make research easier and more efficient for everyone.
-

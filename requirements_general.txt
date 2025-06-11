@@ -12,3 +12,6 @@ langchain_google_genai
 langchain-anthropic
 langchain-openai
 faiss-cpu
+pywebview
+pythonnet
+cefpython3

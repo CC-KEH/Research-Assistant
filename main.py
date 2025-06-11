@@ -75,7 +75,7 @@ class App(customtkinter.CTk):
         LibraryApp(self.frame1, self.frame2, self.frame3, self.complete_project_config)
         
     def on_closing(self):
-        pass
+        self.destroy()
     
 if __name__ == "__main__":
     app = App()
