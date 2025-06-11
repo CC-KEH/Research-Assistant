@@ -6,7 +6,6 @@ import math
 from PIL import Image, ImageTk
 import platform
 
-
 class ShowPdf():
     img_object_li = []
     tkimg_object_li = []
@@ -79,49 +78,16 @@ class ShowPdf():
             self.text.configure(state="disabled")
 
         def toggle_night_mode():
-            add_img(night_mode=True)  # Load PDF with inverted colors
-
-        night_mode_button = tk.Button(master, text="Night Mode", command=toggle_night_mode, bg="black", fg="white")
+            if night_mode_button['text'] == "Dark":
+                night_mode_button['text'] = "Light"
+                add_img(night_mode=True)
+            else:
+                night_mode_button['text'] = "Dark"
+                add_img(night_mode=False)
+                
+        night_mode_button = tk.Button(master, text="Dark", command=toggle_night_mode, bg="#1e1e1e", fg="#6C7BFE", border=0, activebackground="#1e1e1e", activeforeground="#FFFFFF")
         night_mode_button.pack()       
         
-        # def add_img():
-        #     # Clear previous PDF images
-        #     self.img_object_li.clear()
-        #     self.tkimg_object_li.clear()
-        
-        #     # Clear the Text widget
-        #     self.text.configure(state="normal")
-        #     self.text.delete(1.0, tk.END)
-        
-        #     precentage_dicide = 0
-        #     open_pdf = fitz.open(pdf_location)
-        
-        #     for page in open_pdf:
-        #         pix = page.get_pixmap(dpi=dpi)
-        #         mode = "RGBA" if pix.alpha else "RGB"
-        #         img = Image.frombytes(mode, [pix.width, pix.height], pix.samples)
-        #         self.img_object_li.append(img)
-        #         self.tkimg_object_li.append(ImageTk.PhotoImage(img))
-        
-        #         if bar and load == "after":
-        #             precentage_dicide += 1
-        #             percentage_view = (float(precentage_dicide) / float(len(open_pdf))) * 100
-        #             loading["value"] = percentage_view
-        #             percentage_load.set(f"Please wait! Your PDF is loading {int(math.floor(percentage_view))}%")
-        
-        #     self.orig_size = self.tkimg_object_li[0].width() if self.tkimg_object_li else 0
-        
-        #     if bar and load == "after":
-        #         loading.pack_forget()
-        #         self.display_msg.pack_forget()
-        
-        #     for im in self.tkimg_object_li:
-        #         self.text.image_create(tk.END, image=im)
-        #         self.text.insert(tk.END, "\n")
-        
-        #     self.text.configure(state="disabled")
-
-
         def start_pack():
             t1 = Thread(target=add_img)
             t1.start()

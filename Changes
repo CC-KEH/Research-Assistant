@@ -1,0 +1,18 @@
+# [ Bugs ]
+
+- [x] Project Configuration: Dropdown(LLM, ModelName).
+- [x] Papers, Summary and Notes cannot be deleted
+- [x] Show Errors on UI
+
+- [x] Delete button, hover fix
+- [x] Window Kill button fix
+- [x] Preview PDFs Concatination fix
+
+---
+
+## [ UI ]
+
+- [x] Dark Mode for PDF Viewer
+- [x] Change Icons
+
+---

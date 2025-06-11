@@ -3,8 +3,9 @@ import json
 import shutil
 from tkinter import *
 from tkinter import ttk, simpledialog, filedialog
+from turtle import up
 import customtkinter
-from src.constants import DIRECTORIES_PATH, VECTOR_STORE_PATH
+from src.constants import DIRECTORIES_PATH, VECTOR_STORE_PATH, settings_icon, file_icon, folder_icon, delete_icon,upload_icon
 from src.components.chat import ChatUI
 from src.exceptions import CustomAppException
 from src.rag.components.chat_model import ChatModel
@@ -71,10 +72,11 @@ class LibraryApp:
 
         self.settings_button = customtkinter.CTkButton(
             master=button_frame,
-            text="⚙️",
+            text='',
+            image=settings_icon,
             command=self.change_settings,
-            width=25,
-            height=25,
+            width=15,
+            height=15,
             corner_radius=10,
             fg_color=self.theme["colors"].FRAME_COLOR.value,
             bg_color=self.theme["colors"].FRAME_COLOR.value,
@@ -83,23 +85,24 @@ class LibraryApp:
         
         self.add_file_button = customtkinter.CTkButton(
             master=button_frame,
-            text="📚",
+            text='',
+            image=upload_icon,
             command=self.browse_files,
-            width=25,
-            height=25,
+            width=15,
+            height=15,
             corner_radius=10,
             fg_color=self.theme["colors"].FRAME_COLOR.value,
             bg_color=self.theme["colors"].FRAME_COLOR.value,
             hover_color=self.theme["colors"].BUTTON_COLOR.value,
-            
         )
 
         self.delete_file_button = customtkinter.CTkButton(
             master=button_frame,
-            text="❌",
+            text='',
+            image=delete_icon,
             command=self.delete_selected_item,
-            width=25,
-            height=25,
+            width=15,
+            height=15,
             corner_radius=10,
             fg_color=self.theme["colors"].FRAME_COLOR.value,
             bg_color=self.theme["colors"].FRAME_COLOR.value,
@@ -108,10 +111,11 @@ class LibraryApp:
 
         self.create_file_button = customtkinter.CTkButton(
             master=button_frame,
-            text="📝",
+            text='',
+            image=file_icon,
             command=self.create_file,
-            width=25,
-            height=25,
+            width=15,
+            height=15,
             corner_radius=10,
             fg_color=self.theme["colors"].FRAME_COLOR.value,
             bg_color=self.theme["colors"].FRAME_COLOR.value,
@@ -121,10 +125,11 @@ class LibraryApp:
         
         self.create_folder_button = customtkinter.CTkButton(
             master=button_frame,
-            text="📁",
+            text='',
+            image=folder_icon,
             command=self.create_folder,
-            width=25,
-            height=25,
+            width=15,
+            height=15,
             corner_radius=10,
             fg_color=self.theme["colors"].FRAME_COLOR.value,
             bg_color=self.theme["colors"].FRAME_COLOR.value,

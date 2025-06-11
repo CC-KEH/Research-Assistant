@@ -46,8 +46,3 @@ class FontManager:
         else:
             print(f"Warning: Font '{family}' not loaded. Using default font.")
             return ctk.CTkFont(size=size, weight=weight)  # Fallback to default
-
-
-# from font_manager import FontManager
-# custom_font = FontManager.get_font("Gideon Roman", size=20, weight="bold")
-# label = ctk.CTkLabel(root, text="Hello!", font=custom_font)
