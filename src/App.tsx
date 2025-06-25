@@ -1,14 +1,10 @@
-import { ThemeProvider } from "@/components/ThemeProvider"
+import { ThemeProvider } from "@/components/small/ThemeProvider";
 import "./App.css";
 
-function App({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+function App({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      {children}
+      <div className="h-screen w-screen overflow-hidden">{children}</div>
     </ThemeProvider>
   );
 }
