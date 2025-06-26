@@ -1,3 +1,5 @@
+//TODO Use this style: https://21st.dev/aceternity/sidebar/default
+
 import {
   ResizableHandle,
   ResizablePanel,
@@ -7,27 +9,27 @@ import {
 import FileManager from "@/components/FileManager";
 import FileViewer from "@/components/FileViewer";
 import Assistant from "@/components/Assistant";
-import { Navbar } from "@/components/Navbar";
+import Navbar from "@/components/small/Navbar";
 
 export function Workspace() {
   return (
     <>
-      <Navbar />
-      <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+      <ResizablePanelGroup direction="horizontal" className="min-h-screen">
         <ResizablePanel defaultSize={25}>
-          <div className="flex h-full w-full items-center justify-center p-6">
+          <div className="flex h-full w-full items-center justify-center flex-col p-4">
             <FileManager />
+            <Navbar />
           </div>
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={45}>
-          <div className="flex h-full w-full items-center justify-center p-6">
+          <div className="flex h-full w-full items-center justify-center p-4">
             <FileViewer />
           </div>
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={30}>
-          <div className="flex h-full w-full items-center justify-center p-6">
+          <div className="flex h-full w-full items-center justify-center p-4">
             <Assistant />
           </div>
         </ResizablePanel>
