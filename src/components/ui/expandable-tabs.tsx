@@ -1,8 +1,8 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useOnClickOutside } from "usehooks-ts";
-import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Tab {
   title: string;
@@ -16,7 +16,14 @@ interface Separator {
   icon?: never;
 }
 
-type TabItem = Tab | Separator;
+interface Toggle {
+  type: "toggle";
+  icon: LucideIcon;
+  toggledIcon: LucideIcon;
+  title?: never;
+}
+
+type TabItem = Tab | Separator | Toggle;
 
 interface ExpandableTabsProps {
   tabs: TabItem[];
@@ -80,6 +87,46 @@ export function ExpandableTabs({
           return <Separator key={`separator-${index}`} />;
         }
 
+        const isSelected = selected === index;
+
+        const handleSelect = (index: number | null) => {
+          setSelected(index);
+          onChange?.(index);
+        };
+
+        if (tab.type === "toggle") {
+          const Icon = isSelected ? tab.toggledIcon : tab.icon;
+          return (
+            <motion.button
+              key={`toggle-${index}`}
+              onClick={() => handleSelect(isSelected ? null : index)}
+              className={cn(
+                "relative flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-300",
+                isSelected
+                  ? cn("bg-muted", activeColor)
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={isSelected ? "on" : "off"}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex"
+                >
+                  {isSelected ? (
+                    <tab.toggledIcon size={20} />
+                  ) : (
+                    <tab.icon size={20} />
+                  )}
+                </motion.span>
+              </AnimatePresence>
+            </motion.button>
+          );
+        }
+
         const Icon = tab.icon;
         return (
           <motion.button
@@ -87,7 +134,7 @@ export function ExpandableTabs({
             variants={buttonVariants}
             initial={false}
             animate="animate"
-            custom={selected === index}
+            custom={isSelected}
             onClick={() => handleSelect(index)}
             transition={{
               delay: 0.1,
@@ -97,14 +144,14 @@ export function ExpandableTabs({
             }}
             className={cn(
               "relative flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300",
-              selected === index
+              isSelected
                 ? cn("bg-muted", activeColor)
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
             <Icon size={20} />
             <AnimatePresence initial={false}>
-              {selected === index && (
+              {isSelected && (
                 <motion.span
                   variants={spanVariants}
                   initial="initial"

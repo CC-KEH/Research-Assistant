@@ -1,5 +1,5 @@
 import { Tabs } from "@/components/ui/Tabs";
-import PDFView from "@/components/small/PdfView";
+import PDFView from "@/components/small/PDFView";
 
 const tabs = [
   { id: "overview", label: "Overview" },
@@ -12,10 +12,11 @@ const tabs = [
 
 export default function FileViewer() {
   return (
-    <div className="flex justify-center w-full h-full flex-col self-center">
+    <div className="flex justify-center w-full h-full flex-col self-center gap-3">
       <Tabs
         tabs={tabs}
         onTabChange={(tabId) => console.log(`Tab changed to: ${tabId}`)}
+        className="mb-3"
       />
       <PDFView />
     </div>

@@ -4,6 +4,7 @@ import Welcome from "@/pages/Welcome";
 import About from "@/pages/About";
 import App from "@/App";
 import { Workspace } from "@/pages/Workspace";
+import Settings from "@/components/Settings";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <Route path="/" element={<Welcome />} />
           <Route path="/About" element={<About />} />
           <Route path="/Workspace" element={<Workspace />} />
+          <Route path="/Settings" element={<Settings />} />
         </Routes>
       </BrowserRouter>
     </App>

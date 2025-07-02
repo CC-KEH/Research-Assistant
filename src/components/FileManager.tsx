@@ -1,4 +1,5 @@
 import { TreeView } from "@/components/small/Treeview";
+import { KnowledgeStore } from "@/components/small/KnowledgeStore";
 
 export default function FileManager() {
   const treeData = [
@@ -50,7 +51,8 @@ export default function FileManager() {
 
   return (
     <>
-      <div className="max-w-xl mx-auto w-full h-full">
+      <div className="max-w-xl mx-auto w-full h-full flex flex-col gap-2">
+        <KnowledgeStore />
         <TreeView
           data={treeData}
           onNodeClick={(node) => console.log("Clicked:", node.label)}

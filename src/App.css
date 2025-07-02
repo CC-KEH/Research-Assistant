@@ -137,6 +137,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  h1 {
+    @apply text-2xl font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 mb-3
+  }
 }
 
 body{
