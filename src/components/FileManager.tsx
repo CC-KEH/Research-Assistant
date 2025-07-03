@@ -1,7 +1,7 @@
 import { TreeView } from "@/components/small/Treeview";
-import { KnowledgeStore } from "@/components/small/KnowledgeStore";
+import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
 
-export default function FileManager() {
+function get_library_data() {
   const treeData = [
     {
       id: "1",
@@ -48,11 +48,16 @@ export default function FileManager() {
       children: [{ id: "3-1", label: "shortcut.lnk" }],
     },
   ];
+  return treeData;
+}
+
+export default function FileManager() {
+  const treeData = get_library_data();
 
   return (
     <>
       <div className="max-w-xl mx-auto w-full h-full flex flex-col gap-2">
-        <KnowledgeStore />
+        <KnowledgeStoreButton />
         <TreeView
           data={treeData}
           onNodeClick={(node) => console.log("Clicked:", node.label)}

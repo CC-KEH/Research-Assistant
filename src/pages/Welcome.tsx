@@ -1,3 +1,4 @@
+// TODO: For Feature Showcase https://21st.dev/aceternity/sticky-scroll-reveal/default
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { GitBranch, MoveRight } from "lucide-react";

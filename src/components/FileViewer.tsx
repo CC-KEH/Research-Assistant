@@ -2,12 +2,12 @@ import { Tabs } from "@/components/ui/Tabs";
 import PDFView from "@/components/small/PDFView";
 
 const tabs = [
-  { id: "overview", label: "Overview" },
-  { id: "integrations", label: "Integrations" },
-  { id: "activity", label: "Activity" },
-  { id: "domains", label: "Domains" },
-  { id: "usage", label: "Usage" },
-  { id: "monitoring", label: "Monitoring" },
+  { id: "view", label: "View" },
+  { id: "summary", label: "Summary" },
+  { id: "contributions", label: "Contributions" },
+  { id: "critical-analysis", label: "Analysis" },
+  { id: "dictionary", label: "Dictionary" },
+  { id: "future-work", label: "Future Work" },
 ];
 
 export default function FileViewer() {

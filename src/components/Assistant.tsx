@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
 import { ChatMessageList } from "@/components/ui/chat-message-list";
 import { ChatInput } from "@/components/ui/chat-input";
+import { useAnimatedText } from "@/components/ui/animated-text";
 
 export default function Assistant() {
   const [messages, setMessages] = useState([
@@ -27,58 +28,73 @@ export default function Assistant() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ Track the current AI response to animate
+  const [currentAiMessage, setCurrentAiMessage] = useState("");
+
+  // ✅ useAnimatedText hook
+  const animatedText = useAnimatedText(
+    currentAiMessage,
+    currentAiMessage ? "" : undefined
+  );
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        content: input,
-        sender: "user",
-      },
-    ]);
+    const newUserMessage = {
+      id: messages.length + 1,
+      content: input,
+      sender: "user",
+    };
+
+    setMessages((prev) => [...prev, newUserMessage]);
     setInput("");
     setIsLoading(true);
 
+    // Simulate delay for AI response
     setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          content: "This is an AI response to your message.",
-          sender: "ai",
-        },
-      ]);
+      const aiResponse =
+        "In my younger and more vulnerable years my father gave me some advice that I've been turning over in my mind ever since..";
+      const newAiMessage = {
+        id: messages.length + 2,
+        content: aiResponse,
+        sender: "ai",
+      };
+
+      setMessages((prev) => [...prev, newAiMessage]);
+      setCurrentAiMessage(aiResponse); // ✅ trigger animation
       setIsLoading(false);
     }, 1000);
   };
 
-  const handleAttachFile = () => {
-    //
-  };
-
-  const handleMicrophoneClick = () => {
-    //
-  };
+  const handleAttachFile = () => {};
+  const handleMicrophoneClick = () => {};
 
   return (
     <div className="h-full border bg-background rounded-lg flex flex-col">
       <div className="flex-1 overflow-hidden">
         <ChatMessageList>
-          {messages.map((message) => (
-            <ChatBubble
-              key={message.id}
-              variant={message.sender === "user" ? "sent" : "received"}
-            >
-              <ChatBubbleMessage
+          {messages.map((message, index) => {
+            const isLast = index === messages.length - 1;
+            const isAnimated =
+              message.sender === "ai" &&
+              message.content === currentAiMessage &&
+              isLast;
+
+            return (
+              <ChatBubble
+                key={message.id}
                 variant={message.sender === "user" ? "sent" : "received"}
               >
-                {message.content}
-              </ChatBubbleMessage>
-            </ChatBubble>
-          ))}
+                <ChatBubbleMessage
+                  variant={message.sender === "user" ? "sent" : "received"}
+                >
+                  {/* ✅ Conditionally animate the last AI message */}
+                  {isAnimated ? animatedText : message.content}
+                </ChatBubbleMessage>
+              </ChatBubble>
+            );
+          })}
 
           {isLoading && (
             <ChatBubble variant="received">
@@ -120,7 +136,7 @@ export default function Assistant() {
               </Button>
             </div>
             <Button type="submit" size="sm" className="ml-auto gap-1.5">
-              Send Message
+              Ask
               <CornerDownLeft className="size-3.5" />
             </Button>
           </div>

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 
-export function KnowledgeStore() {
+export function KnowledgeStoreButton() {
   return (
     <Button
       className="group h-auto w-full gap-4 py-3 text-left"
