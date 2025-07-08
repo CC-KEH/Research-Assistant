@@ -9,7 +9,6 @@ const tabs = [
   { id: "llm", label: "LLM" },
   { id: "embeddings", label: "Embeddings" },
   { id: "retrieval", label: "Retrieval" },
-  { id: "developer", label: "Developer" },
 ];
 
 const modelsByProvider: Record<string, { label: string; value: string }[]> = {
@@ -101,24 +100,6 @@ export default function Settings() {
             ]}
           />
           <CustomSlider label="Retrieved Chunks" min={1} max={20} step={1} />
-        </div>
-      )}
-
-      {activeTab === "developer" && (
-        <div className="w-full space-y-4">
-          <h2 className="text-xl font-medium">Developer</h2>
-          <CustomSelect
-            label="Log Level"
-            options={[
-              { label: "Debug", value: "debug" },
-              { label: "Info", value: "info" },
-              { label: "Warn", value: "warn" },
-              { label: "Error", value: "error" },
-            ]}
-          />
-          <Switch />
-          <Switch />
-          {/* <CustomInput label="Custom Endpoint URL" type="url" /> */}
         </div>
       )}
     </div>

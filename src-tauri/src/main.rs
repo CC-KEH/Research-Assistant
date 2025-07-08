@@ -4,5 +4,3 @@
 fn main() {
     research_assistant_lib::run()
 }
-// https://www.semanticscholar.org/product/api/tutorial
-// https://api.core.ac.uk/docs/v3#tag/Search/operation/optionsCustomSearchAggregation

@@ -9,7 +9,6 @@ import {
 import { UpstashRedisChatMessageHistory } from "@langchain/community/stores/message/upstash_redis";
 import { vectorStore, llm } from "./connections";
 
-// 📄 Input definition with mode
 interface ResearchChatInput {
   question: string;
   mode: "global" | "focused";

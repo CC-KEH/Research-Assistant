@@ -27,7 +27,7 @@ async function fullTest() {
   console.log("\n=== 🤖 CHATBOT TEST: GLOBAL MODE ===");
 
   const globalResponse = await askResearchAssistant({
-    question: "What is transfer learning?",
+    question: "What is Attention Mechanism?",
     sessionId,
     mode: "global",
   });
