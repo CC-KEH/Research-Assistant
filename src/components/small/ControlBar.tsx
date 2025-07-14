@@ -6,12 +6,12 @@ export default function ControlBar() {
     <div className="flex flex-col gap-4">
       <ExpandableTabs
         tabs={[
-          { title: "Dashboard", icon: Home },
-          { title: "Notifications", icon: Bell },
+          { title: "Home", icon: Home },
+          { title: "News", icon: Bell },
           { type: "separator" },
-          { title: "Settings", icon: Settings },
+          { title: "Config", icon: Settings },
           { type: "toggle", icon: Sun, toggledIcon: Moon },
-          { title: "Support", icon: HelpCircle },
+          { title: "Help", icon: HelpCircle },
         ]}
       />
     </div>

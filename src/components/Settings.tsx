@@ -4,6 +4,7 @@ import CustomSelect from "@/components/small/CustomSelect";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "./ui/text-area";
 import { Tabs } from "@/components/ui/Tabs";
+import { getConfig } from "@/lib/backend";
 
 const tabs = [
   { id: "llm", label: "LLM" },
@@ -32,6 +33,12 @@ export default function Settings() {
     setSelectedProvider(provider);
     const defaultModel = modelsByProvider[provider]?.[0]?.value || "";
     setSelectedModel(defaultModel);
+  };
+
+  const fetchSettings = () => {
+    // TODO: Fix this
+    // let config = getConfig();
+    // return JSON.stringify(config);
   };
 
   return (

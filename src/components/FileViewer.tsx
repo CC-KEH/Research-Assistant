@@ -7,7 +7,7 @@ const tabs = [
   { id: "contributions", label: "Contributions" },
   { id: "critical-analysis", label: "Analysis" },
   { id: "dictionary", label: "Dictionary" },
-  { id: "future-work", label: "Future Work" },
+  { id: "future-work", label: "Future" },
 ];
 
 export default function FileViewer() {

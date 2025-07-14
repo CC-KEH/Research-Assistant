@@ -105,7 +105,6 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
                   onTabChange?.(tab.id);
                 }}
               >
-                {/* <div className="text-sm font-medium leading-5 whitespace-nowrap flex items-center justify-center h-full"> */}
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-center h-full">
                   {tab.label}
                 </div>

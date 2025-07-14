@@ -16,11 +16,11 @@ export function Workspace() {
       <ResizablePanelGroup direction="horizontal" className="min-h-screen">
         <ResizablePanel defaultSize={25}>
           <div className="flex h-full w-full items-center justify-center flex-col p-4">
-            <h1 className="text-sm  border-b pb-2 mb-3">Library</h1>
+            <h1 className="text-sm border-b pb-2 mb-3">Library</h1>
             <LibraryContextMenu>
               <FileManager />
-              <ControlBar />
             </LibraryContextMenu>
+            <ControlBar />
           </div>
         </ResizablePanel>
         <ResizableHandle />

@@ -44,3 +44,20 @@ pub fn update_config(config_path: &str, new_config: Config) -> Result<(), String
         .map_err(|e| e.to_string())
         .and_then(|json| fs::write(config_path, json).map_err(|e| e.to_string()))
 }
+
+#[tauri::command]
+pub fn get_previous_projects() -> Result<(), String> {
+    // Load ProjectName: ProjectPath from JSON.
+    todo!();
+}
+
+#[tauri::command]
+pub fn create_new_project(
+    project_name: &str,
+    project_path: &str,
+    resources_path: &str,
+) -> Result<(), String> {
+    // Create Folders and Etc.
+    // Add the projectname: projectpath to JSON File.
+    todo!();
+}

@@ -1,0 +1,101 @@
+import { invoke } from "@tauri-apps/api/core";
+import { Project } from "./types";
+
+//* File System Functions
+
+export const readFile = async (filePath: string) => {
+  try {
+    const content = await invoke<string>("read_file", { filePath });
+    console.log("File content:", content);
+  } catch (err) {
+    console.error("Error reading file:", err);
+  }
+};
+
+export const writeFile = async (filePath: string, content: string) => {
+  try {
+    await invoke("write_file", { filePath, content });
+    console.log("File written successfully");
+  } catch (err) {
+    console.error("Error writing file:", err);
+  }
+};
+
+export const listDir = async (dirPath: string) => {
+  try {
+    const entries = await invoke<string[]>("list_dir", { dirPath });
+    console.log("Directory entries:", entries);
+  } catch (err) {
+    console.error("Error listing directory:", err);
+  }
+};
+
+export const createDir = async (dirPath: string) => {
+  try {
+    await invoke("create_dir", { dirPath });
+    console.log("Directory created successfully");
+  } catch (err) {
+    console.error("Error creating directory:", err);
+  }
+};
+
+//* Config Functions
+
+interface Config {
+  project_name: string;
+  project_path: string;
+  config_path: string;
+  knowledge_store_path: string;
+
+  llms: { [key: string]: string };
+  embeddings: { [key: string]: string };
+  vectorstores: { [key: string]: string };
+}
+
+export const getConfig = async (configPath: string): Promise<Config | null> => {
+  try {
+    const config = await invoke<Config>("get_config", { configPath });
+    return config;
+  } catch (error) {
+    console.error("Failed to load config:", error);
+    return null; // ✅ Explicit fallback
+  }
+};
+
+export const updateConfig = async (configPath: string, newConfig: Config) => {
+  try {
+    await invoke("update_config", { configPath, newConfig });
+    console.log("Config saved successfully");
+  } catch (error) {
+    console.error("Failed to save config:", error);
+  }
+};
+
+export const getPreviousProjects = async (): Promise<Project[]> => {
+  try {
+    const previousProjects = await invoke("get_previous_projects");
+    if (Array.isArray(previousProjects)) {
+      return previousProjects as Project[];
+    }
+    return [];
+  } catch (error) {
+    console.log("Failed loading previous projects.", error);
+    return [];
+  }
+};
+
+export const createProject = async (
+  project_name: string,
+  project_path: string,
+  resources_path: string
+) => {
+  try {
+    await invoke("create_new_project", {
+      project_name,
+      project_path,
+      resources_path,
+    });
+  } catch (error) {
+    console.log("Error creating a project.");
+  }
+};

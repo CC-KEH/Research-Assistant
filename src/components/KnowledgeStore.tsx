@@ -1,3 +1,5 @@
+// npx shadcn@latest add "https://21st.dev/r/isaiahbjork/agent-plan"
+// TODO: Show this once the papers are loaded.
 import React, { useState } from "react";
 import {
   Table,
