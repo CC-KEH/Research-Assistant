@@ -9,15 +9,15 @@ function App({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      {projectPath === null ? (
-        <ProjectSetup onSelect={setProjectPath} />
-      ) : (
-        <ConfigProvider configPath={`${projectPath}/config.json`}>
-          <div className="h-full w-full overflow-hidden">
-            <div className="h-full w-full overflow-hidden">{children}</div>
-          </div>
-        </ConfigProvider>
-      )}
+      {/* {projectPath === null ? ( */}
+      {/* <ProjectSetup onSelect={setProjectPath} /> */}
+      {/* ) : ( */}
+      <ConfigProvider configPath={`${projectPath}/config.json`}>
+        <div className="h-full w-full overflow-hidden">
+          <div className="h-full w-full overflow-hidden">{children}</div>
+        </div>
+      </ConfigProvider>
+      {/* )} */}
     </ThemeProvider>
   );
 }

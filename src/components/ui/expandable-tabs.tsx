@@ -38,17 +38,16 @@ const buttonVariants = {
     paddingLeft: ".5rem",
     paddingRight: ".5rem",
   },
-  animate: (isSelected: boolean) => ({
-    gap: isSelected ? ".5rem" : 0,
-    paddingLeft: isSelected ? "1rem" : ".5rem",
-    paddingRight: isSelected ? "1rem" : ".5rem",
-  }),
+  hover: {
+    gap: ".5rem",
+    paddingLeft: "1rem",
+    paddingRight: "1rem",
+  },
 };
 
 const spanVariants = {
   initial: { width: 0, opacity: 0 },
-  animate: { width: "auto", opacity: 1 },
-  exit: { width: 0, opacity: 0 },
+  hover: { width: "auto", opacity: 1 },
 };
 
 export function ExpandableTabs({
@@ -65,7 +64,7 @@ export function ExpandableTabs({
     onChange?.(null);
   });
 
-  const handleSelect = (index: number) => {
+  const handleSelect = (index: number | null) => {
     setSelected(index);
     onChange?.(index);
   };
@@ -89,11 +88,6 @@ export function ExpandableTabs({
 
         const isSelected = selected === index;
 
-        const handleSelect = (index: number | null) => {
-          setSelected(index);
-          onChange?.(index);
-        };
-
         if (tab.type === "toggle") {
           const Icon = isSelected ? tab.toggledIcon : tab.icon;
           return (
@@ -116,11 +110,7 @@ export function ExpandableTabs({
                   transition={{ duration: 0.2 }}
                   className="flex"
                 >
-                  {isSelected ? (
-                    <tab.toggledIcon size={20} />
-                  ) : (
-                    <tab.icon size={20} />
-                  )}
+                  <Icon size={20} />
                 </motion.span>
               </AnimatePresence>
             </motion.button>
@@ -131,44 +121,25 @@ export function ExpandableTabs({
         return (
           <motion.button
             key={tab.title}
-            variants={buttonVariants}
-            initial={false}
-            animate="animate"
-            custom={isSelected}
             onClick={() => handleSelect(index)}
+            initial="initial"
+            whileHover="hover"
+            animate="initial"
+            variants={buttonVariants}
+            custom={true}
             transition={{
-              delay: 0.1,
               type: "spring",
               bounce: 0,
-              duration: 0.6,
+              duration: 0.4,
             }}
             className={cn(
-              "relative flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300",
-              isSelected
-                ? cn("bg-muted", activeColor)
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              "relative flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300 text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
             <Icon size={20} />
-            <AnimatePresence initial={false}>
-              {isSelected && (
-                <motion.span
-                  variants={spanVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={{
-                    delay: 0.1,
-                    type: "spring",
-                    bounce: 0,
-                    duration: 0.6,
-                  }}
-                  className="overflow-hidden"
-                >
-                  {tab.title}
-                </motion.span>
-              )}
-            </AnimatePresence>
+            <motion.span variants={spanVariants} className="overflow-hidden">
+              {tab.title}
+            </motion.span>
           </motion.button>
         );
       })}

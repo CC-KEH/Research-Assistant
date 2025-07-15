@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { GitBranch, MoveRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export default function Welcome() {
   const [titleNumber, setTitleNumber] = useState(0);
@@ -66,12 +67,21 @@ export default function Welcome() {
           </p>
         </div>
         <div className="flex flex-row gap-3">
-          <Button size="lg" className="gap-4" variant="outline">
-            Support on GitHub <GitBranch className="w-4 h-4" />
-          </Button>
-          <Button size="lg" className="gap-4">
-            Get Started <MoveRight className="w-4 h-4" />
-          </Button>
+          <a
+            href="https://github.com/CC-KEH/Research-Assistant"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button size="lg" className="gap-4" variant="outline">
+              Support on GitHub <GitBranch className="w-4 h-4" />
+            </Button>
+          </a>
+
+          <Link to={"/ProjectSetup"}>
+            <Button size="lg" className="gap-4">
+              Get Started <MoveRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
       </div>
     </div>

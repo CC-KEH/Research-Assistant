@@ -11,12 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-
-type Paper = {
-  id: string;
-  name: string;
-  type: string;
-};
+import { Paper } from "@/lib/types";
 
 const mockPapers: Paper[] = [
   { id: "1", name: "AI in Medicine", type: "PDF" },
