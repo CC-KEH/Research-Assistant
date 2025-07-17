@@ -71,8 +71,8 @@ export default function Assistant() {
   const handleMicrophoneClick = () => {};
 
   return (
-    <div className="h-full border bg-background rounded-lg flex flex-col">
-      <div className="flex-1 overflow-hidden">
+    <div className="h-[600px] border bg-background rounded-lg flex flex-col">
+      <div className="flex-1 overflow-y-auto px-4 py-2 scrollbar-thin">
         <ChatMessageList>
           {messages.map((message, index) => {
             const isLast = index === messages.length - 1;

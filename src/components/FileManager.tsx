@@ -56,7 +56,7 @@ export default function FileManager() {
 
   return (
     <>
-      <div className="max-w-xl mx-auto w-full h-full flex flex-col gap-2">
+      <div className="max-w-xl mx-auto w-full h-[500px] flex flex-col gap-2 overflow-y-auto scrollbar-thin">
         <KnowledgeStoreButton />
         <TreeView
           data={treeData}

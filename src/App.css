@@ -140,6 +140,17 @@
   h1 {
     @apply text-2xl font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 mb-3
   }
+  h4 {
+    @apply  font-light text-muted-foreground tracking-wide
+  }
+}
+/* Tailwind-compatible custom scrollbar example */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
 }
 
 body{

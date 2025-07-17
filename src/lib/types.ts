@@ -8,3 +8,9 @@ export type Paper = {
   name: string;
   type: string;
 };
+
+export enum tabType {
+  libraryTab,
+  fileViewerTab,
+  assistantTab,
+}
