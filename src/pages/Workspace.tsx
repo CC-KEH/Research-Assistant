@@ -13,6 +13,7 @@ import { FileViewerContextMenu } from "@/components/small/context-menus/FileView
 import { AssistantContextMenu } from "@/components/small/context-menus/AssistantContextMenu";
 
 import { tabType } from "@/lib/types";
+import Suggestions from "@/components/Suggestions";
 export function Workspace() {
   return (
     <>
@@ -21,7 +22,8 @@ export function Workspace() {
           <div className="flex h-full w-full items-center justify-center flex-col p-4">
             <LibraryContextMenu>
               <FrameTabs activeTab={tabType.libraryTab} />
-              <FileManager />
+              {/* <FileManager /> */}
+              <Suggestions />
             </LibraryContextMenu>
             <ControlBar />
           </div>
