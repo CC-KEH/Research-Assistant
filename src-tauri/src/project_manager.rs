@@ -57,7 +57,7 @@ pub fn create_new_project(
     project_path: &str,
     resources_path: &str,
 ) -> Result<(), String> {
-    // Create Folders and Etc.
+    // Create Folders and Cofigs.
     // Add the projectname: projectpath to JSON File.
     todo!();
 }

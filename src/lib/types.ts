@@ -14,3 +14,15 @@ export enum tabType {
   fileViewerTab,
   assistantTab,
 }
+
+export enum Item {
+  directory,
+  file,
+}
+
+export enum BugType {
+  fileManager,
+  fileViewer,
+  assistant,
+  enhancement,
+}

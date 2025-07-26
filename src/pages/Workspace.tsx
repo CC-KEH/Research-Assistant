@@ -20,10 +20,9 @@ export function Workspace() {
       <ResizablePanelGroup direction="horizontal" className="min-h-screen">
         <ResizablePanel defaultSize={25}>
           <div className="flex h-full w-full items-center justify-center flex-col p-4">
+            <h1 className="text-sm border-b pb-2 mb-3">Library</h1>
             <LibraryContextMenu>
-              <FrameTabs activeTab={tabType.libraryTab} />
-              {/* <FileManager /> */}
-              <Suggestions />
+              <FileManager />
             </LibraryContextMenu>
             <ControlBar />
           </div>
@@ -40,7 +39,7 @@ export function Workspace() {
         <ResizableHandle />
         <ResizablePanel defaultSize={30}>
           <div className="flex h-full w-full items-center justify-center flex-col p-4">
-            <FrameTabs activeTab={tabType.assistantTab} />
+            <h1 className="text-sm border-b pb-2 mb-3">Gemini Pro</h1>
             <AssistantContextMenu>
               <Assistant />
             </AssistantContextMenu>

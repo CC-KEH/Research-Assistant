@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 // This matches the JSON structure returned by the API
 #[derive(Debug, Serialize, Deserialize)]
@@ -9,33 +8,85 @@ pub struct Paper {
     pub email: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
-    project_name: String,
-    project_path: String,
-    config_path: String,
-    knowledge_store_path: String,
-
-    llms: HashMap<String, String>,
-    embeddings: HashMap<String, String>,
-    vectorstores: HashMap<String, String>,
+    pub basic_config: Vec<BasicConfig>,
+    pub bookmarks: Vec<Bookmark>,
+    pub knowledge_store_config: KnowledgeStoreConfig,
+    pub tabs_config: TabsConfig,
+    pub llm_config: LLMConfig,
+    pub embeddings_config: EmbeddingsConfig,
+    pub vector_store_config: VectorStoreConfig,
 }
 
-// {
-//   "project_name": "MyApp",
-//   "project_path": "./myapp",
-//   "config_path": "./myapp/config.json",
-//   "knowledge_store_path": "./myapp/ks",
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BasicConfig {
+    pub project_name: String,
+    pub project_path: String,
+    pub resoures_path: String,
+}
 
-//   "llms": {
-//     "openai": "sk-abc",
-//     "ollama": ""
-//   },
-//   "embeddings": {
-//     "openai": "sk-abc",
-//     "huggingface": "hf-123"
-//   },
-//   "vectorstores": {
-//     "qdrant": "qdrant-api-key"
-//   }
-// }
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Bookmark {
+    pub file_name: String,
+    pub page_no: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeStoreConfig {
+    pub files: Vec<KnowledgeFile>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeFile {
+    pub file_name: String,
+    pub file_path: String,
+    pub feed_llm: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TabsConfig {
+    pub tabs: Vec<Tab>,
+    pub custom_tabs: Vec<Tab>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Tab {
+    pub id: String,
+    pub label: String,
+    pub prompt: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LLMConfig {
+    pub name: String,
+    pub label: String,
+    pub value: String,
+    pub api_key: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmbeddingsConfig {
+    pub name: String,
+    pub label: String,
+    pub value: String,
+    pub api_key: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorStoreConfig {
+    pub name: String,
+    pub label: String,
+    pub value: String,
+    pub api_key: String,
+}

@@ -1,0 +1,87 @@
+{
+    "basicConfig": [
+        {
+            "project_name": "Project 1",
+            "project_path": "path here",
+            "resoures_path": "resoures path here"
+        }
+    ],
+    "bookmarks": [
+        {
+            "file_name": "",
+            "page_no": ""
+        },
+        {
+            "file_name": "",
+            "page_no": ""
+        }
+    ],
+    "knowledgeStoreConfig": {
+        "files": [
+            {
+                "file_name": "",
+                "file_path": "",
+                "feed_llm": ""
+            }
+        ]
+    },
+    "tabsConfig": {
+        "tabs": [
+            {
+                "id": "view",
+                "label": "View",
+                "prompt": "Prompt goes here"
+            },
+            {
+                "id": "summary",
+                "label": "Summary",
+                "prompt": "Prompt goes here"
+            },
+            {
+                "id": "contributions",
+                "label": "Contributions",
+                "prompt": "Prompt goes here"
+            },
+            {
+                "id": "critical-analysis",
+                "label": "Analysis",
+                "prompt": "Prompt goes here"
+            },
+            {
+                "id": "dictionary",
+                "label": "Dictionary",
+                "prompt": "Prompt goes here"
+            },
+            {
+                "id": "future-work",
+                "label": "Future",
+                "prompt": "Prompt goes here"
+            }
+        ],
+        "customTabs": [
+            {
+                "id": "",
+                "label": "",
+                "prompt": ""
+            }
+        ]
+    },
+    "llmConfig": {
+        "name": "openai",
+        "label": "GPT-3.5",
+        "value": "gpt-3.5",
+        "api_key": ""
+    },
+    "embeddingsConfig": {
+        "name": "openai",
+        "label": "OpenAI",
+        "value": "openai",
+        "api_key": ""
+    },
+    "vectorStoreConfig": {
+        "name": "Pinecone",
+        "label": "Pinecone",
+        "value": "Pinecone",
+        "api_key": ""
+    }
+}

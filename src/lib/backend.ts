@@ -1,8 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Project } from "./types";
+import { BugType, Item, Project } from "./types";
+import { Config } from "@/lib/interfaces";
 
+//*********************** */
 //* File System Functions
-
+//*********************** */
 export const readFile = async (filePath: string) => {
   try {
     const content = await invoke<string>("read_file", { filePath });
@@ -39,26 +41,16 @@ export const createDir = async (dirPath: string) => {
   }
 };
 
+//*********************** */
 //* Config Functions
-
-interface Config {
-  project_name: string;
-  project_path: string;
-  config_path: string;
-  knowledge_store_path: string;
-
-  llms: { [key: string]: string };
-  embeddings: { [key: string]: string };
-  vectorstores: { [key: string]: string };
-}
-
+//*********************** */
 export const getConfig = async (configPath: string): Promise<Config | null> => {
   try {
     const config = await invoke<Config>("get_config", { configPath });
     return config;
   } catch (error) {
     console.error("Failed to load config:", error);
-    return null; // ✅ Explicit fallback
+    return null;
   }
 };
 
@@ -99,3 +91,17 @@ export const createProject = async (
     console.log("Error creating a project.");
   }
 };
+
+//*********************** */
+//* Context Menu Functions [ File Manager | File Viewer | Assistant ]
+//*********************** */
+
+export const deleteItem = (item: Item) => {};
+
+export const tabsSettings = () => {};
+
+export const modelSettings = () => {};
+export const resetSession = (sessionID: string) => {};
+export const createSession = (currentSessionID: string) => {};
+
+export const reportBug = (bugType: BugType) => {};

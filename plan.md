@@ -2,6 +2,8 @@
 
 - [ ] Hover Effect like, Viewer Tabs, on all buttons and options.
 - [ ] Theme: https://dribbble.com/shots/23986240-A-Dynamic-Sidebar-Navigation
+- [ ] Execute Python Program: Coming Soon
+
 ---
 
 # Project Structure

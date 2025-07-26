@@ -27,11 +27,7 @@ export default function Assistant() {
 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  // ✅ Track the current AI response to animate
   const [currentAiMessage, setCurrentAiMessage] = useState("");
-
-  // ✅ useAnimatedText hook
   const animatedText = useAnimatedText(
     currentAiMessage,
     currentAiMessage ? "" : undefined
@@ -51,7 +47,6 @@ export default function Assistant() {
     setInput("");
     setIsLoading(true);
 
-    // Simulate delay for AI response
     setTimeout(() => {
       const aiResponse =
         "In my younger and more vulnerable years my father gave me some advice that I've been turning over in my mind ever since..";
@@ -62,7 +57,7 @@ export default function Assistant() {
       };
 
       setMessages((prev) => [...prev, newAiMessage]);
-      setCurrentAiMessage(aiResponse); // ✅ trigger animation
+      setCurrentAiMessage(aiResponse);
       setIsLoading(false);
     }, 1000);
   };
@@ -71,8 +66,9 @@ export default function Assistant() {
   const handleMicrophoneClick = () => {};
 
   return (
-    <div className="h-[600px] border bg-background rounded-lg flex flex-col">
-      <div className="flex-1 overflow-y-auto px-4 py-2 scrollbar-thin">
+    <div className="h-full border bg-background rounded-lg flex flex-col relative">
+      {/* Chat messages container with fixed height for scrolling */}
+      <div className="flex-1 min-h-0 relative">
         <ChatMessageList>
           {messages.map((message, index) => {
             const isLast = index === messages.length - 1;
@@ -89,13 +85,11 @@ export default function Assistant() {
                 <ChatBubbleMessage
                   variant={message.sender === "user" ? "sent" : "received"}
                 >
-                  {/* ✅ Conditionally animate the last AI message */}
                   {isAnimated ? animatedText : message.content}
                 </ChatBubbleMessage>
               </ChatBubble>
             );
           })}
-
           {isLoading && (
             <ChatBubble variant="received">
               <ChatBubbleMessage isLoading />
@@ -104,7 +98,8 @@ export default function Assistant() {
         </ChatMessageList>
       </div>
 
-      <div className="p-4 border-t">
+      {/* Input form fixed at the bottom */}
+      <div className="p-4 border-t shrink-0 bg-background z-10">
         <form
           onSubmit={handleSubmit}
           className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
@@ -125,7 +120,6 @@ export default function Assistant() {
               >
                 <Paperclip className="size-4" />
               </Button>
-
               <Button
                 variant="ghost"
                 size="icon"

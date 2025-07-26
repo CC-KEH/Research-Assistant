@@ -156,4 +156,37 @@
 body{
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
+}
+
+
+/* TextLayer.css */
+.react-pdf__Page__textContent {
+  color: transparent;
+}
+
+.react-pdf__Page__textContent span {
+  color: black;
+  position: absolute;
+  white-space: pre;
+  transform-origin: 0 0;
+  line-height: 1;
+}
+
+.react-pdf__Page__textContent span::selection {
+  background: rgba(0, 0, 255, 0.3);
+}
+
+/* AnnotationLayer.css */
+.react-pdf__Page__annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.react-pdf__Page__annotations > * {
+  pointer-events: auto;
 }

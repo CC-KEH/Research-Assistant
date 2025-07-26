@@ -16,7 +16,7 @@ export default function FrameTabs({ activeTab }: FrameTabsProps) {
   const tabsData = tabsMap[activeTab] || [];
 
   return (
-    <div className="w-full flex justify-center">
+    <div className="mt-[2px] w-full flex justify-center">
       <Tabs
         tabs={tabsData}
         onTabChange={(tabId) => console.log(`Tab changed to: ${tabId}`)}

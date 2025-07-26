@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { open } from "@tauri-apps/plugin-dialog";
+
 import { useEffect, useState } from "react";
 import { Tabs } from "./ui/Tabs";
 import { getPreviousProjects } from "@/lib/backend";
@@ -209,7 +210,7 @@ export function ProjectSetup() {
                     </Button>
                   </div>
                   <FormDescription>
-                    Select the resources folder.
+                    Select the folder that contains your resources.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

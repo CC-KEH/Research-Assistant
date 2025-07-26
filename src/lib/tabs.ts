@@ -5,6 +5,15 @@ export const libraryTabs = [
 ];
 
 export const fileViewerTabs = [
+  { id: "view", label: "View", prompt: "Prompt goes here" },
+  { id: "summary", label: "Summary", prompt: "Prompt goes here" },
+  { id: "contributions", label: "Contributions", prompt: "Prompt goes here" },
+  { id: "critical-analysis", label: "Analysis", prompt: "Prompt goes here" },
+  { id: "future-work", label: "Future", prompt: "Prompt goes here" },
+  { id: "arxiv", label: "Arxiv", prompt: "Prompt goes here" },
+];
+
+export const defaultFileViewerTabs = [
   { id: "view", label: "View" },
   { id: "summary", label: "Summary" },
   { id: "contributions", label: "Contributions" },

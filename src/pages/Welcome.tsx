@@ -77,7 +77,7 @@ export default function Welcome() {
             </Button>
           </a>
 
-          <Link to={"/ProjectSetup"}>
+          <Link to="/project-setup">
             <Button size="lg" className="gap-4">
               Get Started <MoveRight className="w-4 h-4" />
             </Button>

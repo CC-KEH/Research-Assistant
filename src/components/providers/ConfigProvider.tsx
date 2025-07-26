@@ -1,20 +1,12 @@
 import { getConfig } from "@/lib/backend";
 import React, { createContext, useEffect, useState, useContext } from "react";
-
-interface Config {
-  project_name: string;
-  project_path: string;
-  config_path: string;
-  knowledge_store_path: string;
-  llms: Record<string, string>;
-  embeddings: Record<string, string>;
-  vectorstores: Record<string, string>;
-}
+import { Config } from "@/lib/interfaces";
 
 interface ConfigContextType {
   config: Config | null;
   setConfig: (config: Config) => void;
   reloadConfig: () => Promise<void>;
+  loading: boolean;
 }
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
@@ -28,13 +20,18 @@ export const ConfigProvider = ({
 }) => {
   const [config, setConfig] = useState<Config | null>(null);
 
+  const [loading, setLoading] = useState(true);
+
   const reloadConfig = async () => {
+    setLoading(true);
     try {
       const result = await getConfig(configPath);
       setConfig(result);
     } catch (error) {
       console.error("Failed to load config:", error);
       setConfig(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,7 +40,9 @@ export const ConfigProvider = ({
   }, [configPath]); // re-run when project changes
 
   return (
-    <ConfigContext.Provider value={{ config, setConfig, reloadConfig }}>
+    <ConfigContext.Provider
+      value={{ config, setConfig, reloadConfig, loading }}
+    >
       {children}
     </ConfigContext.Provider>
   );
