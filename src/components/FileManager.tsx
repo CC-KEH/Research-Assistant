@@ -1,26 +1,104 @@
+import { useState } from "react";
 import { TreeView } from "@/components/small/Treeview";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
+import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
 
-function get_library_data() {
-  const treeData = [
+type TreeNode = {
+  id: string;
+  label: string;
+  children?: TreeNode[];
+};
+
+export default function FileManager() {
+  const [treeData, setTreeData] = useState<TreeNode[]>(getLibraryData());
+
+  const handleNewFile = () => {
+    const updated = structuredClone(treeData);
+    const documents = updated.find((node) => node.label === "Documents");
+
+    if (documents?.children) {
+      const notes = documents.children.find((child) => child.label === "Notes");
+
+      if (notes?.children) {
+        notes.children.push({
+          id: Date.now().toString(),
+          label: "New File.txt",
+        });
+        setTreeData(updated);
+      }
+    }
+  };
+
+  const handleNewDrawing = () => {
+    const updated = structuredClone(treeData);
+    const canvases = updated.find((node) => node.label === "Canvas");
+
+    if (canvases?.children) {
+      canvases.children.push({
+        id: Date.now().toString(),
+        label: "New Drawing",
+        children: [],
+      });
+      setTreeData(updated);
+    }
+  };
+
+  const handleDelete = () => {
+    const updated = structuredClone(treeData);
+    const documents = updated.find((node) => node.label === "Documents");
+
+    if (documents?.children) {
+      const projects = documents.children.find(
+        (child) => child.label === "Notes"
+      );
+
+      if (projects?.children?.length) {
+        projects.children.pop();
+        setTreeData(updated);
+      }
+    }
+  };
+
+  const handleNewProject = () => {
+    alert("New Project logic here");
+  };
+
+  const handleReportBug = () => {
+    alert("Redirecting to bug report...");
+  };
+
+  return (
+    <LibraryContextMenu
+      onNewFile={handleNewFile}
+      onNewDrawing={handleNewDrawing}
+      onDelete={handleDelete}
+      onNewProject={handleNewProject}
+      onReportBug={handleReportBug}
+    >
+      <div className="max-w-xl mx-auto w-full h-[500px] flex flex-col gap-2 overflow-y-auto scrollbar-thin">
+        <KnowledgeStoreButton />
+        <TreeView
+          data={treeData}
+          onNodeClick={(node) => console.log("Clicked:", node.label)}
+          defaultExpandedIds={["1"]}
+        />
+      </div>
+    </LibraryContextMenu>
+  );
+}
+
+function getLibraryData(): TreeNode[] {
+  return [
     {
       id: "1",
       label: "Documents",
       children: [
         {
           id: "1-1",
-          label: "Projects",
+          label: "Papers",
           children: [
-            { id: "1-1-1", label: "Project A.pdf" },
-            { id: "1-1-2", label: "Project B.docx" },
-            {
-              id: "1-1-3",
-              label: "Archive",
-              children: [
-                { id: "1-1-3-1", label: "Old Project.zip" },
-                { id: "1-1-3-2", label: "Backup.tar" },
-              ],
-            },
+            { id: "1-1-1", label: "Monthly Report.pdf" },
+            { id: "1-1-2", label: "Annual Report.pdf" },
           ],
         },
         {
@@ -31,39 +109,39 @@ function get_library_data() {
             { id: "1-2-2", label: "Annual Report.pdf" },
           ],
         },
+        {
+          id: "1-3",
+          label: "Archive",
+          children: [
+            { id: "1-3-1", label: "Yearly Report.xlsx" },
+            { id: "1-3-2", label: "January Report.pdf" },
+          ],
+        },
       ],
     },
     {
       id: "2",
-      label: "Downloads",
+      label: "Notes",
       children: [
-        { id: "2-1", label: "setup.exe" },
-        { id: "2-2", label: "image.jpg" },
-        { id: "2-3", label: "video.mp4" },
+        { id: "2-1", label: "Note 1.md" },
+        { id: "2-2", label: "Note 2.md" },
       ],
     },
     {
       id: "3",
-      label: "Desktop",
-      children: [{ id: "3-1", label: "shortcut.lnk" }],
+      label: "Bookmarks",
+      children: [
+        { id: "3-1", label: "Bookmark 1" },
+        { id: "3-2", label: "Bookmark 2" },
+      ],
+    },
+    {
+      id: "4",
+      label: "Canvas",
+      children: [
+        { id: "4-1", label: "board1.excalidraw" },
+        { id: "4-2", label: "board2.excalidraw" },
+      ],
     },
   ];
-  return treeData;
-}
-
-export default function FileManager() {
-  const treeData = get_library_data();
-
-  return (
-    <>
-      <div className="max-w-xl mx-auto w-full h-[500px] flex flex-col gap-2 overflow-y-auto scrollbar-thin">
-        <KnowledgeStoreButton />
-        <TreeView
-          data={treeData}
-          onNodeClick={(node) => console.log("Clicked:", node.label)}
-          defaultExpandedIds={["1"]}
-        />
-      </div>
-    </>
-  );
 }

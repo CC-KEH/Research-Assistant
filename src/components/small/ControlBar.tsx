@@ -1,4 +1,4 @@
-import { Bell, Home, HelpCircle, Settings, Sun, Moon } from "lucide-react";
+import { Bell, HelpCircle, Settings, Sun, Moon, List } from "lucide-react";
 import { ExpandableTabs } from "@/components/ui/expandable-tabs";
 
 export default function ControlBar() {
@@ -6,12 +6,12 @@ export default function ControlBar() {
     <div className="flex flex-col gap-4">
       <ExpandableTabs
         tabs={[
-          { title: "Home", icon: Home },
-          { title: "News", icon: Bell },
+          { type: "tab", title: "Todos", icon: List, route: "/Todos" },
+          { type: "tab", title: "News", icon: Bell, route: "/News" },
           { type: "separator" },
-          { title: "Config", icon: Settings },
+          { type: "tab", title: "Config", icon: Settings, route: "/Settings" },
           { type: "toggle", icon: Sun, toggledIcon: Moon },
-          { title: "Help", icon: HelpCircle },
+          { type: "tab", title: "Help", icon: HelpCircle, route: "/Help" },
         ]}
       />
     </div>

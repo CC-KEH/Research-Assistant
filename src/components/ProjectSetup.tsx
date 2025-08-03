@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { Tabs } from "./ui/Tabs";
 import { getPreviousProjects } from "@/lib/backend";
 import { Project } from "@/lib/types";
+import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
   projectname: z.string().min(2, {
@@ -68,19 +69,40 @@ export function ProjectSetup() {
   });
 
   const selectFolder = async (fieldName: "projectpath" | "resourcespath") => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-    });
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        // Optional: Set a default path or filters
+        defaultPath: "$HOME", // Starts in the user's home directory
+      });
 
-    if (selected && typeof selected === "string") {
-      form.setValue(fieldName, selected);
+      console.log("Selected path:", selected);
+
+      if (selected && typeof selected === "string") {
+        form.setValue(fieldName, selected);
+      } else if (selected === null) {
+        console.log("User cancelled the dialog");
+        // Optionally inform the user (e.g., show a message)
+      } else {
+        console.error("Unexpected dialog result:", selected);
+      }
+    } catch (error) {
+      console.error("Error opening directory dialog:", error);
+      // Optionally inform the user of the error
     }
   };
-
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  let navigate = useNavigate();
+  function onLoadProjectSubmit(values: z.infer<typeof formSchema>) {
     console.log("Submitted:", values);
-    // TODO: Handle values in backend or Tauri command
+    // TODO: Send path to backend, and navigate to Workspace.
+    navigate("/Workspace");
+  }
+
+  function onCreateProjectSubmit(values: z.infer<typeof formSchema>) {
+    console.log("Submitted:", values);
+    // TODO: Send path to create_project, navigate to Workspace.
+    navigate("/Workspace");
   }
 
   return (
@@ -93,7 +115,7 @@ export function ProjectSetup() {
       {activeTab === "load-project" && (
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit(onLoadProjectSubmit)}
             className="flex flex-col gap-6 w-full "
           >
             {/* <h1 className="text-3xl font-semibold self-center">
@@ -145,13 +167,9 @@ export function ProjectSetup() {
       {activeTab === "create-project" && (
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit(onCreateProjectSubmit)}
             className="flex flex-col gap-6 w-full "
           >
-            {/* <h1 className="text-3xl font-semibold self-center">
-              Create New Project
-            </h1> */}
-
             <FormField
               control={form.control}
               name="projectname"

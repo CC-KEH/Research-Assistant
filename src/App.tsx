@@ -21,18 +21,19 @@ function App() {
             <Routes>
               <Route path="/" element={<Workspace />} />
               <Route path="/About" element={<About />} />
+              <Route path="/welcome" element={<Welcome />} />
 
-              <Route path="/Settings" element={<Settings />} />
               <Route path="/KnowledgeStore" element={<KnowledgeStore />} />
             </Routes>
           </div>
         </ConfigProvider>
       ) : (
         <Routes>
+          <Route path="*" element={<Welcome />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/Workspace" element={<Workspace />} />
           <Route path="/project-setup" element={<ProjectSetup />} />
-          <Route path="*" element={<Welcome />} />
+          <Route path="/Settings" element={<Settings />} />
         </Routes>
       )}
     </ThemeProvider>

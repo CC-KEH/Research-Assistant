@@ -4,7 +4,7 @@ import CustomSelect from "@/components/small/CustomSelect";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "./ui/text-area";
 import { Tabs } from "@/components/ui/Tabs";
-import { fileViewerTabs } from "@/lib/tabs";
+import { paperViewerTabs } from "@/lib/tabs";
 import { Card, CardContent } from "./ui/card";
 import { Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,7 @@ export default function Settings() {
         <div className="w-full h-fit space-y-4">
           <h2 className="text-xl font-medium">File Viewer</h2>
           <div className="w-full max-h-[42vh] overflow-y-auto pr-2 space-y-4 scrollbar-thin">
-            {fileViewerTabs.map((tab, index) => (
+            {paperViewerTabs.map((tab, index) => (
               <Card
                 key={index}
                 className="shadow-md rounded-2xl w-full py-4 min-h-20 max-h-30 "

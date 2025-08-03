@@ -1,9 +1,13 @@
-import { getLLM, getVectorStore, getEmbeddings } from "./connections";
-import { chatWithPapers } from "./chatwithpapers";
-import { findSimilarArxivPapers } from "./similar papers";
-import { indexPapers } from "./indexpapers";
-import { runPromptOnPaper } from "./runpromptsonpaper";
-import { LocalChatMessageHistory } from "./local_history";
+import {
+  getLLM,
+  getVectorStore,
+  getEmbeddings,
+} from "@/components/langchain/connections";
+import { chatWithPapers } from "@/components/langchain/chat_with_papers";
+import { findSimilarArxivPapers } from "@/components/langchain/get_similar_papers_arxiv";
+import { indexPapers } from "@/components/langchain/index_papers";
+import { runPromptOnPaper } from "@/components/langchain/run_prompts_on_paper";
+import { LocalChatMessageHistory } from "@/components/langchain/local_history";
 
 class GenAI {
   sessions: string[];

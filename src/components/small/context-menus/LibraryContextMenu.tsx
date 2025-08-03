@@ -5,37 +5,25 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Bug, File, FileBox, Folder, Trash } from "lucide-react";
-
 import { ReactNode } from "react";
 
 interface LibraryContextMenuProps {
   children: ReactNode;
+  onNewFile?: () => void;
+  onNewDrawing?: () => void;
+  onDelete?: () => void;
+  onNewProject?: () => void;
+  onReportBug?: () => void;
 }
 
-export const LibraryContextMenu = ({ children }: LibraryContextMenuProps) => {
-  const handleAction = (action: string) => {
-    console.log(`Action selected: ${action}`);
-    switch (action) {
-      case "new-file":
-        // createNewFile();
-        break;
-      case "new-folder":
-        // createNewFolder();
-        break;
-      case "delete":
-        // delete();
-        break;
-      case "new-project":
-        // newProjeect();
-        break;
-      case "report-bug":
-        // reportBug();
-        break;
-      default:
-        break;
-    }
-  };
-
+export const LibraryContextMenu = ({
+  children,
+  onNewFile,
+  onNewDrawing,
+  onDelete,
+  onNewProject,
+  onReportBug,
+}: LibraryContextMenuProps) => {
   return (
     <ContextMenu>
       <ContextMenuTrigger className="w-full h-full">
@@ -43,35 +31,35 @@ export const LibraryContextMenu = ({ children }: LibraryContextMenuProps) => {
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem
-          onClick={() => handleAction("new-file")}
+          onClick={onNewFile}
           className="flex flex-row justify-between gap-6"
         >
           New File
           <File />
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => handleAction("new-folder")}
+          onClick={onNewDrawing}
           className="flex flex-row justify-between gap-6"
         >
-          New Folder
+          New Drawing
           <Folder />
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => handleAction("delete")}
+          onClick={onDelete}
           className="flex flex-row justify-between gap-6"
         >
           Delete
           <Trash />
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => handleAction("new-project")}
+          onClick={onNewProject}
           className="flex flex-row justify-between gap-6"
         >
           New Project
           <FileBox />
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => handleAction("report-bug")}
+          onClick={onReportBug}
           className="flex flex-row justify-between gap-6"
         >
           Report Bug

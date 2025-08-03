@@ -27,9 +27,15 @@ export default function Welcome() {
     <div className="container mx-auto">
       <div className="flex gap-8 pt-24 md:pt-28 items-center justify-center flex-col">
         <div>
-          <Button variant="secondary" size="sm" className="gap-4">
-            Read our launch article <MoveRight className="w-4 h-4" />
-          </Button>
+          <a
+            href="https://github.com/CC-KEH/Research-Assistant"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="secondary" size="sm" className="gap-4">
+              Read the launch article <MoveRight className="w-4 h-4" />
+            </Button>
+          </a>
         </div>
         <div className="flex gap-4 flex-col">
           <h1 className="text-5xl md:text-7xl max-w-2xl tracking-tighter text-center font-regular">
@@ -61,9 +67,9 @@ export default function Welcome() {
           </h1>
 
           <p className="text-lg md:text-xl leading-relaxed tracking-tight text-muted-foreground max-w-2xl text-center">
-            Managing a small business today is already tough. Avoid further
-            complications by ditching outdated, tedious trade methods. Our goal
-            is to streamline SMB trade, making it easier and faster than ever.
+            Effortlessly search, organize, and synthesize academic papers. Ask
+            complex questions, generate concise summaries, and uncover key
+            insights — all in one intelligent workspace.
           </p>
         </div>
         <div className="flex flex-row gap-3">

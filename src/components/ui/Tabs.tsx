@@ -1,6 +1,3 @@
-// https://21st.dev/preetsuthar17/animated-tabs/default
-// https://21st.dev/yadwinder/vercel-tabs/default
-
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -73,7 +70,7 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
         <div className="relative">
           {/* Hover Highlight */}
           <div
-            className="absolute h-[30px] transition-all duration-300 ease-out bg-[#0e0f1114] rounded-[6px] flex items-center"
+            className="absolute h-[16px] transition-all duration-300 ease-out rounded-[6px] flex items-center"
             style={{
               ...hoverStyle,
               opacity: hoveredIndex !== null ? 1 : 0,

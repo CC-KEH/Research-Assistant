@@ -11,8 +11,14 @@ export type Paper = {
 
 export enum tabType {
   libraryTab,
-  fileViewerTab,
+  fileManagerTab,
   assistantTab,
+}
+
+export enum fileManagerTab {
+  fileViewerTab,
+  paperViewerTab,
+  markdownViewerTab,
 }
 
 export enum Item {

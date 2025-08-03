@@ -4,16 +4,14 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import FileManager from "@/components/FileManager";
-import FrameTabs from "@/components/FrameTabs";
+import FrameTabs from "@/components/small/FrameTabs";
 import FileViewer from "@/components/FileViewer";
 import Assistant from "@/components/Assistant";
 import ControlBar from "@/components/small/ControlBar";
 import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
 import { FileViewerContextMenu } from "@/components/small/context-menus/FileViewerContextMenu";
 import { AssistantContextMenu } from "@/components/small/context-menus/AssistantContextMenu";
-
 import { tabType } from "@/lib/types";
-import Suggestions from "@/components/Suggestions";
 export function Workspace() {
   return (
     <>
@@ -30,7 +28,7 @@ export function Workspace() {
         <ResizableHandle />
         <ResizablePanel defaultSize={45}>
           <div className="flex h-full w-full items-center justify-center flex-col p-4">
-            <FrameTabs activeTab={tabType.fileViewerTab} />
+            <FrameTabs activeTab={tabType.fileManagerTab} />
             <FileViewerContextMenu>
               <FileViewer />
             </FileViewerContextMenu>

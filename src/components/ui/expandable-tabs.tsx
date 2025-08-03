@@ -1,13 +1,20 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useOnClickOutside } from "usehooks-ts";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import Todos from "@/pages/Todos";
+import Settings from "@/components/Settings";
+import About from "@/pages/About";
+import Help from "@/pages/Help";
+import { useTheme } from "../providers/ThemeProvider";
 
 interface Tab {
+  type: "tab";
   title: string;
   icon: LucideIcon;
-  type?: never;
+  route: string;
 }
 
 interface Separator {
@@ -56,7 +63,12 @@ export function ExpandableTabs({
   activeColor = "text-primary",
   onChange,
 }: ExpandableTabsProps) {
+  const theme = useTheme();
   const [selected, setSelected] = React.useState<number | null>(null);
+  const [modal, setModal] = React.useState<
+    null | "Todos" | "News" | "Settings" | "Help"
+  >(null);
+
   const outsideClickRef = React.useRef(null);
 
   useOnClickOutside(outsideClickRef, () => {
@@ -67,6 +79,35 @@ export function ExpandableTabs({
   const handleSelect = (index: number | null) => {
     setSelected(index);
     onChange?.(index);
+    if (index != null) {
+      if (tabs[index].type === "toggle") {
+        // Toggle Theme
+        if (theme.theme === "dark") {
+          theme.setTheme("light");
+          tabs[index].icon = Moon;
+        } else {
+          theme.setTheme("dark");
+          tabs[index].icon = Sun;
+        }
+      } else if (tabs[index].type === "tab") {
+        switch (tabs[index].route) {
+          case "/Todos":
+            setModal("Todos");
+            break;
+          case "/News":
+            setModal("News");
+            break;
+          case "/Settings":
+            setModal("Settings");
+            break;
+          case "/Help":
+            setModal("Help");
+            break;
+          default:
+            break;
+        }
+      }
+    }
   };
 
   const Separator = () => (
@@ -143,6 +184,14 @@ export function ExpandableTabs({
           </motion.button>
         );
       })}
+      <Dialog open={modal !== null} onOpenChange={() => setModal(null)}>
+        <DialogContent className="min-w-2xl h-3/4 overflow-y-hidden scrollbar-thin">
+          {modal === "Todos" && <Todos />}
+          {modal === "News" && <About />}
+          {modal === "Settings" && <Settings />}
+          {modal === "Help" && <Help />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

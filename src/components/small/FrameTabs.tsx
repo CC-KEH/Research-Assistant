@@ -1,10 +1,18 @@
 import { Tabs } from "@/components/ui/Tabs";
 import { tabType } from "@/lib/types";
-import { assistantTabs, fileViewerTabs, libraryTabs } from "@/lib/tabs";
+import {
+  assistantTabs,
+  libraryTabs,
+  paperViewerTabs,
+  canvasViewerTabs,
+  fileViewerTabs,
+} from "@/lib/tabs";
+
+// TODO: Select Tabs Type based on the state of File Selected. paperViewerTabs, canvasViewerTabs, fileViewerTabs.
 
 const tabsMap = {
   [tabType.libraryTab]: libraryTabs,
-  [tabType.fileViewerTab]: fileViewerTabs,
+  [tabType.fileManagerTab]: paperViewerTabs,
   [tabType.assistantTab]: assistantTabs,
 };
 

@@ -4,7 +4,7 @@ export const libraryTabs = [
   { id: "suggested", label: "Suggested" },
 ];
 
-export const fileViewerTabs = [
+export const paperViewerTabs = [
   { id: "view", label: "View", prompt: "Prompt goes here" },
   { id: "summary", label: "Summary", prompt: "Prompt goes here" },
   { id: "contributions", label: "Contributions", prompt: "Prompt goes here" },
@@ -13,7 +13,16 @@ export const fileViewerTabs = [
   { id: "arxiv", label: "Arxiv", prompt: "Prompt goes here" },
 ];
 
-export const defaultFileViewerTabs = [
+export const canvasViewerTabs = [
+  { id: "heading", label: "Canvas", prompt: "Prompt goes here" },
+];
+
+export const fileViewerTabs = [
+  { id: "view", label: "View", prompt: "Prompt goes here" },
+  { id: "edit", label: "Edit", prompt: "Prompt goes here" },
+];
+
+export const defaultPaperViewerTabs = [
   { id: "view", label: "View" },
   { id: "summary", label: "Summary" },
   { id: "contributions", label: "Contributions" },
