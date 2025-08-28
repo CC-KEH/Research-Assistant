@@ -84,10 +84,10 @@ export function ExpandableTabs({
         // Toggle Theme
         if (theme.theme === "dark") {
           theme.setTheme("light");
-          tabs[index].icon = Moon;
+          tabs[index].icon = Sun;
         } else {
           theme.setTheme("dark");
-          tabs[index].icon = Sun;
+          tabs[index].icon = Moon;
         }
       } else if (tabs[index].type === "tab") {
         switch (tabs[index].route) {

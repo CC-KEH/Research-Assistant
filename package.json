@@ -42,6 +42,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.523.0",
     "pdfjs-dist": "^3.4.120",
     "radix-ui": "^1.4.2",
