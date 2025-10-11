@@ -1,10 +1,11 @@
 import { useState, FormEvent } from "react";
-import { Paperclip, Mic, CornerDownLeft } from "lucide-react";
+import { Mic, CornerDownLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
 import { ChatMessageList } from "@/components/ui/chat-message-list";
 import { ChatInput } from "@/components/ui/chat-input";
 import { useAnimatedText } from "@/components/ui/animated-text";
+import { ArrowDownIcon } from "@radix-ui/react-icons";
 
 export default function Assistant() {
   const [messages, setMessages] = useState([
@@ -24,7 +25,6 @@ export default function Assistant() {
       sender: "ai",
     },
   ]);
-
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentAiMessage, setCurrentAiMessage] = useState("");
@@ -62,8 +62,8 @@ export default function Assistant() {
     }, 1000);
   };
 
-  const handleAttachFile = () => {};
   const handleMicrophoneClick = () => {};
+  const handleLLMSwitch = () => {}; // TODO: Open Dropdownmenu to select llms
 
   return (
     <div className="h-full border bg-background rounded-lg flex flex-col relative">
@@ -110,15 +110,16 @@ export default function Assistant() {
             placeholder="Type your message..."
             className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
           />
-          <div className="flex items-center p-3 pt-0 justify-between">
-            <div className="flex">
+          <div className="flex items-center p-3 pt-2 justify-between">
+            <div className="flex gap-1">
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="default"
                 type="button"
-                onClick={handleAttachFile}
+                onClick={handleLLMSwitch}
               >
-                <Paperclip className="size-4" />
+                <img src="openai.svg" color="white" className="pr-1" /> GPT-5
+                <ArrowDownIcon />
               </Button>
               <Button
                 variant="ghost"

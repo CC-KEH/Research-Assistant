@@ -149,6 +149,10 @@
   width: 4px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: white;
+  border-radius: 9999px;
+}
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 9999px;
 }
@@ -158,7 +162,6 @@ body{
   height: 100vh;
   overflow: hidden;
 }
-
 
 /* TextLayer.css */
 .react-pdf__Page__textContent {

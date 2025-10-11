@@ -1,6 +1,6 @@
 # Todos
 
-- [ ] Hover Effect like, Viewer Tabs, on all buttons and options.
+- [ ] Fixes: 
 - [ ] Theme: https://dribbble.com/shots/23986240-A-Dynamic-Sidebar-Navigation
 - [ ] Execute Python Program: Coming Soon
 - [ ] Create Complete Report, out of The Tabs, in PDF Format.

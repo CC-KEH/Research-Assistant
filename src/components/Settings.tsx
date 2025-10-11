@@ -19,8 +19,8 @@ const tabs = [
 
 const modelsByProvider: Record<string, { label: string; value: string }[]> = {
   openai: [
-    { label: "GPT-3.5", value: "gpt-3.5" },
     { label: "GPT-4", value: "gpt-4" },
+    { label: "GPT-5", value: "gpt-5" },
   ],
   anthropic: [{ label: "Claude 3", value: "claude-3" }],
   google: [{ label: "Gemini Pro", value: "gemini-pro" }],

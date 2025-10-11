@@ -8,7 +8,6 @@ import FrameTabs from "@/components/small/FrameTabs";
 import FileViewer from "@/components/FileViewer";
 import Assistant from "@/components/Assistant";
 import ControlBar from "@/components/small/ControlBar";
-import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
 import { FileViewerContextMenu } from "@/components/small/context-menus/FileViewerContextMenu";
 import { AssistantContextMenu } from "@/components/small/context-menus/AssistantContextMenu";
 import { tabType } from "@/lib/types";
@@ -19,9 +18,7 @@ export function Workspace() {
         <ResizablePanel defaultSize={25}>
           <div className="flex h-full w-full items-center justify-center flex-col p-4">
             <h1 className="text-sm border-b pb-2 mb-3">Library</h1>
-            <LibraryContextMenu>
-              <FileManager />
-            </LibraryContextMenu>
+            <FileManager />
             <ControlBar />
           </div>
         </ResizablePanel>
@@ -37,7 +34,7 @@ export function Workspace() {
         <ResizableHandle />
         <ResizablePanel defaultSize={30}>
           <div className="flex h-full w-full items-center justify-center flex-col p-4">
-            <h1 className="text-sm border-b pb-2 mb-3">Gemini Pro</h1>
+            <h1 className="text-sm border-b pb-2 mb-3">GPT-5</h1>
             <AssistantContextMenu>
               <Assistant />
             </AssistantContextMenu>
