@@ -129,18 +129,10 @@ function getLibraryData(): TreeNode[] {
     },
     {
       id: "3",
-      label: "Bookmarks",
-      children: [
-        { id: "3-1", label: "Bookmark 1" },
-        { id: "3-2", label: "Bookmark 2" },
-      ],
-    },
-    {
-      id: "4",
       label: "Canvas",
       children: [
-        { id: "4-1", label: "board1.excalidraw" },
-        { id: "4-2", label: "board2.excalidraw" },
+        { id: "3-1", label: "board1.excalidraw" },
+        { id: "3-2", label: "board2.excalidraw" },
       ],
     },
   ];

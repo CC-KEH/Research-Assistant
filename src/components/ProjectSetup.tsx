@@ -16,7 +16,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 
 import { useEffect, useState } from "react";
 import { Tabs } from "./ui/Tabs";
-import { getPreviousProjects } from "@/lib/backend";
+import { createProject, getConfig, getPreviousProjects } from "@/lib/backend";
 import { Project } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
 
@@ -96,12 +96,14 @@ export function ProjectSetup() {
   function onLoadProjectSubmit(values: z.infer<typeof formSchema>) {
     console.log("Submitted:", values);
     // TODO: Send path to backend, and navigate to Workspace.
+    getConfig(values.projectpath);
     navigate("/Workspace");
   }
 
   function onCreateProjectSubmit(values: z.infer<typeof formSchema>) {
     console.log("Submitted:", values);
     // TODO: Send path to create_project, navigate to Workspace.
+    createProject(values.projectname, values.projectpath, values.resourcespath);
     navigate("/Workspace");
   }
 
