@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { Mic, CornerDownLeft } from "lucide-react";
+import { Mic, CornerDownLeft, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
 import { ChatMessageList } from "@/components/ui/chat-message-list";
@@ -119,7 +119,7 @@ export default function Assistant() {
                 onClick={handleLLMSwitch}
               >
                 <img src="openai.svg" color="white" className="pr-1" /> GPT-5
-                <ArrowDownIcon />
+                <ChevronDown />
               </Button>
               <Button
                 variant="ghost"

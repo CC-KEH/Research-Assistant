@@ -1,9 +1,18 @@
 import PDFView from "@/components/small/PDFView";
-// TODO: Add Search in File Functionality: ctrl + f
-export default function FileViewer() {
+
+export default function FileViewer({ title, content }: any) {
   return (
-    <div className="h-[98.5%] w-full items-center justify-center mt-[10px]">
-      <PDFView />
+    <div className="h-[98.5%] w-full flex flex-col items-center justify-center mt-[10px]">
+      {title && content ? (
+        <div className="">
+          <header>
+            <h1>{title}</h1>
+          </header>
+          <div>{content}</div>
+        </div>
+      ) : (
+        <PDFView file="/assets/sample.pdf" />
+      )}
     </div>
   );
 }

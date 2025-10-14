@@ -10,6 +10,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_config,
             update_config,
+            get_previous_projects,
+            create_new_project,
             list_dir,
             create_dir,
             read_file,

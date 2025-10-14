@@ -15,7 +15,12 @@ import {
   SunIcon,
 } from "lucide-react";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+
+// TODO: Add Search in File Functionality: ctrl + f
 
 interface Point {
   x: number;
@@ -24,6 +29,11 @@ interface Point {
 
 interface PDFViewerProps {
   file: string;
+}
+
+interface Path {
+  points: Point[];
+  tool: "pen" | "highlight";
 }
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
@@ -35,9 +45,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   >(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [drawing, setDrawing] = useState(false);
-  const [paths, setPaths] = useState<Point[][]>([]);
-  const [currentPath, setCurrentPath] = useState<Point[]>([]);
-  const [history, setHistory] = useState<Point[][][]>([]);
+  const [paths, setPaths] = useState<Path[]>([]);
+  const [currentPath, setCurrentPath] = useState<Path | null>(null);
+  const [history, setHistory] = useState<Path[][]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [showSearchBox, setShowSearchBox] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -71,16 +81,16 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     if (!ctx || !canvas) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "red";
 
     paths.forEach((path) => {
       ctx.beginPath();
-      path.forEach((point, idx) => {
-        if (idx === 0) ctx.moveTo(point.x, point.y);
-        else ctx.lineTo(point.x, point.y);
+      path.points.forEach((pt, idx) => {
+        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
       });
+      ctx.strokeStyle = path.tool === "pen" ? "red" : "rgba(255,255,0,0.3)";
+      ctx.lineWidth = path.tool === "pen" ? 2 : 20;
+      ctx.lineCap = "round";
       ctx.stroke();
     });
   };
@@ -88,65 +98,84 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const pos = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
 
-    if (tool === "pen") {
+    if (tool === "pen" || tool === "highlight") {
       setDrawing(true);
-      setCurrentPath([pos]);
+      setCurrentPath({ points: [pos], tool });
+    } else if (tool === "eraser") {
+      setDrawing(true);
+      eraseAt(pos); // erase immediately on mouse down
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+
+    if (!drawing) return;
+
+    if (tool === "pen" || tool === "highlight") {
+      setCurrentPath((prev) => {
+        if (!prev) return null;
+        const updated = { ...prev, points: [...prev.points, pos] };
+
+        const ctx = canvasRef.current?.getContext("2d");
+        if (ctx && prev.points.length > 0) {
+          const last = prev.points[prev.points.length - 1];
+          ctx.beginPath();
+          ctx.moveTo(last.x, last.y);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.strokeStyle = prev.tool === "pen" ? "red" : "rgba(255,255,0,0.3)";
+          ctx.lineWidth = prev.tool === "pen" ? 2 : 20;
+          ctx.lineCap = "round";
+          ctx.stroke();
+        }
+
+        return updated;
+      });
     } else if (tool === "eraser") {
       eraseAt(pos);
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drawing || tool !== "pen") return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!ctx || !canvas) return;
-
-    const pos = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
-    setCurrentPath((prev) => {
-      const updated = [...prev, pos];
-
-      ctx.beginPath();
-      const last = prev[prev.length - 1];
-      if (last) ctx.moveTo(last.x, last.y);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      return updated;
-    });
-  };
-
   const handleMouseUp = () => {
-    if (tool === "pen" && currentPath.length > 0) {
-      const newPaths = [...paths, currentPath];
-      setPaths(newPaths);
-      setHistory((prev) => [...prev, newPaths]);
-      setCurrentPath([]);
-      setDrawing(false);
+    if (currentPath) {
+      setPaths((prev) => [...prev, currentPath]);
+      setCurrentPath(null);
     }
+    setDrawing(false);
   };
 
   const eraseAt = (pos: Point) => {
-    const radius = 10;
+    if (!paths.length) return;
+
+    const radius = 15; // size of eraser
+
+    // Save snapshot for undo
+    setHistory((prev) => [...prev, [...paths]]);
+
+    // Filter out paths that have points near the cursor
     const updatedPaths = paths.filter(
       (path) =>
-        !path.some((pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < radius)
+        !path.points.some(
+          (pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < radius
+        )
     );
-    if (updatedPaths.length !== paths.length) {
-      setHistory((prev) => [...prev, paths]);
-      setPaths(updatedPaths);
-    }
+
+    setPaths(updatedPaths); // update paths
+    redrawCanvas(); // redraw canvas
   };
 
   const handleUndo = () => {
-    setHistory((prev) => {
-      if (prev.length === 0) return prev;
-      const last = prev[prev.length - 1];
-      setPaths(last);
-      return prev.slice(0, -1);
+    setHistory((prevHistory) => {
+      if (prevHistory.length === 0) return prevHistory;
+
+      // Get the last snapshot
+      const lastPaths = prevHistory[prevHistory.length - 1];
+
+      // Restore paths
+      setPaths(lastPaths);
+
+      // Remove the last snapshot from history
+      return prevHistory.slice(0, -1);
     });
   };
 
@@ -161,7 +190,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         searchTerm &&
         originalText.toLowerCase().includes(searchTerm.toLowerCase())
       ) {
-        el.style.backgroundColor = "yellow";
+        el.style.backgroundColor = isDarkMode ? "orange" : "yellow";
       } else {
         el.style.backgroundColor = "";
       }
@@ -169,7 +198,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   };
 
   useEffect(() => {
-    highlightMatches();
+    const id = requestAnimationFrame(() => highlightMatches());
+    return () => cancelAnimationFrame(id);
   }, [searchTerm, pageNumber]);
 
   useEffect(() => {
@@ -196,7 +226,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   return (
     <div
-      className={`p-4 h-full rounded-md mt-2 ${
+      className={`h-full rounded-md mt-1 ${
         isDarkMode ? "bg-black text-white" : "bg-white text-black"
       }`}
     >
@@ -212,59 +242,76 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         </Card>
       )}
 
-      <div className="flex flex-row gap-2 mb-4 justify-center rounded-md py-2">
-        <Button onClick={handlePrevPage} variant="outline">
-          <ChevronLeft />
-        </Button>
-        <Button onClick={handleNextPage} variant="outline">
-          <ChevronRight />
-        </Button>
-        <Button
-          variant={tool === "pen" ? "default" : "outline"}
-          onClick={() => setTool("pen")}
+      <div className="relative w-fit overflow-y-auto flex justify-center">
+        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-1/4 bottom-4">
+          <Button onClick={handlePrevPage} variant="outline">
+            <ChevronLeft />
+          </Button>
+          <Button onClick={handleNextPage} variant="outline">
+            <ChevronRight />
+          </Button>
+          <Button
+            variant={tool === "pen" ? "default" : "outline"}
+            onClick={() => setTool("pen")}
+          >
+            <PenIcon />
+          </Button>
+          <Button
+            variant={tool === "highlight" ? "default" : "outline"}
+            onClick={() => setTool("highlight")}
+          >
+            <HighlighterIcon />
+          </Button>
+          <Button variant="outline" onClick={() => setTool("eraser")}>
+            <EraserIcon />
+          </Button>
+          <Button
+            onClick={toggleBookmark}
+            variant={bookmarks.includes(pageNumber) ? "destructive" : "outline"}
+          >
+            {bookmarks.includes(pageNumber) ? (
+              <BookmarkCheck />
+            ) : (
+              <BookmarkIcon />
+            )}
+          </Button>
+          <Button onClick={toggleTheme} variant="outline">
+            {isDarkMode ? <SunIcon /> : <MoonIcon />}
+          </Button>
+        </div>
+        <div
+          style={{
+            filter: isDarkMode ? "invert(1) hue-rotate(180deg)" : "none",
+          }}
         >
-          <PenIcon />
-        </Button>
-        <Button
-          variant={tool === "highlight" ? "default" : "outline"}
-          onClick={() => setTool("highlight")}
-        >
-          <HighlighterIcon />
-        </Button>
-        <Button variant="outline" onClick={() => setTool("eraser")}>
-          <EraserIcon />
-        </Button>
-        <Button
-          onClick={toggleBookmark}
-          variant={bookmarks.includes(pageNumber) ? "destructive" : "outline"}
-        >
-          {bookmarks.includes(pageNumber) ? (
-            <BookmarkCheck />
-          ) : (
-            <BookmarkIcon />
-          )}
-        </Button>
-        <Button onClick={toggleTheme} variant="outline">
-          {isDarkMode ? <SunIcon /> : <MoonIcon />}
-        </Button>
+          <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
+            <Page
+              pageNumber={pageNumber}
+              renderAnnotationLayer={true}
+              renderTextLayer={true}
+            />
+          </Document>
+          <canvas
+            ref={canvasRef}
+            width={800}
+            height={1000}
+            className={`absolute top-0 left-0 z-10 bg-transparent ${
+              tool === "pen" || tool === "highlight" || tool === "eraser"
+                ? "pointer-events-auto"
+                : "pointer-events-none"
+            }`}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+          />
+        </div>
       </div>
 
-      <div className="relative w-fit">
-        <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
-          <Page pageNumber={pageNumber} renderAnnotationLayer renderTextLayer />
-        </Document>
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={1000}
-          className="absolute top-0 left-0 z-10 pointer-events-auto bg-transparent"
-          onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onMouseMove={handleMouseMove}
-        />
-      </div>
-
-      <p className="mt-4 text-sm">
+      <p
+        className={`mt-4 text-sm ${
+          isDarkMode ? "bg-black text-white" : "bg-white text-black"
+        }`}
+      >
         Page {pageNumber} of {numPages} {bookmarks.includes(pageNumber) && "🔖"}
       </p>
     </div>
