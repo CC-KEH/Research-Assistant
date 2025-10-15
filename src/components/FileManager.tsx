@@ -75,7 +75,7 @@ export default function FileManager() {
       onNewProject={handleNewProject}
       onReportBug={handleReportBug}
     >
-      <div className="max-w-xl mx-auto w-full h-[600px] flex flex-col gap-2 overflow-y-auto scrollbar-thin">
+      <div className="max-w-xl mx-auto w-full h-[580px] flex flex-col gap-2 overflow-y-auto scrollbar-thin">
         <KnowledgeStoreButton />
         <TreeView
           data={treeData}

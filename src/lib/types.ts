@@ -9,17 +9,11 @@ export type Paper = {
   type: string;
 };
 
-export enum tabType {
-  libraryTab,
-  fileManagerTab,
-  assistantTab,
-}
-
-export enum fileManagerTab {
-  fileViewerTab,
-  paperViewerTab,
-  markdownViewerTab,
-}
+export type Tab = {
+  id: string;
+  label: string;
+  prompt?: string;
+};
 
 export enum Item {
   directory,

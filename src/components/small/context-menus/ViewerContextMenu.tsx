@@ -8,13 +8,11 @@ import { BugIcon, MoonIcon, Settings } from "lucide-react";
 
 import { ReactNode } from "react";
 
-interface FileViewerContextMenuProps {
+interface ViewerContextMenuProps {
   children: ReactNode;
 }
 
-export const FileViewerContextMenu = ({
-  children,
-}: FileViewerContextMenuProps) => {
+export const ViewerContextMenu = ({ children }: ViewerContextMenuProps) => {
   const handleAction = (action: string) => {
     console.log(`Action selected: ${action}`);
     switch (action) {

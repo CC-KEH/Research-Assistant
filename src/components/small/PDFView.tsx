@@ -226,7 +226,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   return (
     <div
-      className={`h-full rounded-md mt-1 ${
+      className={`h-full rounded-md overflow-hidden ${
         isDarkMode ? "bg-black text-white" : "bg-white text-black"
       }`}
     >

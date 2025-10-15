@@ -1,33 +1,41 @@
 import { Tabs } from "@/components/ui/Tabs";
-import { tabType } from "@/lib/types";
 import {
-  assistantTabs,
-  libraryTabs,
-  paperViewerTabs,
-  canvasViewerTabs,
   fileViewerTabs,
+  markdownViewerTabs,
+  paperViewerTabs,
 } from "@/lib/tabs";
-
-// TODO: Select Tabs Type based on the state of File Selected. paperViewerTabs, canvasViewerTabs, fileViewerTabs.
-
-const tabsMap = {
-  [tabType.libraryTab]: libraryTabs,
-  [tabType.fileManagerTab]: paperViewerTabs,
-  [tabType.assistantTab]: assistantTabs,
-};
+import { Tab } from "@/lib/types";
 
 interface FrameTabsProps {
-  activeTab: tabType;
+  activeTabGroup: Tab[];
+  onTabChange: (tab: string) => void;
 }
 
-export default function FrameTabs({ activeTab }: FrameTabsProps) {
-  const tabsData = tabsMap[activeTab] || [];
+export default function FrameTabs({
+  activeTabGroup,
+  onTabChange,
+}: FrameTabsProps) {
+  let tabsData: any = [];
+
+  switch (activeTabGroup) {
+    case fileViewerTabs:
+      tabsData = fileViewerTabs;
+      break;
+    case paperViewerTabs:
+      tabsData = paperViewerTabs;
+      break;
+    case markdownViewerTabs:
+      tabsData = markdownViewerTabs;
+      break;
+    default:
+      tabsData = [];
+  }
 
   return (
     <div className="mt-[2px] w-full flex justify-center">
       <Tabs
         tabs={tabsData}
-        onTabChange={(tabId) => console.log(`Tab changed to: ${tabId}`)}
+        onTabChange={(tabId: any) => onTabChange(tabId)}
         className="mb-3"
       />
     </div>

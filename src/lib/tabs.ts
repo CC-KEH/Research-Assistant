@@ -13,7 +13,7 @@ export const paperViewerTabs = [
   { id: "arxiv", label: "Arxiv", prompt: "Prompt goes here" },
 ];
 
-export const canvasViewerTabs = [
+export const markdownViewerTabs = [
   { id: "heading", label: "Canvas", prompt: "Prompt goes here" },
 ];
 

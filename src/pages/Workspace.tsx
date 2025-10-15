@@ -3,42 +3,23 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import FileManager from "@/components/FileManager";
-import FrameTabs from "@/components/small/FrameTabs";
-import FileViewer from "@/components/FileViewer";
-import Assistant from "@/components/Assistant";
-import ControlBar from "@/components/small/ControlBar";
-import { FileViewerContextMenu } from "@/components/small/context-menus/FileViewerContextMenu";
-import { AssistantContextMenu } from "@/components/small/context-menus/AssistantContextMenu";
-import { tabType } from "@/lib/types";
+import Frame1 from "@/components/Frame1";
+import Frame2 from "@/components/Frame2";
+import Frame3 from "@/components/Frame3";
 export function Workspace() {
   return (
     <>
       <ResizablePanelGroup direction="horizontal" className="min-h-screen">
         <ResizablePanel defaultSize={25}>
-          <div className="flex h-full w-full items-center justify-center flex-col p-4">
-            <h1 className="text-sm border-b pb-2 mb-3">Library</h1>
-            <FileManager />
-            <ControlBar />
-          </div>
+          <Frame1 />
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={45}>
-          <div className="flex h-full w-full items-center justify-center flex-col p-4">
-            <FrameTabs activeTab={tabType.fileManagerTab} />
-            <FileViewerContextMenu>
-              <FileViewer />
-            </FileViewerContextMenu>
-          </div>
+          <Frame2 />
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={30}>
-          <div className="flex h-full w-full items-center justify-center flex-col p-4">
-            <h1 className="text-sm border-b pb-2 mb-3">GPT-5</h1>
-            <AssistantContextMenu>
-              <Assistant />
-            </AssistantContextMenu>
-          </div>
+          <Frame3 />
         </ResizablePanel>
       </ResizablePanelGroup>
     </>
