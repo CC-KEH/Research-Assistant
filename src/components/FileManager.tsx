@@ -2,6 +2,7 @@ import { useState } from "react";
 import { TreeView } from "@/components/small/Treeview";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
 import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
+import { FileInfo } from "@/lib/types";
 
 type TreeNode = {
   id: string;
@@ -9,7 +10,11 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
-export default function FileManager() {
+interface FileManagerProps {
+  onFileSelect: (file: FileInfo) => void;
+}
+
+export default function FileManager({ onFileSelect }: FileManagerProps) {
   const [treeData, setTreeData] = useState<TreeNode[]>(getLibraryData());
 
   const handleNewFile = () => {
@@ -67,6 +72,22 @@ export default function FileManager() {
     alert("Redirecting to bug report...");
   };
 
+  const handleNodeClick = (node: TreeNode) => {
+    console.log("Clicked:", node.label);
+
+    const isFile = !node.children || node.children.length === 0;
+    if (isFile) {
+      const ext = node.label.split(".").pop()?.toLowerCase() || "";
+      const fileInfo: FileInfo = {
+        name: node.label,
+        type: mapExtensionToType(ext),
+        path: `/virtual/${node.label}`, // customize based on your structure
+      };
+
+      onFileSelect(fileInfo);
+    }
+  };
+
   return (
     <LibraryContextMenu
       onNewFile={handleNewFile}
@@ -79,7 +100,7 @@ export default function FileManager() {
         <KnowledgeStoreButton />
         <TreeView
           data={treeData}
-          onNodeClick={(node) => console.log("Clicked:", node.label)}
+          onNodeClick={handleNodeClick}
           defaultExpandedIds={["1"]}
         />
       </div>
@@ -87,6 +108,24 @@ export default function FileManager() {
   );
 }
 
+function mapExtensionToType(ext: string): string {
+  switch (ext) {
+    case "pdf":
+      return "pdf";
+    case "md":
+      return "markdown";
+    case "txt":
+      return "text";
+    case "xlsx":
+      return "spreadsheet";
+    case "excalidraw":
+      return "drawing";
+    default:
+      return "unknown";
+  }
+}
+
+// --- Static tree data ---
 function getLibraryData(): TreeNode[] {
   return [
     {

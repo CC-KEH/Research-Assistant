@@ -1,12 +1,44 @@
 import Viewer from "@/components/Viewer";
 import { ViewerContextMenu } from "@/components/small/context-menus/ViewerContextMenu";
 import FrameTabs from "@/components/small/FrameTabs";
-import { useState } from "react";
-import { paperViewerTabs } from "@/lib/tabs";
+import { useState, useEffect } from "react";
+import {
+  fileViewerTabs,
+  markdownViewerTabs,
+  paperViewerTabs,
+} from "@/lib/tabs";
+import type { FileInfo } from "@/lib/types";
 
-export default function Frame2() {
+interface Frame2Props {
+  fileInfo: FileInfo | null;
+}
+
+export default function Frame2({ fileInfo }: Frame2Props) {
   const [activeTabGroup, setActiveTabGroup] = useState(paperViewerTabs);
   const [activeTab, setActiveTab] = useState(activeTabGroup[0]?.id);
+  const [filePath, setFilePath] = useState<string>(""); // "/assets/sample.pdf"
+
+  // Update viewer path when a new file is selected
+  useEffect(() => {
+    if (fileInfo?.path) {
+      setFilePath(fileInfo.path);
+      switch (fileInfo.type) {
+        case "pdf":
+        case "docx":
+        case "paper":
+          setActiveTabGroup(paperViewerTabs);
+          break;
+        case "markdown":
+        case "md":
+          setActiveTabGroup(markdownViewerTabs);
+          break;
+        default:
+          setActiveTabGroup(fileViewerTabs);
+          break;
+      }
+      setActiveTab(activeTabGroup[0]?.id);
+    }
+  }, [fileInfo]);
 
   return (
     <div className="flex h-full w-full items-center justify-center flex-col p-4">
@@ -15,7 +47,10 @@ export default function Frame2() {
         <Viewer
           activeTabGroup={activeTabGroup}
           activeTab={activeTab}
-          filePath={"/assets/sample.pdf"}
+          filePath={filePath}
+          fileName={fileInfo?.name}
+          fileType={fileInfo?.type}
+          fileId={fileInfo?.id}
         />
       </ViewerContextMenu>
     </div>

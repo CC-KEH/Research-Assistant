@@ -223,7 +223,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   useEffect(() => {
     redrawCanvas();
   }, [paths, pageNumber]);
-
+  // TODO: Fix the PDF Height
   return (
     <div
       className={`h-full rounded-md overflow-hidden ${

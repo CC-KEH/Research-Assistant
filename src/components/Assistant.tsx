@@ -1,27 +1,21 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Mic, CornerDownLeft, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
 import { ChatMessageList } from "@/components/ui/chat-message-list";
 import { ChatInput } from "@/components/ui/chat-input";
 import { useAnimatedText } from "@/components/ui/animated-text";
-import { ArrowDownIcon } from "@radix-ui/react-icons";
+import type { FileInfo } from "@/lib/types";
 
-export default function Assistant() {
+interface AssistantProps {
+  fileInfo: FileInfo | null;
+}
+
+export default function Assistant({ fileInfo }: AssistantProps) {
   const [messages, setMessages] = useState([
     {
       id: 1,
       content: "Hello! How can I help you today?",
-      sender: "ai",
-    },
-    {
-      id: 2,
-      content: "I have a question about the component library.",
-      sender: "user",
-    },
-    {
-      id: 3,
-      content: "Sure! I'd be happy to help. What would you like to know?",
       sender: "ai",
     },
   ]);
@@ -32,6 +26,18 @@ export default function Assistant() {
     currentAiMessage,
     currentAiMessage ? "" : undefined
   );
+
+  // 2️⃣ Optional: notify user of new file selection
+  useEffect(() => {
+    if (fileInfo) {
+      const systemMessage = {
+        id: messages.length + 1,
+        content: `Selected file: ${fileInfo.name} (${fileInfo.type})`,
+        sender: "system",
+      };
+      setMessages((prev) => [...prev, systemMessage]);
+    }
+  }, [fileInfo]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -47,9 +53,11 @@ export default function Assistant() {
     setInput("");
     setIsLoading(true);
 
+    // Simulate AI response
     setTimeout(() => {
-      const aiResponse =
-        "In my younger and more vulnerable years my father gave me some advice that I've been turning over in my mind ever since..";
+      const aiResponse = fileInfo
+        ? `Analyzing file ${fileInfo.name}... Here's some AI insight.`
+        : "Please select a file first!";
       const newAiMessage = {
         id: messages.length + 2,
         content: aiResponse,
@@ -63,11 +71,10 @@ export default function Assistant() {
   };
 
   const handleMicrophoneClick = () => {};
-  const handleLLMSwitch = () => {}; // TODO: Open Dropdownmenu to select llms
+  const handleLLMSwitch = () => {};
 
   return (
     <div className="h-full border bg-background rounded-lg flex flex-col relative">
-      {/* Chat messages container with fixed height for scrolling */}
       <div className="flex-1 min-h-0 relative">
         <ChatMessageList>
           {messages.map((message, index) => {
@@ -80,10 +87,22 @@ export default function Assistant() {
             return (
               <ChatBubble
                 key={message.id}
-                variant={message.sender === "user" ? "sent" : "received"}
+                variant={
+                  message.sender === "user"
+                    ? "sent"
+                    : message.sender === "system"
+                    ? undefined
+                    : "received"
+                }
               >
                 <ChatBubbleMessage
-                  variant={message.sender === "user" ? "sent" : "received"}
+                  variant={
+                    message.sender === "user"
+                      ? "sent"
+                      : message.sender === "system"
+                      ? undefined
+                      : "received"
+                  }
                 >
                   {isAnimated ? animatedText : message.content}
                 </ChatBubbleMessage>
@@ -98,7 +117,6 @@ export default function Assistant() {
         </ChatMessageList>
       </div>
 
-      {/* Input form fixed at the bottom */}
       <div className="p-4 border-t shrink-0 bg-background z-10">
         <form
           onSubmit={handleSubmit}

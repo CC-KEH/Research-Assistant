@@ -11,12 +11,18 @@ interface ViewerProps {
   activeTabGroup: Tab[];
   activeTab: string;
   filePath: string;
+  fileName?: string;
+  fileType?: string;
+  fileId?: string;
 }
 
 export default function Viewer({
   activeTabGroup,
   activeTab,
   filePath,
+  fileName,
+  fileType,
+  fileId,
 }: ViewerProps) {
   // Determine group type from first tab (assuming all tabs in group have same type)
   // Inner active tab state

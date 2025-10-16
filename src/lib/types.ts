@@ -26,3 +26,11 @@ export enum BugType {
   assistant,
   enhancement,
 }
+// /lib/types.ts
+export interface FileInfo {
+  name: string;
+  type: string;
+  path: string;
+  size?: number;
+  id?: string;
+}
