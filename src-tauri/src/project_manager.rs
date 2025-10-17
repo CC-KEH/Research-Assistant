@@ -4,7 +4,7 @@ use crate::models::{
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -175,4 +175,73 @@ pub fn create_new_project(
     fs::write(&projects_file, updated_json).map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FileInfo {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub file_type: String,
+}
+
+#[command]
+fn upload_to_knowledge_store(
+    source_path: String,
+    project_root: String,
+) -> Result<FileInfo, String> {
+    let src = PathBuf::from(&source_path);
+
+    if !src.exists() {
+        return Err("Source file does not exist".into());
+    }
+
+    // Ensure KnowledgeStore folder exists
+    let store_dir = Path::new(&project_root).join("KnowledgeStore");
+    if !store_dir.exists() {
+        fs::create_dir(&store_dir).map_err(|e| e.to_string())?;
+    }
+
+    let file_name = src
+        .file_name()
+        .ok_or("Invalid file name")?
+        .to_string_lossy()
+        .to_string();
+
+    let mut dest = store_dir.join(&file_name);
+
+    // Avoid overwriting by appending a unique suffix
+    if dest.exists() {
+        let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+        let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
+        let unique_name = if ext.is_empty() {
+            format!("{}_{}", stem, tauri::generate_uuid())
+        } else {
+            format!("{}_{}.{}", stem, tauri::generate_uuid(), ext)
+        };
+        dest = store_dir.join(unique_name);
+    }
+
+    // Copy the file into KnowledgeStore
+    fs::copy(&src, &dest).map_err(|e| e.to_string())?;
+
+    // Gather metadata
+    let ext = dest
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("unknown")
+        .to_lowercase();
+
+    let info = FileInfo {
+        id: tauri::generate_uuid(),
+        name: dest
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        path: dest.display().to_string(),
+        file_type: ext,
+    };
+
+    Ok(info)
 }

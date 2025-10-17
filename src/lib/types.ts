@@ -31,6 +31,5 @@ export interface FileInfo {
   name: string;
   type: string;
   path: string;
-  size?: number;
-  id?: string;
+  id: string;
 }

@@ -1,6 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { BugType, Item, Project } from "./types";
 import { Config } from "@/lib/interfaces";
+import { open } from "@tauri-apps/plugin-dialog";
+import { FileInfo } from "@/lib/types";
+import { randomUUID } from "crypto";
+import { copyFile } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 //*********************** */
 //* File System Functions
@@ -35,11 +41,74 @@ export const listDir = async (dirPath: string) => {
 export const createDir = async (dirPath: string) => {
   try {
     await invoke("create_dir", { dirPath });
-    console.log("Directory created successfully");
+    console.log("Directory created successfully:", dirPath);
   } catch (err) {
     console.error("Error creating directory:", err);
   }
 };
+
+export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
+  const selected = await open({
+    multiple: true,
+    filters: [
+      {
+        name: "Documents",
+        extensions: ["pdf", "md", "txt", "docx", "xlsx", "excalidraw"],
+      },
+    ],
+  });
+
+  if (!selected || (Array.isArray(selected) && selected.length === 0))
+    return [];
+
+  const files = Array.isArray(selected) ? selected : [selected];
+  const knowledgeStorePath = await join(projectRoot, "KnowledgeStore");
+
+  // 2. Ensure KnowledgeStore folder exists
+  if (!(await existsSync(knowledgeStorePath))) {
+    await createDir(knowledgeStorePath);
+  }
+
+  // 3. Copy each selected file and collect metadata
+  const fileInfos: FileInfo[] = [];
+
+  for (const filePath of files) {
+    const fileName = filePath.split(/[/\\]/).pop()!;
+    const fileExt = fileName.split(".").pop()?.toLowerCase() ?? "unknown";
+    const destPath = await join(knowledgeStorePath, fileName);
+
+    // Copy file into KnowledgeStore
+    await copyFile(filePath, destPath);
+
+    const fileInfo: FileInfo = {
+      id: randomUUID(),
+      name: fileName,
+      type: mapExtensionToType(fileExt),
+      path: destPath,
+    };
+
+    fileInfos.push(fileInfo);
+  }
+
+  return fileInfos;
+}
+
+function mapExtensionToType(ext: string): string {
+  switch (ext) {
+    case "pdf":
+      return "pdf";
+    case "md":
+      return "markdown";
+    case "txt":
+      return "text";
+    case "xlsx":
+      return "spreadsheet";
+    case "excalidraw":
+      return "drawing";
+    default:
+      return "unknown";
+  }
+}
 
 //*********************** */
 //* Config Functions

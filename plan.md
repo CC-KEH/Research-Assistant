@@ -1,10 +1,15 @@
 # Todos
 
-- [ ] Fixes: 
+### Version 2.0
+
+- [ ] 
+- [ ] Create Complete Report, out of The Tabs, in PDF Format.
+- [ ] Fixes: Cleanup, Bugs
+
+### Version 2.5
+
 - [ ] Theme: https://dribbble.com/shots/23986240-A-Dynamic-Sidebar-Navigation
 - [ ] Execute Python Program: Coming Soon
-- [ ] Create Complete Report, out of The Tabs, in PDF Format.
-- [ ] Create Separate Section: Bookmarks, Highlights, Todos.
 
 ---
 

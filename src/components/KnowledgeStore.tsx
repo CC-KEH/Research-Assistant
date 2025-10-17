@@ -1,5 +1,4 @@
-// npx shadcn@latest add "https://21st.dev/r/isaiahbjork/agent-plan"
-// TODO: Show this once the papers are loaded.
+// npx shadcn@latest add "https://21st.dev/r/isaiahbjork/"
 import React, { useState } from "react";
 import {
   Table,
@@ -11,18 +10,12 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Paper } from "@/lib/types";
-
-const mockPapers: Paper[] = [
-  { id: "1", name: "AI in Medicine", type: "PDF" },
-  { id: "2", name: "Quantum Computing Basics", type: "PDF" },
-  { id: "3", name: "Neural Networks", type: "PDF" },
-  { id: "4", name: "Machine Learning 101", type: "PDF" },
-  { id: "5", name: "Edge AI", type: "PDF" },
-];
+import { FileInfo } from "@/lib/types";
+import { uploadFiles } from "@/lib/backend";
 
 export default function KnowledgeStore() {
-  const [papers, setPapers] = useState<Paper[]>(mockPapers);
+  const projectRoot = "/Users/you/Projects/MyProject"; // TODO: dynamic later, Create a Provider in Workspace
+  const [papers, setPapers] = useState<FileInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [lastCheckedIndex, setLastCheckedIndex] = useState<number | null>(null);
 
@@ -59,19 +52,17 @@ export default function KnowledgeStore() {
     }
   };
 
+  const addPaper = async () => {
+    const newFiles = await uploadFiles(projectRoot);
+    if (newFiles.length > 0) {
+      setPapers((prev) => [...prev, ...newFiles]);
+    }
+  };
+
   const removeSelected = () => {
     setPapers(papers.filter((p) => !selected.has(p.id)));
     setSelected(new Set());
     setLastCheckedIndex(null);
-  };
-
-  const addPaper = () => {
-    const newPaper: Paper = {
-      id: Date.now().toString(),
-      name: `New Paper ${papers.length + 1}`,
-      type: "Unknown",
-    };
-    setPapers([...papers, newPaper]);
   };
 
   return (

@@ -10,11 +10,11 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
-interface FileManagerProps {
+interface LibraryProps {
   onFileSelect: (file: FileInfo) => void;
 }
 
-export default function FileManager({ onFileSelect }: FileManagerProps) {
+export default function Library({ onFileSelect }: LibraryProps) {
   const [treeData, setTreeData] = useState<TreeNode[]>(getLibraryData());
 
   const handleNewFile = () => {
@@ -81,7 +81,8 @@ export default function FileManager({ onFileSelect }: FileManagerProps) {
       const fileInfo: FileInfo = {
         name: node.label,
         type: mapExtensionToType(ext),
-        path: `/virtual/${node.label}`, // customize based on your structure
+        path: `/virtual/${node.label}`,
+        id: `${node.label}`,
       };
 
       onFileSelect(fileInfo);
