@@ -5,6 +5,8 @@ use crate::models::{
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use tauri::command;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -177,16 +179,17 @@ pub fn create_new_project(
     Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FileInfo {
     pub id: String,
     pub name: String,
     pub path: String,
+    #[serde(rename = "type")]
     pub file_type: String,
 }
 
-#[command]
-fn upload_to_knowledge_store(
+#[tauri::command]
+pub fn upload_to_knowledge_store(
     source_path: String,
     project_root: String,
 ) -> Result<FileInfo, String> {
@@ -199,7 +202,7 @@ fn upload_to_knowledge_store(
     // Ensure KnowledgeStore folder exists
     let store_dir = Path::new(&project_root).join("KnowledgeStore");
     if !store_dir.exists() {
-        fs::create_dir(&store_dir).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&store_dir).map_err(|e| e.to_string())?;
     }
 
     let file_name = src
@@ -215,9 +218,9 @@ fn upload_to_knowledge_store(
         let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
         let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
         let unique_name = if ext.is_empty() {
-            format!("{}_{}", stem, tauri::generate_uuid())
+            format!("{}_{}", stem, Uuid::new_v4())
         } else {
-            format!("{}_{}.{}", stem, tauri::generate_uuid(), ext)
+            format!("{}_{}.{}", stem, Uuid::new_v4(), ext)
         };
         dest = store_dir.join(unique_name);
     }
@@ -232,16 +235,32 @@ fn upload_to_knowledge_store(
         .unwrap_or("unknown")
         .to_lowercase();
 
+    let file_type = map_extension_to_type(&ext);
+
     let info = FileInfo {
-        id: tauri::generate_uuid(),
+        id: Uuid::new_v4().to_string(),
         name: dest
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string(),
         path: dest.display().to_string(),
-        file_type: ext,
+        file_type,
     };
 
     Ok(info)
+}
+
+#[tauri::command]
+pub fn map_extension_to_type(ext: &str) -> String {
+    match ext {
+        "pdf" => "PDF",
+        "md" => "Markdown",
+        "txt" => "Text",
+        "docx" => "Word Document",
+        "xlsx" => "Excel Spreadsheet",
+        "excalidraw" => "Excalidraw",
+        _ => "Unknown",
+    }
+    .to_string()
 }

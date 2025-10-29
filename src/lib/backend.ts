@@ -3,10 +3,6 @@ import { BugType, Item, Project } from "./types";
 import { Config } from "@/lib/interfaces";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FileInfo } from "@/lib/types";
-import { randomUUID } from "crypto";
-import { copyFile } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
 
 //*********************** */
 //* File System Functions
@@ -62,32 +58,20 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
     return [];
 
   const files = Array.isArray(selected) ? selected : [selected];
-  const knowledgeStorePath = await join(projectRoot, "KnowledgeStore");
-
-  // 2. Ensure KnowledgeStore folder exists
-  if (!(await existsSync(knowledgeStorePath))) {
-    await createDir(knowledgeStorePath);
-  }
-
-  // 3. Copy each selected file and collect metadata
   const fileInfos: FileInfo[] = [];
 
+  // Upload each file through the Rust backend
   for (const filePath of files) {
-    const fileName = filePath.split(/[/\\]/).pop()!;
-    const fileExt = fileName.split(".").pop()?.toLowerCase() ?? "unknown";
-    const destPath = await join(knowledgeStorePath, fileName);
-
-    // Copy file into KnowledgeStore
-    await copyFile(filePath, destPath);
-
-    const fileInfo: FileInfo = {
-      id: randomUUID(),
-      name: fileName,
-      type: mapExtensionToType(fileExt),
-      path: destPath,
-    };
-
-    fileInfos.push(fileInfo);
+    try {
+      const fileInfo = await invoke<FileInfo>("upload_to_knowledge_store", {
+        sourcePath: filePath,
+        projectRoot: projectRoot,
+      });
+      fileInfos.push(fileInfo);
+    } catch (error) {
+      console.error(`Failed to upload ${filePath}:`, error);
+      // Optionally continue with other files or throw
+    }
   }
 
   return fileInfos;

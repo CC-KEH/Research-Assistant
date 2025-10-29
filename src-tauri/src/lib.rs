@@ -15,7 +15,9 @@ pub fn run() {
             list_dir,
             create_dir,
             read_file,
-            write_file
+            write_file,
+            map_extension_to_type,
+            upload_to_knowledge_store,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
