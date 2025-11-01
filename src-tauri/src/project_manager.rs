@@ -59,21 +59,64 @@ pub fn update_config(config_path: &str, new_config: Config) -> Result<(), String
 }
 
 #[tauri::command]
-pub fn get_previous_projects() -> Result<Vec<ProjectEntry>, String> {
-    // 1️⃣ Get the current working directory (root of your Tauri app)
-    let root_dir = std::env::current_dir().map_err(|e| e.to_string())?;
-    let projects_file = root_dir.join("projects.json");
+pub fn get_previous_projects(app_handle: tauri::AppHandle) -> Result<Vec<ProjectEntry>, String> {
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("🔍 START: Getting previous projects");
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+    // 1️⃣ Get the app data directory
+    let app_dir = app_handle.path().app_data_dir().map_err(|e| {
+        let err = format!("Could not determine app data directory: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+
+    println!("📂 App data directory: {}", app_dir.display());
+
+    let projects_file = app_dir.join("projects.json");
+    println!("📄 Projects file path: {}", projects_file.display());
 
     // 2️⃣ If file doesn't exist, return an empty Vec
     if !projects_file.exists() {
+        println!("⚠️  projects.json doesn't exist, returning empty list");
         return Ok(Vec::new());
     }
 
+    println!("✅ projects.json exists, reading...");
+
     // 3️⃣ Read the JSON file
-    let contents = fs::read_to_string(&projects_file).map_err(|e| e.to_string())?;
+    let contents = fs::read_to_string(&projects_file).map_err(|e| {
+        let err = format!("Failed to read projects.json: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+
+    println!("📖 File contents: {}", contents);
 
     // 4️⃣ Deserialize into Vec<ProjectEntry>
-    let projects: Vec<ProjectEntry> = serde_json::from_str(&contents).unwrap_or_default();
+    let projects: Vec<ProjectEntry> = serde_json::from_str(&contents).unwrap_or_else(|e| {
+        println!(
+            "⚠️  Failed to parse projects.json ({}), returning empty list",
+            e
+        );
+        Vec::new()
+    });
+
+    println!("📊 Found {} project(s)", projects.len());
+
+    // Print each project
+    for (i, project) in projects.iter().enumerate() {
+        println!(
+            "  {}. Name: '{}', Path: '{}'",
+            i + 1,
+            project.project_name,
+            project.project_path
+        );
+    }
+
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("✅ Returning {} project(s)", projects.len());
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     // 5️⃣ Return result
     Ok(projects)

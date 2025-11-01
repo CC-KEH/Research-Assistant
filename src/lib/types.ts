@@ -1,8 +1,7 @@
 export type Project = {
-  name: string;
-  path: string;
+  projectName: string;
+  projectPath: string;
 };
-
 export type Paper = {
   id: string;
   name: string;

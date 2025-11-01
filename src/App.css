@@ -140,6 +140,9 @@
   h1 {
     @apply text-2xl font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 mb-3
   }
+  h3 {
+    @apply text-lg font-semibold text-muted-foreground uppercase tracking-wide pb-2 mb-1
+  }
   h4 {
     @apply  font-light text-muted-foreground tracking-wide
   }

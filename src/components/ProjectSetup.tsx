@@ -41,16 +41,22 @@ export function ProjectSetup() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
+        console.log("🔍 Fetching projects...");
         const result = await getPreviousProjects();
+
+        console.log("📦 Raw result:", result);
+        console.log("📦 Result type:", typeof result);
+        console.log("📦 Is array?", Array.isArray(result));
 
         // Type narrow or cast the result
         if (Array.isArray(result)) {
+          console.log("✅ Setting projects:", result);
           setPreviousProjects(result as Project[]);
         } else {
-          console.warn("Unexpected format for previous projects:", result);
+          console.warn("⚠️ Unexpected format for previous projects:", result);
         }
       } catch (error) {
-        console.error("Error fetching previous projects", error);
+        console.error("❌ Error fetching previous projects:", error);
       }
     };
 
@@ -93,6 +99,7 @@ export function ProjectSetup() {
     }
   };
   let navigate = useNavigate();
+
   function onLoadProjectSubmit(values: z.infer<typeof formSchema>) {
     console.log("Submitted:", values);
     // TODO: Send path to backend, and navigate to Workspace.
@@ -156,21 +163,25 @@ export function ProjectSetup() {
               )}
             />
             {/* Show list of previous projects here*/}
-            Recent Projects
-            <ul className="space-y-2">
-              {previousProjects.map((item, index) => (
-                <li
-                  key={index}
-                  onClick={() => form.setValue("projectpath", item.path)}
-                  className="cursor-pointer hover:bg-muted p-2 rounded transition"
-                >
-                  <div className="font-semibold">{item.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {item.path}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div>
+              Recent Projects
+              <ul className="space-y-2 mt-3">
+                {previousProjects.map((item, index) => (
+                  <li
+                    key={index}
+                    onClick={() =>
+                      form.setValue("projectpath", item.projectPath)
+                    }
+                    className="cursor-pointer hover:bg-muted p-2 rounded transition"
+                  >
+                    <div className="font-semibold">{item.projectName}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {item.projectPath}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <Button type="submit">Submit</Button>
           </form>
         </Form>
