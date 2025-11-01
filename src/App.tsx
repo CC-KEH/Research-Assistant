@@ -1,11 +1,11 @@
+import "@/App.css";
 import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ConfigProvider } from "@/components/providers/ConfigProvider";
-import "@/App.css";
-import Welcome from "@/pages/Welcome";
 import { ProjectSetup } from "@/components/ProjectSetup";
 import { Workspace } from "@/pages/Workspace";
+import Welcome from "@/pages/Welcome";
 import About from "@/pages/About";
 import Settings from "@/components/Settings";
 import KnowledgeStore from "@/components/KnowledgeStore";

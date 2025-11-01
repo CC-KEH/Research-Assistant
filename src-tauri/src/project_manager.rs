@@ -5,7 +5,7 @@ use crate::models::{
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::command;
+use tauri::Manager;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,30 +81,79 @@ pub fn get_previous_projects() -> Result<Vec<ProjectEntry>, String> {
 
 #[tauri::command]
 pub fn create_new_project(
+    app_handle: tauri::AppHandle,
     project_name: &str,
     project_path: &str,
     resources_path: &str,
-) -> Result<(), String> {
+) -> Result<String, String> {
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("🚀 START: Creating new project");
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("📝 Project Name: {}", project_name);
+    println!("📂 Project Path: {}", project_path);
+    println!("📦 Resources Path: {}", resources_path);
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+    // Validate inputs
+    if project_name.trim().is_empty() {
+        let err = "Project name cannot be empty".to_string();
+        println!("❌ ERROR: {}", err);
+        return Err(err);
+    }
+
+    if project_path.trim().is_empty() {
+        let err = "Project path cannot be empty".to_string();
+        println!("❌ ERROR: {}", err);
+        return Err(err);
+    }
+
     let project_dir = Path::new(project_path);
+    println!("✅ Parsed project directory path");
 
     // 1️⃣ Create main project directory
+    println!("\n📁 Step 1: Creating main project directory...");
     if !project_dir.exists() {
-        fs::create_dir_all(project_dir).map_err(|e| e.to_string())?;
+        println!("   ↳ Directory doesn't exist, creating...");
+        fs::create_dir_all(project_dir).map_err(|e| {
+            let err = format!(
+                "Failed to create project directory '{}': {}",
+                project_dir.display(),
+                e
+            );
+            println!("❌ {}", err);
+            err
+        })?;
+        println!("   ✅ Project directory created successfully");
+    } else {
+        println!("   ℹ️  Project directory already exists");
     }
 
     // 2️⃣ Create subdirectories
+    println!("\n📁 Step 2: Creating subdirectories...");
     let subdirs = ["Documents", "Notes", "Canvas"];
     for dir in &subdirs {
+        println!("   ↳ Creating '{}'...", dir);
         let dir_path = project_dir.join(dir);
-        fs::create_dir_all(&dir_path).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&dir_path).map_err(|e| {
+            let err = format!("Failed to create subdirectory '{}': {}", dir, e);
+            println!("❌ {}", err);
+            err
+        })?;
+        println!("   ✅ '{}' created", dir);
     }
+    println!("✅ All subdirectories created successfully");
 
     // 3️⃣ Prepare file paths
+    println!("\n📄 Step 3: Preparing file paths...");
     let config_path = project_dir.join("config.json");
     let bookmarks_path = project_dir.join("bookmarks.json");
     let chat_history_path = project_dir.join("chat_history.json");
+    println!("   ✅ Config path: {}", config_path.display());
+    println!("   ✅ Bookmarks path: {}", bookmarks_path.display());
+    println!("   ✅ Chat history path: {}", chat_history_path.display());
 
     // 4️⃣ Build default Config structure
+    println!("\n⚙️  Step 4: Building default configuration...");
     let default_config = Config {
         basic_config: vec![BasicConfig {
             project_name: project_name.to_string(),
@@ -142,41 +191,122 @@ pub fn create_new_project(
             api_key: "".into(),
         },
     };
+    println!("   ✅ Configuration structure built");
 
     // 5️⃣ Write config.json
-    let config_json = serde_json::to_string_pretty(&default_config).map_err(|e| e.to_string())?;
-    fs::write(&config_path, config_json).map_err(|e| e.to_string())?;
+    println!("\n💾 Step 5: Writing config.json...");
+    let config_json = serde_json::to_string_pretty(&default_config).map_err(|e| {
+        let err = format!("Failed to serialize config: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+    fs::write(&config_path, config_json).map_err(|e| {
+        let err = format!("Failed to write config.json: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+    println!("   ✅ config.json written successfully");
 
     // 6️⃣ Initialize empty JSON files
-    fs::write(&bookmarks_path, "{}").map_err(|e| e.to_string())?;
-    fs::write(&chat_history_path, "{}").map_err(|e| e.to_string())?;
+    println!("\n💾 Step 6: Initializing empty JSON files...");
 
-    // 7️⃣ Update global `projects.json` located in the codebase root
-    let root_dir = std::env::current_dir().map_err(|e| e.to_string())?;
-    let projects_file = root_dir.join("projects.json");
+    println!("   ↳ Writing bookmarks.json...");
+    fs::write(&bookmarks_path, "{}").map_err(|e| {
+        let err = format!("Failed to write bookmarks.json: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+    println!("   ✅ bookmarks.json created");
+
+    println!("   ↳ Writing chat_history.json...");
+    fs::write(&chat_history_path, "{}").map_err(|e| {
+        let err = format!("Failed to write chat_history.json: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+    println!("   ✅ chat_history.json created");
+
+    // 7️⃣ Update global `projects.json` located in app data directory
+    println!("\n📋 Step 7: Updating global projects.json...");
+
+    // For Tauri v2, use the path resolver
+    let app_dir = app_handle.path().app_data_dir().map_err(|e| {
+        let err = format!("Could not determine app data directory: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+
+    println!("   ↳ App data directory: {}", app_dir.display());
+
+    // Create app data directory if it doesn't exist
+    if !app_dir.exists() {
+        println!("   ↳ Creating app data directory...");
+        fs::create_dir_all(&app_dir).map_err(|e| {
+            let err = format!("Failed to create app data directory: {}", e);
+            println!("❌ {}", err);
+            err
+        })?;
+    }
+
+    let projects_file = app_dir.join("projects.json");
+    println!("   ↳ Projects file path: {}", projects_file.display());
 
     let mut projects: Vec<ProjectEntry> = if projects_file.exists() {
-        let contents = fs::read_to_string(&projects_file).map_err(|e| e.to_string())?;
-        serde_json::from_str(&contents).unwrap_or_default()
+        println!("   ↳ Reading existing projects.json...");
+        let contents = fs::read_to_string(&projects_file).map_err(|e| {
+            let err = format!("Failed to read projects.json: {}", e);
+            println!("❌ {}", err);
+            err
+        })?;
+        serde_json::from_str(&contents).unwrap_or_else(|e| {
+            println!(
+                "   ⚠️  Warning: Could not parse projects.json ({}), starting fresh",
+                e
+            );
+            Vec::new()
+        })
     } else {
+        println!("   ↳ projects.json doesn't exist, creating new list");
         Vec::new()
     };
 
     // Prevent duplicates
-    if !projects
+    let duplicate = projects
         .iter()
-        .any(|p| p.project_name == project_name || p.project_path == project_path)
-    {
+        .any(|p| p.project_name == project_name || p.project_path == project_path);
+
+    if duplicate {
+        println!("   ⚠️  Project already exists in projects list");
+    } else {
+        println!("   ↳ Adding project to list...");
         projects.push(ProjectEntry {
             project_name: project_name.to_string(),
             project_path: project_path.to_string(),
         });
+        println!("   ✅ Project added to list");
     }
 
-    let updated_json = serde_json::to_string_pretty(&projects).map_err(|e| e.to_string())?;
-    fs::write(&projects_file, updated_json).map_err(|e| e.to_string())?;
+    println!("   ↳ Writing updated projects.json...");
+    let updated_json = serde_json::to_string_pretty(&projects).map_err(|e| {
+        let err = format!("Failed to serialize projects list: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+    fs::write(&projects_file, updated_json).map_err(|e| {
+        let err = format!("Failed to write projects.json: {}", e);
+        println!("❌ {}", err);
+        err
+    })?;
+    println!("   ✅ projects.json updated successfully");
 
-    Ok(())
+    println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("🎉 SUCCESS: Project '{}' created!", project_name);
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+    Ok(format!(
+        "Project '{}' created successfully at {}",
+        project_name, project_path
+    ))
 }
 
 #[derive(Debug, Serialize, Deserialize)]

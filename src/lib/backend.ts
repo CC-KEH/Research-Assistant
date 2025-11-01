@@ -135,13 +135,23 @@ export const createProject = async (
   resources_path: string
 ) => {
   try {
-    await invoke("create_new_project", {
-      project_name,
-      project_path,
-      resources_path,
+    console.log("🚀 Calling create_new_project with:", {
+      projectName: project_name,
+      projectPath: project_path,
+      resourcesPath: resources_path,
     });
+
+    const result = await invoke("create_new_project", {
+      projectName: project_name, // ← Changed from project_name
+      projectPath: project_path, // ← Changed from project_path
+      resourcesPath: resources_path, // ← Changed from resources_path
+    });
+
+    console.log("✅ Project created successfully:", result);
+    return result;
   } catch (error) {
-    console.log("Error creating a project.");
+    console.error("❌ Error creating a project:", error);
+    throw error; // Re-throw so the caller knows it failed
   }
 };
 

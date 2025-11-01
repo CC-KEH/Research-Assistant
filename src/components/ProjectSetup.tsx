@@ -100,11 +100,21 @@ export function ProjectSetup() {
     navigate("/Workspace");
   }
 
-  function onCreateProjectSubmit(values: z.infer<typeof formSchema>) {
+  async function onCreateProjectSubmit(values: z.infer<typeof formSchema>) {
     console.log("Submitted:", values);
-    // TODO: Send path to create_project, navigate to Workspace.
-    createProject(values.projectname, values.projectpath, values.resourcespath);
-    navigate("/Workspace");
+    try {
+      await createProject(
+        values.projectname,
+        values.projectpath,
+        values.resourcespath
+      );
+      console.log("✅ Project created, navigating...");
+      navigate("/Workspace");
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      // Show error to user (toast, alert, etc.)
+      alert("Failed to create project: " + error);
+    }
   }
 
   return (
