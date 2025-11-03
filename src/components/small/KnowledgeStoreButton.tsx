@@ -15,7 +15,7 @@ export function KnowledgeStoreButton() {
         onClick={() => setOpen(true)}
       >
         <div className="space-y-1 mr-24">
-          <h3>Knowledge Store</h3>
+          Knowledge Store
           <p className="whitespace-break-spaces font-normal text-muted-foreground">
             All your resources, in one place.
           </p>

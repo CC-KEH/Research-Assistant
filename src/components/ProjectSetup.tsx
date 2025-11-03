@@ -16,9 +16,15 @@ import { open } from "@tauri-apps/plugin-dialog";
 
 import { useEffect, useState } from "react";
 import { Tabs } from "./ui/Tabs";
-import { createProject, getConfig, getPreviousProjects } from "@/lib/backend";
+import {
+  createProject,
+  getConfig,
+  getPreviousProjects,
+  loadConfig,
+} from "@/lib/backend";
 import { Project } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
+import { Config } from "@/lib/interfaces";
 
 const formSchema = z.object({
   projectname: z.string().min(2, {
@@ -100,11 +106,11 @@ export function ProjectSetup() {
   };
   let navigate = useNavigate();
 
-  function onLoadProjectSubmit(values: z.infer<typeof formSchema>) {
+  async function onLoadProjectSubmit(values: z.infer<typeof formSchema>) {
     console.log("Submitted:", values);
-    // TODO: Send path to backend, and navigate to Workspace.
-    getConfig(values.projectpath);
+    localStorage.setItem("projectPath", values.projectpath);
     navigate("/Workspace");
+    window.location.reload(); // Reload to trigger ConfigProvider
   }
 
   async function onCreateProjectSubmit(values: z.infer<typeof formSchema>) {
@@ -115,11 +121,12 @@ export function ProjectSetup() {
         values.projectpath,
         values.resourcespath
       );
-      console.log("✅ Project created, navigating...");
+      console.log("✅ Project created");
+      localStorage.setItem("projectPath", values.projectpath);
       navigate("/Workspace");
+      window.location.reload(); // Reload to trigger ConfigProvider
     } catch (error) {
       console.error("Failed to create project:", error);
-      // Show error to user (toast, alert, etc.)
       alert("Failed to create project: " + error);
     }
   }

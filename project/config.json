@@ -9,10 +9,12 @@
     "bookmarks": [
         {
             "file_name": "",
+            "file_path": "",
             "page_no": ""
         },
         {
             "file_name": "",
+            "file_path": "",
             "page_no": ""
         }
     ],
@@ -66,22 +68,70 @@
             }
         ]
     },
-    "llmConfig": {
-        "name": "openai",
-        "label": "GPT-3.5",
-        "value": "gpt-3.5",
-        "api_key": ""
-    },
-    "embeddingsConfig": {
-        "name": "openai",
-        "label": "OpenAI",
-        "value": "openai",
-        "api_key": ""
-    },
-    "vectorStoreConfig": {
-        "name": "Pinecone",
-        "label": "Pinecone",
-        "value": "Pinecone",
-        "api_key": ""
-    }
+    "llmConfig": [
+        {
+            "name": "openai",
+            "label": "GPT-3.5",
+            "value": "gpt-3.5",
+            "api_key": ""
+        },
+        {
+            "name": "google",
+            "label": "Gemini",
+            "value": "gemini",
+            "api_key": ""
+        },
+        {
+            "name": "anthropic",
+            "label": "Claude",
+            "value": "claude",
+            "api_key": ""
+        },
+        {
+            "name": "xai",
+            "label": "Grok",
+            "value": "grok",
+            "api_key": ""
+        }
+    ],
+    "embeddingsConfig": [
+        {
+            "name": "openai",
+            "label": "OpenAI",
+            "value": "openai",
+            "api_key": ""
+        },
+        {
+            "name": "google",
+            "label": "Gemini",
+            "value": "gemini",
+            "api_key": ""
+        },
+        {
+            "name": "voyage",
+            "label": "Voyage",
+            "value": "voyage",
+            "api_key": ""
+        }
+    ],
+    "vectorStoreConfig": [
+        {
+            "name": "Pinecone",
+            "label": "Pinecone",
+            "value": "Pinecone",
+            "api_key": ""
+        },
+        {
+            "name": "Weaviate",
+            "label": "Weaviate",
+            "value": "weaviate",
+            "api_key": ""
+        },
+        {
+            "name": "Chroma",
+            "label": "Chroma",
+            "value": "chroma",
+            "api_key": ""
+        }
+    ]
 }

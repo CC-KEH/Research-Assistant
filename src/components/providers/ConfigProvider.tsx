@@ -15,14 +15,18 @@ export const ConfigProvider = ({
   configPath,
   children,
 }: {
-  configPath: string;
+  configPath: string | null;
   children: React.ReactNode;
 }) => {
   const [config, setConfig] = useState<Config | null>(null);
-
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const reloadConfig = async () => {
+    if (!configPath) {
+      setConfig(null);
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await getConfig(configPath);
@@ -36,8 +40,12 @@ export const ConfigProvider = ({
   };
 
   useEffect(() => {
-    reloadConfig();
-  }, [configPath]); // re-run when project changes
+    if (configPath) {
+      reloadConfig();
+    } else {
+      setConfig(null);
+    }
+  }, [configPath]);
 
   return (
     <ConfigContext.Provider

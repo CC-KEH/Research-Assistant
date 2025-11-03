@@ -15,9 +15,9 @@ pub struct Config {
     pub bookmarks: Vec<Bookmark>,
     pub knowledge_store_config: KnowledgeStoreConfig,
     pub tabs_config: TabsConfig,
-    pub llm_config: LLMConfig,
-    pub embeddings_config: EmbeddingsConfig,
-    pub vector_store_config: VectorStoreConfig,
+    pub llm_config: Vec<LLMConfig>, // Changed to Vec<LLMConfig>
+    pub embeddings_config: Vec<EmbeddingsConfig>, // Changed to Vec<EmbeddingsConfig>
+    pub vector_store_config: Vec<VectorStoreConfig>, // Changed to Vec<VectorStoreConfig>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,6 +32,7 @@ pub struct BasicConfig {
 #[serde(rename_all = "camelCase")]
 pub struct Bookmark {
     pub file_name: String,
+    pub file_path: String, // Add this field
     pub page_no: String,
 }
 

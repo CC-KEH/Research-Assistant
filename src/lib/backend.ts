@@ -107,6 +107,16 @@ export const getConfig = async (configPath: string): Promise<Config | null> => {
   }
 };
 
+export const loadConfig = async (config: Config) => {
+  try {
+    // TODO: update project config based on config
+    console.log("Config loaded successfully");
+  } catch (error) {
+    console.error("Failed to load config:", error);
+    return null;
+  }
+};
+
 export const updateConfig = async (configPath: string, newConfig: Config) => {
   try {
     await invoke("update_config", { configPath, newConfig });

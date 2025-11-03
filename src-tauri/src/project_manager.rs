@@ -208,31 +208,106 @@ pub fn create_new_project(
             files: Vec::<KnowledgeFile>::new(),
         },
         tabs_config: TabsConfig {
-            tabs: vec![Tab {
-                id: "1".into(),
-                label: "Default Tab".into(),
-                prompt: "You can customize this tab later.".into(),
-            }],
+            tabs: vec![
+                Tab {
+                    id: "view".into(),
+                    label: "View".into(),
+                    prompt: "Prompt goes here".into(),
+                },
+                Tab {
+                    id: "summary".into(),
+                    label: "Summary".into(),
+                    prompt: "Prompt goes here".into(),
+                },
+                Tab {
+                    id: "contributions".into(),
+                    label: "Contributions".into(),
+                    prompt: "Prompt goes here".into(),
+                },
+                Tab {
+                    id: "critical-analysis".into(),
+                    label: "Analysis".into(),
+                    prompt: "Prompt goes here".into(),
+                },
+                Tab {
+                    id: "dictionary".into(),
+                    label: "Dictionary".into(),
+                    prompt: "Prompt goes here".into(),
+                },
+                Tab {
+                    id: "future-work".into(),
+                    label: "Future".into(),
+                    prompt: "Prompt goes here".into(),
+                },
+            ],
             custom_tabs: Vec::<Tab>::new(),
         },
-        llm_config: LLMConfig {
-            name: "default_llm".into(),
-            label: "Default LLM".into(),
-            value: "gpt-4".into(),
-            api_key: "".into(),
-        },
-        embeddings_config: EmbeddingsConfig {
-            name: "default_embeddings".into(),
-            label: "Default Embeddings".into(),
-            value: "text-embedding-3-small".into(),
-            api_key: "".into(),
-        },
-        vector_store_config: VectorStoreConfig {
-            name: "default_vector_store".into(),
-            label: "Default Vector Store".into(),
-            value: "local".into(),
-            api_key: "".into(),
-        },
+        llm_config: vec![
+            LLMConfig {
+                name: "openai".into(),
+                label: "GPT-3.5".into(),
+                value: "gpt-3.5".into(),
+                api_key: "".into(),
+            },
+            LLMConfig {
+                name: "google".into(),
+                label: "Gemini".into(),
+                value: "gemini".into(),
+                api_key: "".into(),
+            },
+            LLMConfig {
+                name: "anthropic".into(),
+                label: "Claude".into(),
+                value: "claude".into(),
+                api_key: "".into(),
+            },
+            LLMConfig {
+                name: "xai".into(),
+                label: "Grok".into(),
+                value: "grok".into(),
+                api_key: "".into(),
+            },
+        ],
+        embeddings_config: vec![
+            EmbeddingsConfig {
+                name: "openai".into(),
+                label: "OpenAI".into(),
+                value: "openai".into(),
+                api_key: "".into(),
+            },
+            EmbeddingsConfig {
+                name: "google".into(),
+                label: "Gemini".into(),
+                value: "gemini".into(),
+                api_key: "".into(),
+            },
+            EmbeddingsConfig {
+                name: "voyage".into(),
+                label: "Voyage".into(),
+                value: "voyage".into(),
+                api_key: "".into(),
+            },
+        ],
+        vector_store_config: vec![
+            VectorStoreConfig {
+                name: "Pinecone".into(),
+                label: "Pinecone".into(),
+                value: "Pinecone".into(),
+                api_key: "".into(),
+            },
+            VectorStoreConfig {
+                name: "Weaviate".into(),
+                label: "Weaviate".into(),
+                value: "weaviate".into(),
+                api_key: "".into(),
+            },
+            VectorStoreConfig {
+                name: "Chroma".into(),
+                label: "Chroma".into(),
+                value: "chroma".into(),
+                api_key: "".into(),
+            },
+        ],
     };
     println!("   ✅ Configuration structure built");
 
