@@ -1,150 +1,128 @@
 import { ChatXAI } from "@langchain/xai";
 import { ChatOpenAI } from "@langchain/openai";
-import { ChatDeepSeek } from "@langchain/deepseek";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import * as fs from "fs";
-import * as path from "path";
+import { useConfig } from "@/components/providers/ConfigProvider";
 
-interface ModelConfig {
-  model?: string;
-  apiKey?: string;
-  temperature?: number;
-}
+type ChatModel = ChatXAI | ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI;
 
-interface Config {
-  xai?: ModelConfig;
-  openai?: ModelConfig;
-  deepseek?: ModelConfig;
-  anthropic?: ModelConfig;
-  google?: ModelConfig;
-}
+type EmbeddingModel = ""; // TODO: Define based on embeddingsConfig
 
-type ChatModel =
-  | ChatXAI
-  | ChatOpenAI
-  | ChatDeepSeek
-  | ChatAnthropic
-  | ChatGoogleGenerativeAI;
+type VectorStore = ""; // TODO: Define based on vectorStoreConfig
 
-/**
- * Creates a chat model instance based on available API keys in config.json
- * Priority order: XAI > OpenAI > DeepSeek > Anthropic > Google
- */
-export function createModelFromConfig(
-  configPath: string = "./config.json"
-): ChatModel {
-  const configFile = fs.readFileSync(path.resolve(configPath), "utf-8");
-  const config: Config = JSON.parse(configFile);
+/** Creates a chat model instance based on available API keys in config
+ * Priority order: OpenAI -> Google -> Anthropic -> XAI */
+export function createModelFromConfig(): ChatModel {
+  const { getLlmConfig } = useConfig();
+  const llmConfig = getLlmConfig();
 
-  // Check for API keys in priority order and create corresponding model
-  if (config.xai?.apiKey) {
-    return new ChatXAI({
-      apiKey: config.xai.apiKey,
-      model: config.xai.model ?? "grok-beta",
-      temperature: config.xai.temperature ?? 0.7,
-    });
+  if (!llmConfig || llmConfig.length === 0) {
+    throw new Error(
+      "No LLM configuration found. Please configure at least one LLM provider."
+    );
   }
 
-  if (config.openai?.apiKey) {
+  // Try each provider in order
+  const openai = llmConfig.find((p) => p.name === "openai");
+  if (openai?.api_key && openai.api_key.trim() !== "") {
     return new ChatOpenAI({
-      apiKey: config.openai.apiKey,
-      model: config.openai.model ?? "gpt-4-turbo-preview",
-      temperature: config.openai.temperature ?? 0.7,
+      apiKey: openai.api_key,
+      model: openai.value || "gpt-3.5-turbo",
+      temperature: 0.7,
     });
   }
 
-  if (config.deepseek?.apiKey) {
-    return new ChatDeepSeek({
-      apiKey: config.deepseek.apiKey,
-      model: config.deepseek.model ?? "deepseek-chat",
-      temperature: config.deepseek.temperature ?? 0.7,
-    });
-  }
-
-  if (config.anthropic?.apiKey) {
-    return new ChatAnthropic({
-      apiKey: config.anthropic.apiKey,
-      model: config.anthropic.model ?? "claude-3-5-sonnet-20241022",
-      temperature: config.anthropic.temperature ?? 0.7,
-    });
-  }
-
-  if (config.google?.apiKey) {
+  const google = llmConfig.find((p) => p.name === "google");
+  if (google?.api_key && google.api_key.trim() !== "") {
     return new ChatGoogleGenerativeAI({
-      apiKey: config.google.apiKey,
-      model: config.google.model ?? "gemini-pro",
-      temperature: config.google.temperature ?? 0.7,
+      apiKey: google.api_key,
+      model: google.value || "gemini-pro",
+      temperature: 0.7,
+    });
+  }
+
+  const anthropic = llmConfig.find((p) => p.name === "anthropic");
+  if (anthropic?.api_key && anthropic.api_key.trim() !== "") {
+    return new ChatAnthropic({
+      apiKey: anthropic.api_key,
+      model: "claude-3-5-sonnet-20241022",
+      temperature: 0.7,
+    });
+  }
+
+  const xai = llmConfig.find((p) => p.name === "xai");
+  if (xai?.api_key && xai.api_key.trim() !== "") {
+    return new ChatXAI({
+      apiKey: xai.api_key,
+      model: xai.value || "grok-beta",
+      temperature: 0.7,
     });
   }
 
   throw new Error(
-    "No valid API key found in config.json. Please provide at least one provider with an apiKey."
+    "No valid API key found in LLM configuration. Please provide at least one provider with an API key in Settings."
   );
 }
 
-/**
- * Alternative: Create model with explicit provider selection
- */
-export function createModel(
-  provider: "xai" | "openai" | "deepseek" | "anthropic" | "google",
-  configPath: string = "./config.json"
-): ChatModel {
-  const configFile = fs.readFileSync(path.resolve(configPath), "utf-8");
-  const config: Config = JSON.parse(configFile);
+/** Creates a chat model for a specific provider */
+export function createModelByProvider(providerName: string): ChatModel {
+  const { getLlmConfig } = useConfig();
+  const llmConfig = getLlmConfig();
 
-  switch (provider) {
-    case "xai":
-      if (!config.xai?.apiKey)
-        throw new Error("XAI configuration or API key not found");
-      return new ChatXAI({
-        apiKey: config.xai.apiKey,
-        model: config.xai.model ?? "grok-beta",
-        temperature: config.xai.temperature ?? 0.7,
-      });
+  if (!llmConfig) {
+    throw new Error("LLM configuration not loaded");
+  }
 
+  const provider = llmConfig.find((p) => p.name === providerName);
+
+  if (!provider?.api_key || provider.api_key.trim() === "") {
+    throw new Error(
+      `No API key found for provider: ${providerName}. Please configure it in Settings.`
+    );
+  }
+
+  switch (providerName) {
     case "openai":
-      if (!config.openai?.apiKey)
-        throw new Error("OpenAI configuration or API key not found");
       return new ChatOpenAI({
-        apiKey: config.openai.apiKey,
-        model: config.openai.model ?? "gpt-4-turbo-preview",
-        temperature: config.openai.temperature ?? 0.7,
-      });
-
-    case "deepseek":
-      if (!config.deepseek?.apiKey)
-        throw new Error("DeepSeek configuration or API key not found");
-      return new ChatDeepSeek({
-        apiKey: config.deepseek.apiKey,
-        model: config.deepseek.model ?? "deepseek-chat",
-        temperature: config.deepseek.temperature ?? 0.7,
-      });
-
-    case "anthropic":
-      if (!config.anthropic?.apiKey)
-        throw new Error("Anthropic configuration or API key not found");
-      return new ChatAnthropic({
-        apiKey: config.anthropic.apiKey,
-        model: config.anthropic.model ?? "claude-3-5-sonnet-20241022",
-        temperature: config.anthropic.temperature ?? 0.7,
+        apiKey: provider.api_key,
+        model: provider.value || "gpt-3.5-turbo",
+        temperature: 0.7,
       });
 
     case "google":
-      if (!config.google?.apiKey)
-        throw new Error("Google configuration or API key not found");
       return new ChatGoogleGenerativeAI({
-        apiKey: config.google.apiKey,
-        model: config.google.model ?? "gemini-pro",
-        temperature: config.google.temperature ?? 0.7,
+        apiKey: provider.api_key,
+        model: provider.value || "gemini-pro",
+        temperature: 0.7,
+      });
+
+    case "anthropic":
+      return new ChatAnthropic({
+        apiKey: provider.api_key,
+        model: "claude-3-5-sonnet-20241022",
+        temperature: 0.7,
+      });
+
+    case "xai":
+      return new ChatXAI({
+        apiKey: provider.api_key,
+        model: provider.value || "grok-beta",
+        temperature: 0.7,
       });
 
     default:
-      throw new Error(`Unknown provider: ${provider}`);
+      throw new Error(`Unsupported provider: ${providerName}`);
   }
 }
 
-// Usage example:
-const model = createModelFromConfig(); // or createModel("openai");
-const response = await model.invoke("Hello, how are you?");
-console.log(response.content);
+/** Get all available LLM providers with API keys */
+export function getAvailableProviders(): string[] {
+  const { getLlmConfig } = useConfig();
+  const llmConfig = getLlmConfig();
+
+  if (!llmConfig) return [];
+
+  return llmConfig
+    .filter((provider) => provider.api_key && provider.api_key.trim() !== "")
+    .map((provider) => provider.name);
+}

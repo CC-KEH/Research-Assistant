@@ -1,12 +1,21 @@
 import { getConfig } from "@/lib/backend";
+import { Config } from "@/lib/types";
 import React, { createContext, useEffect, useState, useContext } from "react";
-import { Config } from "@/lib/interfaces";
 
 interface ConfigContextType {
   config: Config | null;
   setConfig: (config: Config) => void;
   reloadConfig: () => Promise<void>;
   loading: boolean;
+
+  // Explicit return types for helper functions
+  getBasicConfig: () => Config["basicConfig"] | null;
+  getBookmarks: () => Config["bookmarks"] | null;
+  getKnowledgeStoreConfig: () => Config["knowledgeStoreConfig"] | null;
+  getTabsConfig: () => Config["tabsConfig"] | null;
+  getLlmConfig: () => Config["llmConfig"] | null;
+  getEmbeddingsConfig: () => Config["embeddingsConfig"] | null;
+  getVectorStoreConfig: () => Config["vectorStoreConfig"] | null;
 }
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
@@ -39,6 +48,35 @@ export const ConfigProvider = ({
     }
   };
 
+  // Helper functions with explicit return types
+  const getBasicConfig = (): Config["basicConfig"] | null => {
+    return config?.basicConfig || null;
+  };
+
+  const getBookmarks = (): Config["bookmarks"] | null => {
+    return config?.bookmarks || null;
+  };
+
+  const getKnowledgeStoreConfig = (): Config["knowledgeStoreConfig"] | null => {
+    return config?.knowledgeStoreConfig || null;
+  };
+
+  const getTabsConfig = (): Config["tabsConfig"] | null => {
+    return config?.tabsConfig || null;
+  };
+
+  const getLlmConfig = (): Config["llmConfig"] | null => {
+    return config?.llmConfig || null;
+  };
+
+  const getEmbeddingsConfig = (): Config["embeddingsConfig"] | null => {
+    return config?.embeddingsConfig || null;
+  };
+
+  const getVectorStoreConfig = (): Config["vectorStoreConfig"] | null => {
+    return config?.vectorStoreConfig || null;
+  };
+
   useEffect(() => {
     if (configPath) {
       reloadConfig();
@@ -49,7 +87,19 @@ export const ConfigProvider = ({
 
   return (
     <ConfigContext.Provider
-      value={{ config, setConfig, reloadConfig, loading }}
+      value={{
+        config,
+        setConfig,
+        reloadConfig,
+        loading,
+        getBasicConfig,
+        getBookmarks,
+        getKnowledgeStoreConfig,
+        getTabsConfig,
+        getLlmConfig,
+        getEmbeddingsConfig,
+        getVectorStoreConfig,
+      }}
     >
       {children}
     </ConfigContext.Provider>

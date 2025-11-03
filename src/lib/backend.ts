@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { BugType, Item, Project } from "./types";
-import { Config } from "@/lib/interfaces";
+import { Config } from "@/lib/types";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FileInfo } from "@/lib/types";
 
