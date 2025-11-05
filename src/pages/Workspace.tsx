@@ -11,7 +11,6 @@ import type { FileInfo } from "@/lib/types";
 
 export function Workspace() {
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
-
   return (
     <ResizablePanelGroup direction="horizontal" className="min-h-screen">
       <ResizablePanel defaultSize={25}>
