@@ -17,11 +17,48 @@ const tabs = [
 ];
 
 const modelsByProvider: Record<string, { label: string; value: string }[]> = {
-  openai: [{ label: "GPT-4", value: "gpt-4" }],
-  anthropic: [{ label: "Claude", value: "claude" }],
-  google: [{ label: "Gemini", value: "gemini" }],
-  xai: [{ label: "Grok", value: "grok" }],
+  openai: [
+    { label: "GPT-4", value: "gpt-4" },
+    { label: "GPT-4 Turbo", value: "gpt-4-turbo" },
+    { label: "GPT-3.5 Turbo", value: "gpt-3.5-turbo" },
+  ],
+  anthropic: [
+    { label: "Claude 3.5 Sonnet", value: "claude-3-5-sonnet-20241022" },
+    { label: "Claude 3 Opus", value: "claude-3-opus-20240229" },
+    { label: "Claude 3 Sonnet", value: "claude-3-sonnet-20240229" },
+  ],
+  google: [
+    { label: "Gemini Pro", value: "gemini-pro" },
+    { label: "Gemini Pro Vision", value: "gemini-pro-vision" },
+  ],
+  xai: [{ label: "Grok Beta", value: "grok-beta" }],
 };
+
+const embeddingModelsByProvider: Record<
+  string,
+  { label: string; value: string }[]
+> = {
+  openai: [
+    { label: "text-embedding-3-large", value: "text-embedding-3-large" },
+    { label: "text-embedding-3-small", value: "text-embedding-3-small" },
+    { label: "text-embedding-ada-002", value: "text-embedding-ada-002" },
+  ],
+  anthropic: [{ label: "Voyage AI (via Anthropic)", value: "voyage-2" }],
+  google: [{ label: "embedding-001", value: "embedding-001" }],
+  cohere: [
+    { label: "embed-english-v3.0", value: "embed-english-v3.0" },
+    { label: "embed-multilingual-v3.0", value: "embed-multilingual-v3.0" },
+  ],
+};
+
+const vectorStoreOptions = [
+  { label: "Pinecone", value: "pinecone" },
+  { label: "Weaviate", value: "weaviate" },
+  { label: "Qdrant", value: "qdrant" },
+  { label: "Chroma", value: "chroma" },
+  { label: "Milvus", value: "milvus" },
+  { label: "FAISS", value: "faiss" },
+];
 
 export default function Settings() {
   const {
@@ -51,6 +88,7 @@ export default function Settings() {
   // Embeddings state
   const [selectedEmbeddingProvider, setSelectedEmbeddingProvider] =
     useState("");
+  const [selectedEmbeddingModel, setSelectedEmbeddingModel] = useState("");
   const [chunkSize, setChunkSize] = useState(500);
   const [chunkOverlap, setChunkOverlap] = useState(100);
   const [embeddingApiKey, setEmbeddingApiKey] = useState("");
@@ -88,9 +126,11 @@ export default function Settings() {
         const activeEmbedding = embeddingsConfig.find((e) => e.api_key);
         if (activeEmbedding) {
           setSelectedEmbeddingProvider(activeEmbedding.name);
+          setSelectedEmbeddingModel(activeEmbedding.value || "");
           setEmbeddingApiKey(activeEmbedding.api_key || "");
         } else if (embeddingsConfig.length > 0) {
           setSelectedEmbeddingProvider(embeddingsConfig[0].name);
+          setSelectedEmbeddingModel(embeddingsConfig[0].value || "");
         }
       }
 
@@ -132,6 +172,8 @@ export default function Settings() {
 
   const handleEmbeddingProviderChange = (provider: string) => {
     setSelectedEmbeddingProvider(provider);
+    const defaultModel = embeddingModelsByProvider[provider]?.[0]?.value || "";
+    setSelectedEmbeddingModel(defaultModel);
 
     // Load existing API key if available
     const embeddingsConfig = getEmbeddingsConfig();
@@ -180,7 +222,6 @@ export default function Settings() {
       llmConfig: updatedLlmConfig,
     });
 
-    // Optionally reload config to ensure sync
     await reloadConfig();
   };
 
@@ -194,6 +235,7 @@ export default function Settings() {
       if (provider.name === selectedEmbeddingProvider) {
         return {
           ...provider,
+          value: selectedEmbeddingModel,
           api_key: embeddingApiKey,
         };
       }
@@ -233,12 +275,24 @@ export default function Settings() {
   };
 
   const handleToggleTab = (tabId: string, enabled: boolean) => {
-    // Implement tab enable/disable logic
-    console.log(`Toggle tab ${tabId}: ${enabled}`);
+    const updatedTabs = fileViewerTabs.map((tab) =>
+      tab.id === tabId ? { ...tab, enabled } : tab
+    );
+    setFileViewerTabs(updatedTabs);
+
+    if (config) {
+      const tabsConfig = getTabsConfig();
+      setConfig({
+        ...config,
+        tabsConfig: {
+          tabs: updatedTabs,
+          customTabs: tabsConfig?.customTabs || [],
+        },
+      });
+    }
   };
 
   const handleResetTabs = () => {
-    // Reset tabs to default
     const tabsConfig = getTabsConfig();
     if (tabsConfig?.tabs) {
       setFileViewerTabs([...tabsConfig.tabs]);
@@ -253,7 +307,7 @@ export default function Settings() {
   return (
     <div className="flex flex-col items-center gap-6 max-w-2xl mx-auto py-10 h-full">
       <h1 className="text-3xl font-semibold">Settings</h1>
-      <div className="justify-center items-center">
+      <div className="justify-center items-center w-full">
         <Tabs
           tabs={tabs}
           onTabChange={(tabId) => setActiveTab(tabId)}
@@ -261,11 +315,11 @@ export default function Settings() {
         />
 
         {activeTab === "file-viewer" && (
-          <div className="w-full h-fit py-10 overflow-y-auto scrollbar-thin">
+          <div className="w-full h-fit py-10 overflow-y-auto scrollbar-thin space-y-4">
             {fileViewerTabs.map((tab) => (
               <Card
                 key={tab.id}
-                className="shadow-md rounded-2xl w-full py-4 min-h-20 max-h-30"
+                className="shadow-md rounded-2xl w-full py-4 min-h-20"
               >
                 <CardContent className="space-y-1">
                   <h3 className="text-md font-medium">{tab.label}</h3>
@@ -283,6 +337,7 @@ export default function Settings() {
                         onClick={() => setEditingTabId(tab.id)}
                       />
                       <Switch
+                        checked={tab.enabled !== false}
                         onCheckedChange={(checked) =>
                           handleToggleTab(tab.id, checked)
                         }
@@ -305,7 +360,7 @@ export default function Settings() {
         )}
 
         {activeTab === "llm" && (
-          <div className="w-full h-fit space-y-4 px-4 overflow-y-auto scrollbar-thin">
+          <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
             <CustomSelect
               label="LLM Provider"
               value={selectedProvider}
@@ -352,7 +407,7 @@ export default function Settings() {
         )}
 
         {activeTab === "embeddings" && (
-          <div className="w-full h-fit space-y-4 px-4 overflow-y-auto scrollbar-thin">
+          <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
             <CustomSelect
               label="Embedding Provider"
               value={selectedEmbeddingProvider}
@@ -363,6 +418,15 @@ export default function Settings() {
                   value: provider.name,
                 })) || []
               }
+            />
+            <CustomSelect
+              label="Embedding Model"
+              value={selectedEmbeddingModel}
+              onChange={setSelectedEmbeddingModel}
+              options={
+                embeddingModelsByProvider[selectedEmbeddingProvider] || []
+              }
+              disabled={!selectedEmbeddingProvider}
             />
             <CustomSlider
               label="Chunk Size"
@@ -392,17 +456,12 @@ export default function Settings() {
         )}
 
         {activeTab === "vector-store" && (
-          <div className="w-full space-y-4 overflow-y-auto scrollbar-thin">
+          <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
             <CustomSelect
               label="Vector Store Provider"
               value={selectedVectorStore}
               onChange={handleVectorStoreChange}
-              options={
-                vectorStoreConfigOptions?.map((store: any) => ({
-                  label: store.label,
-                  value: store.value,
-                })) || []
-              }
+              options={vectorStoreOptions}
             />
             <CustomSlider
               label="Retrieved Chunks"
