@@ -1,0 +1,11 @@
+{
+    "identifier": "python-sidecar",
+    "description": "Capability for Python sidecar",
+    "windows": [
+        "main"
+    ],
+    "permissions": [
+        "shell:allow-execute",
+        "shell:allow-kill"
+    ]
+}

@@ -178,3 +178,38 @@ export const resetSession = (sessionID: string) => {};
 export const createSession = (currentSessionID: string) => {};
 
 export const reportBug = (bugType: BugType) => {};
+
+//*********************** */
+//* Python Server Functions [ Start | Stop | Check ]
+//*********************** */
+
+// Start server
+const startServer = async () => {
+  try {
+    const result = await invoke<string>("start_python_server");
+    console.log(result);
+  } catch (error) {
+    console.error("Failed to start server:", error);
+  }
+};
+
+// Stop server
+const stopServer = async () => {
+  try {
+    const result = await invoke<string>("stop_python_server");
+    console.log(result);
+  } catch (error) {
+    console.error("Failed to stop server:", error);
+  }
+};
+
+// Check if running
+const checkServer = async () => {
+  try {
+    const isRunning = await invoke<boolean>("check_python_server");
+    return isRunning;
+  } catch (error) {
+    console.error("Failed to check server:", error);
+    return false;
+  }
+};

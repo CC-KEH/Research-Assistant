@@ -1,22 +1,23 @@
-// LLMS
+# TODO: Fix
+# LLMS
 import { ChatXAI } from "@langchain/xai";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { useConfig } from "@/components/providers/ConfigProvider";
 
-// Embeddings
+# Embeddings
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
 import { OpenAIEmbeddings } from "@langchain/openai";
 
-// VectorStores
+# VectorStores
 import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { FaissStore } from "@langchain/community/vectorstores/faiss";
 import { PineconeStore } from "@langchain/pinecone";
 import { Pinecone as PineconeClient } from "@pinecone-database/pinecone";
 
-// Import types
+# Import types
 import type {
   LlmProvider,
   EmbeddingProvider,
@@ -29,9 +30,9 @@ type EmbeddingModel = GoogleGenerativeAIEmbeddings | OpenAIEmbeddings;
 
 type VectorStoreClient = Chroma | FaissStore | PineconeStore;
 
-// ============================================================================
-// CHAT MODELS
-// ============================================================================
+# ============================================================================
+# CHAT MODELS
+# ============================================================================
 
 export function createModelFromConfig(): ChatModel {
   const { getLlmConfig } = useConfig();
@@ -150,9 +151,9 @@ export function getAvailableLLMProviders(): string[] {
     .map((provider: LlmProvider) => provider.name);
 }
 
-// ============================================================================
-// EMBEDDINGS
-// ============================================================================
+# ============================================================================
+# EMBEDDINGS
+# ============================================================================
 
 export function createEmbeddingFromConfig(): EmbeddingModel {
   const { getEmbeddingsConfig } = useConfig();
@@ -189,7 +190,7 @@ export function createEmbeddingFromConfig(): EmbeddingModel {
     (p: EmbeddingProvider) => p.name === "voyage"
   );
   if (voyage?.api_key && voyage.api_key.trim() !== "") {
-    // Note: You'll need to add VoyageEmbeddings import if you want to use it
+    # Note: You'll need to add VoyageEmbeddings import if you want to use it
     throw new Error("Voyage embeddings not yet implemented");
   }
 
@@ -256,9 +257,9 @@ export function getAvailableEmbeddingProviders(): string[] {
     .map((provider: EmbeddingProvider) => provider.name);
 }
 
-// ============================================================================
-// VECTOR STORES
-// ============================================================================
+# ============================================================================
+# VECTOR STORES
+# ============================================================================
 
 export function getVectorStoreConfig() {
   const { getVectorStoreConfig: getVectorConfig } = useConfig();
@@ -339,7 +340,7 @@ export async function createChromaStore(
 ): Promise<Chroma> {
   return await Chroma.fromExistingCollection(embeddings, {
     collectionName,
-    url: url || "http://localhost:8000",
+    url: url || "http:#localhost:8000",
   });
 }
 
