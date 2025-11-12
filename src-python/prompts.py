@@ -1,71 +1,79 @@
+from langchain.prompts import ChatPromptTemplate
 
 chat_system_template = """
-            "You are an assistant for question-answering tasks. "
-            "Use the following pieces of retrieved context to answer the question "
-            "If you don't know the answer, say that you don't know."
-            "Use three sentences maximum and keep the answer concise."
-            "\n\n"
-            "{context}"
-            
-            """
+You are an assistant for question-answering tasks. 
+Use the following pieces of retrieved context to answer the question 
+If you don't know the answer, say that you don't know.
+Use three sentences maximum and keep the answer concise.
+
+{context}
+"""
 
 chunks_system_template = """
-            You are an expert assistant with expertise in summarizing research papers,
-            Summarize the following text as detailed as possible \n\n
-            Text: \n {text}\n
-            Summary: 
+You are an expert assistant with expertise in summarizing research papers,
+Summarize the following text as detailed as possible 
 
-            """
+Text: 
+{text}
+
+Summary: 
+"""
 
 final_system_combine_template = """
-            You are an expert assistant with expertise in summarizing research papers,
-            Provide a complete summary of the entire Research Paper without missing any topic, in a simple language,
-            Each topic after their explanation must have a simple example to explain further. \n\n
-            Summary must be in markdown format. \n\n
-            Text: \n {text}\n
-            Summary: 
-                # Topic 
-                topic here
+You are an expert assistant with expertise in summarizing research papers,
+Provide a complete summary of the entire Research Paper without missing any topic, in a simple language,
+Each topic after their explanation must have a simple example to explain further. 
 
-                # Prerequisites
-                prerequisites here
+Summary must be in markdown format. 
 
-                # Introduction
-                introduction here
+Text: 
+{text}
 
-                # Summary
-                summary here
+Summary: 
+    # Topic 
+    topic here
 
-                # Conclusion
-                conclusion here
-            """
+    # Prerequisites
+    prerequisites here
 
-chat_template = ChatPromptTemplate.fromMessages([
-  ["system", chat_system_template],
-  ["user", "{text}"],
-]);
+    # Introduction
+    introduction here
 
-chunks_template = ChatPromptTemplate.fromMessages([
-  ["system", chunks_system_template],
-  ["user", "{text}"],
-]);
+    # Summary
+    summary here
 
-final_combine_template = ChatPromptTemplate.fromMessages([
-  ["system", final_system_combine_template],
-  ["user", "{text}"],
-]);
+    # Conclusion
+    conclusion here
+"""
 
-chat_prompt_value = await chat_template.invoke({
-  language: "english",
-  text: "",
-});
+# Create chat prompt templates
+chat_template = ChatPromptTemplate.from_messages([
+    ("system", chat_system_template),
+    ("user", "{text}"),
+])
 
-chunks_prompt_value = await chunks_template.invoke({
-  language: "english",
-  text: "",
-});
+chunks_template = ChatPromptTemplate.from_messages([
+    ("system", chunks_system_template),
+    ("user", "{text}"),
+])
 
-final_combine_prompt_value = await final_combine_template.invoke({
-  language: "english",
-  text: "",
-});
+final_combine_template = ChatPromptTemplate.from_messages([
+    ("system", final_system_combine_template),
+    ("user", "{text}"),
+])
+
+# Invoke templates
+chat_prompt_value = chat_template.invoke({
+    "language": "english",
+    "text": "",
+})
+
+chunks_prompt_value = chunks_template.invoke({
+    "language": "english",
+    "text": "",
+})
+
+final_combine_prompt_value = final_combine_template.invoke({
+    "language": "english",
+    "text": "",
+})

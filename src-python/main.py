@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
+from models import *
+
 # Load environment variables
 load_dotenv()
 
