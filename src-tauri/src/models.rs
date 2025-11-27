@@ -20,12 +20,21 @@ pub struct Config {
     pub vector_store_config: Vec<VectorStoreConfig>, // Changed to Vec<VectorStoreConfig>
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicConfig {
     pub project_name: String,
     pub project_path: String,
     pub resoures_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileItem {
+    pub name: String,
+    pub path: String,
+    pub is_directory: bool,
+    pub extension: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

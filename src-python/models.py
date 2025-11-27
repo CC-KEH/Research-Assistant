@@ -1,16 +1,15 @@
 from typing import List, Optional
 
+from pinecone import Pinecone, ServerlessSpec
 from langchain_anthropic import ChatAnthropic
 from langchain_core.documents import Document
-from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS, Chroma
+from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
-from prompts import *
 from manager import *
-
 
 class LLM:
     def __init__(self, config_manager: ConfigManager = None, model_config: dict = None):
@@ -21,6 +20,7 @@ class LLM:
         }
         self.active_model = None
         self.model = None
+        self.chat_prompt = self.config_manager.get("chatPrompt", "")
 
     def check(self) -> dict:
         return {
@@ -82,22 +82,35 @@ class LLM:
         if self.model:
             self.initialize()
     
+    def get_chat_prompt(self) -> str:
+        return self.config.get("chatPrompt", "")
+
+    def update_chat_prompt(self, new_prompt: str):
+        self.config["chatPrompt"] = new_prompt
+        self.save_config()
+
     def process(self, query: str, context: str = "") -> str:
-        """Send query (and optional context) to the LLM."""
+        """Send query (and optional context) to the LLM.
+        
+        Args:
+            query: The user's query
+            context: Optional context from RAG or other sources
+        """
         if not self.model:
             raise ValueError("No model initialized. Call switch_llm() first.")
         
-        if context:
-            prompt = chat_template.invoke({
-                "context": context,
-                "text": query
-            })
-        else:
-            prompt = query
+        messages = [SystemMessage(content=self.chat_prompt)]
         
-        response = self.model.invoke(prompt)
+        # Build user message
+        if context:
+            user_content = f"Context:\n{context}\n\nQuery: {query}"
+        else:
+            user_content = query
+        
+        messages.append(HumanMessage(content=user_content))
+        
+        response = self.model.invoke(messages)
         return response.content
-
 
 class Embedding:
     def __init__(self, config_manager: ConfigManager = None, model_config: dict = None):

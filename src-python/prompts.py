@@ -1,5 +1,3 @@
-from langchain.prompts import ChatPromptTemplate
-
 chat_system_template = """
 You are an assistant for question-answering tasks. 
 Use the following pieces of retrieved context to answer the question 
@@ -143,64 +141,3 @@ Future Work (in markdown format):
     [How future work could lead to real-world applications]
 """
 
-# Create chat prompt templates
-chat_template = ChatPromptTemplate.from_messages([
-    ("system", chat_system_template),
-    ("user", "{text}"),
-])
-
-chunks_template = ChatPromptTemplate.from_messages([
-    ("system", chunks_system_template),
-    ("user", "{text}"),
-])
-
-final_combine_template = ChatPromptTemplate.from_messages([
-    ("system", final_summary_template),
-    ("user", "{text}"),
-])
-
-contributions_prompt_template = ChatPromptTemplate.from_messages([
-    ("system", contributions_template),
-    ("user", "{text}"),
-])
-
-critical_analysis_prompt_template = ChatPromptTemplate.from_messages([
-    ("system", critical_analysis_template),
-    ("user", "{text}"),
-])
-
-future_work_prompt_template = ChatPromptTemplate.from_messages([
-    ("system", future_work_template),
-    ("user", "{text}"),
-])
-
-# Invoke templates
-chat_prompt_value = chat_template.invoke({
-    "language": "english",
-    "text": "",
-})
-
-chunks_prompt_value = chunks_template.invoke({
-    "language": "english",
-    "text": "",
-})
-
-final_combine_prompt_value = final_combine_template.invoke({
-    "language": "english",
-    "text": "",
-})
-
-contributions_prompt_value = contributions_prompt_template.invoke({
-    "language": "english",
-    "text": "",
-})
-
-critical_analysis_prompt_value = critical_analysis_prompt_template.invoke({
-    "language": "english",
-    "text": "",
-})
-
-future_work_prompt_value = future_work_prompt_template.invoke({
-    "language": "english",
-    "text": "",
-})

@@ -1,19 +1,26 @@
 {
     "sessions": {
-        "session_1": [
+        "sessions": [
             {
-                "index": "",
-                "timestamp": "",
-                "message": "",
-                "is_ai": ""
-            }
-        ],
-        "session_2": [
-            {
-                "index": "",
-                "timestamp": "",
-                "message": "",
-                "is_ai": ""
+                "name": "",
+                "history": [
+                    {
+                        "index": "",
+                        "timestamp": "",
+                        "message": "",
+                        "is_ai": false
+                    }
+                ],
+                "metadata": {
+                    "created_at": "2024-11-16T10:30:00",
+                    "last_updated": "2024-11-16T15:45:00",
+                    "total_messages": 24,
+                    "tags": [
+                        "research",
+                        "AI"
+                    ],
+                    "context": "about the overall query"
+                }
             }
         ]
     }
