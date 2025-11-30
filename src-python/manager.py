@@ -65,7 +65,6 @@ class ConfigManager:
     def get_basic_config(self) -> List[dict]:
         """Get basic project configuration."""
         return self.config.get("basicConfig", [])
-
     
     def get_chat_prompt(self) -> str:
         """Get the custom chat prompt for RAG."""
@@ -73,6 +72,10 @@ class ConfigManager:
             "chatPrompt",
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, say that you don't know. Use three sentences maximum and keep the answer concise.\n\nContext:\n{context}\n\nQuestion: {text}"
         )
+    
+    def get_tabs(self) -> List[dict]:
+        """Get all tabs configuration."""
+        return self.config.get("tabsConfig", [])
     
     def update_chat_prompt(self, prompt: str):
         """Update the chat prompt."""
@@ -363,7 +366,7 @@ class SessionManager:
             self.save_chats()
 
 class Assistant:
-    def __init__(self, llm: LLM, embedding: Embedding, store: VectorStore, 
+    def __init__(self, llm : LLM, embedding: Embedding, store: VectorStore, 
                  session_manager: SessionManager, config_manager: ConfigManager = None):
         self.llm = llm
         self.embedding = embedding
