@@ -1,12 +1,11 @@
 from typing import List, Optional, Any
 
-from pinecone import Pinecone, ServerlessSpec
 from langchain_anthropic import ChatAnthropic
 from langchain_core.documents import Document
-from langchain_pinecone import PineconeVectorStore
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS, Chroma
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 
@@ -19,21 +18,37 @@ class LLM:
         }
         self.active_model = None
         self.model = None
-        self.chat_prompt = self.config_manager.get_chat_prompt() if self.config_manager else ""
+        self.chat_prompt = (
+            self.config_manager.get_chat_prompt() if self.config_manager else ""
+        )
 
     def check(self) -> dict:
         return {"status": self.model is not None, "model": self.active_model}
 
     def initialize(self, api_key: str = None):
         """Initialize the selected LLM model."""
+        if not self.active_model:
+            raise ValueError("No active model set. Call switch_llm() first.")
+
         # Get API key from config if not provided
         if not api_key and self.config_manager:
             llm_config = self.config_manager.get_llm_config(self.active_model)
             if llm_config:
                 api_key = llm_config.get("api_key")
+                # Merge config from file with model_config
+                self.model_config.update(
+                    {
+                        k: v
+                        for k, v in llm_config.items()
+                        if k not in self.model_config or self.model_config[k] is None
+                    }
+                )
 
         if not api_key:
             api_key = self.model_config.get("api_key")
+
+        if not api_key:
+            raise ValueError(f"No API key found for {self.active_model}")
 
         if self.active_model == "xai":
             self.model = ChatOpenAI(
@@ -67,23 +82,41 @@ class LLM:
         else:
             raise ValueError(f"Unknown model: {self.active_model}")
 
+        # Update active status in config
+        if self.config_manager:
+            config = self.config_manager.get()
+            if "llmConfig" in config and self.active_model in config["llmConfig"]:
+                config["llmConfig"][self.active_model]["active"] = True
+                self.config_manager.save()
+
     def switch_llm(self, model_name: str, api_key: str = None):
         """Switch to a different LLM provider."""
+        # Deactivate current model
+        if self.config_manager and self.active_model:
+            config = self.config_manager.get()
+            if "llmConfig" in config:
+                # Deactivate all models
+                for model in config["llmConfig"]:
+                    config["llmConfig"][model]["active"] = False
+
+        # Set new active model
         self.active_model = model_name
+
+        # Initialize new model
         self.initialize(api_key)
 
-    def update_config(self, new_config: dict):
-        """Update configuration parameters."""
-        self.model_config.update(new_config)
-        if self.model:
-            self.initialize()
-
     def get_chat_prompt(self) -> str:
-        return self.config.get("chatPrompt", "")
+        """Get the current chat prompt."""
+        return self.chat_prompt
 
     def update_chat_prompt(self, new_prompt: str):
-        self.config["chatPrompt"] = new_prompt
-        self.save_config()
+        """Update the chat prompt."""
+        self.chat_prompt = new_prompt
+
+        if self.config_manager:
+            config = self.config_manager.get()
+            config["chatPrompt"] = new_prompt
+            self.config_manager.save()
 
     def process(self, query: str, context: str = "") -> str:
         """Send query (and optional context) to the LLM.
@@ -121,14 +154,28 @@ class Embedding:
 
     def initialize(self, api_key: str = None):
         """Initialize the selected embedding model."""
+        if not self.active_model:
+            raise ValueError("No active model set. Call switch_embedding() first.")
+
         # Get API key from config if not provided
         if not api_key and self.config_manager:
             emb_config = self.config_manager.get_embedding_config(self.active_model)
             if emb_config:
                 api_key = emb_config.get("api_key")
+                # Merge config from file with model_config
+                self.model_config.update(
+                    {
+                        k: v
+                        for k, v in emb_config.items()
+                        if k not in self.model_config or self.model_config[k] is None
+                    }
+                )
 
         if not api_key:
             api_key = self.model_config.get("api_key")
+
+        if not api_key:
+            raise ValueError(f"No API key found for {self.active_model}")
 
         if self.active_model == "openai":
             self.model = OpenAIEmbeddings(
@@ -140,12 +187,39 @@ class Embedding:
                 model=self.model_config.get("model_name", "models/embedding-001"),
                 api_key=api_key,
             )
+        elif self.active_model == "huggingface":
+            self.model = HuggingFaceEmbeddings(
+                model_name=self.model_config.get(
+                    "model_name", "sentence-transformers/all-mpnet-base-v2"
+                ),
+            )
         else:
             raise ValueError(f"Unknown embedding model: {self.active_model}")
 
+        # Update active status in config
+        if self.config_manager:
+            config = self.config_manager.get()
+            if (
+                "embeddingsConfig" in config
+                and self.active_model in config["embeddingsConfig"]
+            ):
+                config["embeddingsConfig"][self.active_model]["active"] = True
+                self.config_manager.save()
+
     def switch_embedding(self, model_name: str, api_key: str = None):
         """Switch to a different embedding provider."""
+        # Deactivate current model
+        if self.config_manager and self.active_model:
+            config = self.config_manager.get()
+            if "embeddingsConfig" in config:
+                # Deactivate all models
+                for model in config["embeddingsConfig"]:
+                    config["embeddingsConfig"][model]["active"] = False
+
+        # Set new active model
         self.active_model = model_name
+
+        # Initialize new model
         self.initialize(api_key)
 
     def update_config(self, new_config: dict):
@@ -177,6 +251,7 @@ class VectorStore:
     def __init__(self, config_manager: Any = None, store_config: dict = None):
         self.config_manager = config_manager
         self.store_config = store_config or {"backend": "faiss"}
+        self.active_backend = None
         self.store = None
         self.embedding_function = None
         self.pc_client = None
@@ -184,36 +259,34 @@ class VectorStore:
     def check(self) -> dict:
         return {
             "status": self.store is not None,
-            "backend": self.store_config.get("backend"),
-            "index_name": (
-                self.store_config.get("index_name")
-                if self.store_config.get("backend") == "pinecone"
-                else None
-            ),
+            "backend": self.active_backend,
         }
 
-    def initialize(self, embedding_function, api_key: str = None):
+    def initialize(self, embedding_function, backend: str = None, api_key: str = None):
         """Initialize vector store with embedding function."""
         self.embedding_function = embedding_function
-        backend = self.store_config.get("backend", "faiss")
 
-        # Get API key from config if not provided
-        if not api_key and self.config_manager and backend == "pinecone":
-            store_config = self.config_manager.get_vectorstore_config("Pinecone")
-            if store_config:
-                api_key = store_config.get("api_key")
+        if backend:
+            self.active_backend = backend
+        elif not self.active_backend:
+            self.active_backend = self.store_config.get("backend", "faiss")
 
-        if not api_key and backend == "pinecone":
-            api_key = self.store_config.get("api_key")
-
-        if backend == "faiss":
+        if self.active_backend == "faiss":
             self._setup_faiss()
-        elif backend == "chroma":
+        elif self.active_backend == "chroma":
             self._setup_chroma()
-        elif backend == "pinecone":
-            self._setup_pinecone(api_key)
         else:
-            raise ValueError(f"Unknown vector store backend: {backend}")
+            raise ValueError(f"Unknown vector store backend: {self.active_backend}")
+
+        # Update active status in config
+        if self.config_manager:
+            config = self.config_manager.get()
+            if (
+                "vectorStoreConfig" in config
+                and self.active_backend in config["vectorStoreConfig"]
+            ):
+                config["vectorStoreConfig"][self.active_backend]["active"] = True
+                self.config_manager.save()
 
     def _setup_faiss(self):
         """Setup FAISS vector store."""
@@ -226,39 +299,23 @@ class VectorStore:
             persist_directory=self.store_config.get("persist_directory", "./chroma_db"),
         )
 
-    def _setup_pinecone(self, api_key: str):
-        """Setup Pinecone vector store."""
-        if not api_key:
-            raise ValueError("Pinecone API key not found.")
-
-        self.pc_client = Pinecone(api_key=api_key)
-        index_name = self.store_config.get("index_name", "default-index")
-
-        existing_indexes = [idx.name for idx in self.pc_client.list_indexes()]
-
-        if index_name not in existing_indexes:
-            dimension = self.store_config.get("dimension", 1536)
-            self.pc_client.create_index(
-                name=index_name,
-                dimension=dimension,
-                metric=self.store_config.get("metric", "cosine"),
-                spec=ServerlessSpec(
-                    cloud=self.store_config.get("cloud", "aws"),
-                    region=self.store_config.get("region", "us-east-1"),
-                ),
-            )
-
-        self.store = PineconeVectorStore(
-            index_name=index_name,
-            embedding=self.embedding_function,
-            pinecone_api_key=api_key,
-        )
-
     def switch_store(self, backend: str, api_key: str = None):
         """Switch to a different vector store backend."""
+        # Deactivate current backend
+        if self.config_manager and self.active_backend:
+            config = self.config_manager.get()
+            if "vectorStoreConfig" in config:
+                # Deactivate all backends
+                for store in config["vectorStoreConfig"]:
+                    config["vectorStoreConfig"][store]["active"] = False
+
+        # Set new backend
+        self.active_backend = backend
         self.store_config["backend"] = backend
+
+        # Initialize new backend
         if self.embedding_function:
-            self.initialize(self.embedding_function, api_key)
+            self.initialize(self.embedding_function, backend, api_key)
 
     def update_config(self, new_config: dict):
         """Update configuration parameters."""
@@ -274,29 +331,20 @@ class VectorStore:
             for doc, meta in zip(docs, metadatas or [{}] * len(docs))
         ]
 
-        backend = self.store_config.get("backend", "faiss")
-
-        if backend == "faiss":
+        if self.active_backend == "faiss":
             if self.store is None:
                 self.store = FAISS.from_documents(documents, self.embedding_function)
             else:
                 self.store.add_documents(documents)
-        elif backend == "chroma":
-            self.store.add_documents(documents)
-        elif backend == "pinecone":
+        elif self.active_backend == "chroma":
             self.store.add_documents(documents)
 
-    def retrieve(self, query: str, k: int = 4, filter: dict = None) -> List[str]:
+    def retrieve(self, query: str, k: int = 4) -> List[str]:
         """Retrieve relevant documents for a query."""
         if not self.store:
             return []
 
-        backend = self.store_config.get("backend", "faiss")
-
-        if backend == "pinecone" and filter:
-            docs = self.store.similarity_search(query, k=k, filter=filter)
-        else:
-            docs = self.store.similarity_search(query, k=k)
+        docs = self.store.similarity_search(query, k=k)
 
         return [doc.page_content for doc in docs]
 
@@ -310,26 +358,20 @@ class VectorStore:
 
     def save(self, path: str = None):
         """Save the vector store to disk (FAISS only)."""
-        backend = self.store_config.get("backend", "faiss")
-
-        if backend == "faiss" and self.store:
+        if self.active_backend == "faiss" and self.store:
             save_path = path or self.store_config.get(
                 "persist_directory", "./faiss_index"
             )
             self.store.save_local(save_path)
-        elif backend == "chroma":
+        elif self.active_backend == "chroma":
             print("Chroma auto-persists. No manual save needed.")
-        elif backend == "pinecone":
-            print("Pinecone is cloud-based. Data is automatically persisted.")
 
     def load(self, path: str = None):
         """Load the vector store from disk (FAISS only)."""
         if not self.embedding_function:
             raise ValueError("Embedding function not set. Call initialize() first.")
 
-        backend = self.store_config.get("backend", "faiss")
-
-        if backend == "faiss":
+        if self.active_backend == "faiss":
             load_path = path or self.store_config.get(
                 "persist_directory", "./faiss_index"
             )
@@ -337,16 +379,4 @@ class VectorStore:
                 load_path, self.embedding_function, allow_dangerous_deserialization=True
             )
         else:
-            print(f"Load not applicable for {backend} backend.")
-
-    def delete_index(self):
-        """Delete the Pinecone index (Pinecone only)."""
-        backend = self.store_config.get("backend", "faiss")
-
-        if backend == "pinecone" and self.pc_client:
-            index_name = self.store_config.get("index_name", "default-index")
-            self.pc_client.delete_index(index_name)
-            self.store = None
-            print(f"Deleted Pinecone index: {index_name}")
-        else:
-            print("Delete index only available for Pinecone backend.")
+            print(f"Load not applicable for {self.active_backend} backend.")

@@ -58,11 +58,6 @@ async def get_status():
 async def initialize_llm(config: LLMConfig):
     """Initialize LLM with specified configuration."""
     try:
-        llm.update_config({
-            "model_name": config.model_name,
-            "temperature": config.temperature,
-            "max_tokens": config.max_tokens
-        })
         llm.switch_llm(config.model_name, config.api_key)
         return {"message": f"LLM initialized: {config.model_name}", "status": llm.check()}
     except Exception as e:
@@ -90,10 +85,8 @@ async def initialize_vectorstore(config: VectorStoreConfig):
         
         vector_store.update_config({
             "backend": config.backend,
-            "index_name": config.index_name,
-            "dimension": config.dimension
         })
-        vector_store.switch_store(embedding.model, config.api_key)
+        vector_store.switch_store(embedding.model)
         return {"message": f"Vector store initialized: {config.backend}", "status": vector_store.check()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

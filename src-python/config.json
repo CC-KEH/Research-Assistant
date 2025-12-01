@@ -68,71 +68,64 @@
             }
         ]
     },
-    "llmConfig": [
-        {
-            "name": "openai",
+    "llmConfig": {
+        "anthropic": {
+            "label": "Claude 2",
+            "model_name": "claude-2",
+            "api_key": "",
+            "active": false
+        },
+        "google": {
+            "label": "Gemini Pro",
+            "model_name": "gemini-pro",
+            "api_key": "",
+            "active": false
+        },
+        "openai": {
             "label": "GPT-3.5",
-            "value": "gpt-3.5",
-            "api_key": ""
+            "model_name": "gpt-3.5",
+            "api_key": "",
+            "active": true
         },
-        {
-            "name": "google",
-            "label": "Gemini",
-            "value": "gemini",
-            "api_key": ""
-        },
-        {
-            "name": "anthropic",
-            "label": "Claude",
-            "value": "claude",
-            "api_key": ""
-        },
-        {
-            "name": "xai",
-            "label": "Grok",
-            "value": "grok",
-            "api_key": ""
+        "xai": {
+            "label": "XAI",
+            "model_name": "grok",
+            "api_key": "",
+            "active": false
         }
-    ],
-    "embeddingsConfig": [
-        {
-            "name": "openai",
-            "label": "OpenAI",
-            "value": "openai",
-            "api_key": ""
+    },
+    "embeddingsConfig": {
+        "google": {
+            "label": "Google Embeddings",
+            "model_name": "google-embedding-model",
+            "api_key": "",
+            "active": false
         },
-        {
-            "name": "google",
-            "label": "Gemini",
-            "value": "gemini",
-            "api_key": ""
+        "openai": {
+            "label": "OpenAI Embeddings",
+            "model_name": "text-embedding-3-small",
+            "api_key": "",
+            "active": true
         },
-        {
-            "name": "voyage",
-            "label": "Voyage",
-            "value": "voyage",
-            "api_key": ""
+        "huggingface": {
+            "label": "HuggingFaceEmbeddings",
+            "model_name": "sentence-transformers/all-mpnet-base-v2",
+            "active": true
         }
-    ],
-    "vectorStoreConfig": [
-        {
-            "name": "Pinecone",
-            "label": "Pinecone",
-            "value": "Pinecone",
-            "api_key": ""
+    },
+    "vectorStoreConfig": {
+        "faiss": {
+            "label": "Faiss",
+            "environment": "",
+            "index_name": "",
+            "active": true
         },
-        {
-            "name": "Weaviate",
-            "label": "Weaviate",
-            "value": "weaviate",
-            "api_key": ""
-        },
-        {
-            "name": "Chroma",
+        "chroma": {
             "label": "Chroma",
-            "value": "chroma",
-            "api_key": ""
+            "url": "",
+            "index_name": "",
+            "active": false
         }
-    ],
+    },
     "chatPrompt": "Prompt here."
 }

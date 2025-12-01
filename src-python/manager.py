@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage
 from prompts import *
 from models import *
 
+
 class ConfigManager:
     """Manages loading and accessing configuration from config.json"""
     
@@ -23,26 +24,26 @@ class ConfigManager:
             print(f"Config file not found at {self.config_path}")
             return {}
     
+    def get(self) -> dict:
+        """Get the entire configuration dictionary."""
+        return self.config
+    
+    def save(self):
+        """Save configuration to JSON file."""
+        with open(self.config_path, 'w') as f:
+            json.dump(self.config, f, indent=4)
+    
     def get_llm_config(self, llm_name: str) -> Optional[dict]:
         """Get LLM configuration by name."""
-        for llm in self.config.get("llmConfig", []):
-            if llm["name"] == llm_name:
-                return llm
-        return None
+        return self.config.get("llmConfig", {}).get(llm_name)
     
     def get_embedding_config(self, embedding_name: str) -> Optional[dict]:
         """Get embedding configuration by name."""
-        for emb in self.config.get("embeddingsConfig", []):
-            if emb["name"] == embedding_name:
-                return emb
-        return None
+        return self.config.get("embeddingsConfig", {}).get(embedding_name)
     
     def get_vectorstore_config(self, store_name: str) -> Optional[dict]:
         """Get vector store configuration by name."""
-        for store in self.config.get("vectorStoreConfig", []):
-            if store["name"].lower() == store_name.lower():
-                return store
-        return None
+        return self.config.get("vectorStoreConfig", {}).get(store_name.lower())
 
     def get_knowledge_store_files(self) -> List[dict]:
         """Get knowledge store files."""
@@ -60,7 +61,7 @@ class ConfigManager:
             "file_path": file_path,
             "feed_llm": feed_llm
         })
-        self.save_config()
+        self.save()
     
     def get_basic_config(self) -> List[dict]:
         """Get basic project configuration."""
@@ -75,23 +76,23 @@ class ConfigManager:
     
     def get_tabs(self) -> List[dict]:
         """Get all tabs configuration."""
-        return self.config.get("tabsConfig", [])
+        tabs_config = self.config.get("tabsConfig", {})
+        standard_tabs = tabs_config.get("tabs", [])
+        custom_tabs = tabs_config.get("customTabs", [])
+        return standard_tabs + custom_tabs
+    
+    def get_tab_by_id(self, tab_id: str) -> Optional[dict]:
+        """Get a specific tab by its ID."""
+        all_tabs = self.get_tabs()
+        for tab in all_tabs:
+            if tab.get("id") == tab_id:
+                return tab
+        return None
     
     def update_chat_prompt(self, prompt: str):
         """Update the chat prompt."""
         self.config["chatPrompt"] = prompt
-        self.save_config()
-
-
-    #* Later Version : [
-    #* Read & make bookmarks, Highlight on Paper,
-    #* Control Workspace, Speech Functionality,
-    #* ]
-        
-    def save_config(self):
-        """Save configuration to JSON file."""
-        with open(self.config_path, 'w') as f:
-            json.dump(self.config, f, indent=4)
+        self.save()
 
     def get_bookmarks(self) -> List[dict]:
         """Get all bookmarks."""
@@ -107,7 +108,12 @@ class ConfigManager:
             "file_path": file_path,
             "page_no": page_no
         })
-        self.save_config()
+        self.save()
+    
+    # Alias for backward compatibility
+    def save_config(self):
+        """Alias for save() method."""
+        self.save()
 
 
 class SessionManager:
@@ -236,7 +242,7 @@ class SessionManager:
             "index": str(next_index),
             "timestamp": timestamp_str,
             "message": message,
-            "is_ai": is_ai  # Now using boolean directly
+            "is_ai": is_ai
         })
         
         # Update metadata
@@ -365,8 +371,9 @@ class SessionManager:
             session["name"] = new_name
             self.save_chats()
 
+
 class Assistant:
-    def __init__(self, llm : LLM, embedding: Embedding, store: VectorStore, 
+    def __init__(self, llm: LLM, embedding: Embedding, store: VectorStore, 
                  session_manager: SessionManager, config_manager: ConfigManager = None):
         self.llm = llm
         self.embedding = embedding

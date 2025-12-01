@@ -4,8 +4,8 @@ langchain-community
 langchain-openai
 langchain-google-genai
 langchain-anthropic
-langchain-pinecone
-pinecone
+langchain-huggingface
+sentence_transformers
 faiss-cpu
 chromadb
 numpy
