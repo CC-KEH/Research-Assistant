@@ -1,15 +1,13 @@
 import os
 import uvicorn
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import *
 from manager import *
+from assistant import *
 from api_models import *
-
-load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,39 +53,33 @@ async def get_status():
 # ==================== LLM Endpoints ====================
 
 @app.post("/llm/initialize")
-async def initialize_llm(config: LLMConfig):
+async def initialize_llm(model_name):
     """Initialize LLM with specified configuration."""
     try:
-        llm.switch_llm(config.model_name, config.api_key)
-        return {"message": f"LLM initialized: {config.model_name}", "status": llm.check()}
+        llm.switch_llm(model_name)
+        return {"message": f"LLM initialized: {model_name}", "status": llm.check()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== Embedding Endpoints ====================
 
 @app.post("/embedding/initialize")
-async def initialize_embedding(config: EmbeddingConfig):
+async def initialize_embedding(model_name):
     """Initialize embedding model."""
     try:
-        embedding.switch_embedding(config.model_name, config.api_key)
-        return {"message": f"Embedding initialized: {config.model_name}", "status": embedding.check()}
+        embedding.switch_embedding(model_name)
+        return {"message": f"Embedding initialized: {model_name}", "status": embedding.check()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== Vector Store Endpoints ====================
 
 @app.post("/vectorstore/initialize")
-async def initialize_vectorstore(config: VectorStoreConfig):
+async def initialize_vectorstore(model_name):
     """Initialize vector store."""
     try:
-        if not embedding.model:
-            raise HTTPException(status_code=400, detail="Embedding model not initialized")
-        
-        vector_store.update_config({
-            "backend": config.backend,
-        })
-        vector_store.switch_store(embedding.model)
-        return {"message": f"Vector store initialized: {config.backend}", "status": vector_store.check()}
+        vector_store.switch_store(model_name=model_name)
+        return {"message": f"Vector store initialized: {model_name}", "status": vector_store.check()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -257,6 +249,6 @@ async def process_with_tab(request: TabProcessRequest):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     print(f"🌐 Starting server on http://127.0.0.1:{port}")
-    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=True)
+    uvicorn.run(host="127.0.0.1", port=port, reload=True)
     
     # uvicorn main:app --host 127.0.0.1 --port 8000 --reload

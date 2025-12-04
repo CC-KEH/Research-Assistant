@@ -22,22 +22,6 @@ class SessionUpdate(BaseModel):
     context: Optional[str] = None
     tags: Optional[List[str]] = None
 
-class LLMConfig(BaseModel):
-    model_name: str
-    api_key: Optional[str] = None
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 2000
-
-class EmbeddingConfig(BaseModel):
-    model_name: str
-    api_key: Optional[str] = None
-
-class VectorStoreConfig(BaseModel):
-    backend: str
-    api_key: Optional[str] = None
-    index_name: Optional[str] = None
-    dimension: Optional[int] = 1536
-
 class DocumentAdd(BaseModel):
     documents: List[str]
     metadatas: Optional[List[dict]] = None

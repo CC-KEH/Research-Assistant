@@ -32,100 +32,96 @@
             {
                 "id": "view",
                 "label": "View",
-                "prompt": "Prompt goes here"
+                "enabled": true,
+                "prompt": "You are an expert academic assistant. Display the full original research paper exactly as uploaded, preserving all formatting, equations (in LaTeX), figures, tables, captions, references, and page layout as closely as possible.\n\nText: \n{text}\n\nFull Paper:"
             },
             {
                 "id": "summary",
                 "label": "Summary",
-                "prompt": "Prompt goes here"
+                "enabled": true,
+                "prompt": "You are an outstanding research communicator that makes complex papers easy to understand.\nProvide a complete, beginner-friendly summary of the entire paper in simple language.\nAfter explaining each topic, always give a clear real-world or intuitive example.\n\nOutput strictly in clean Markdown format.\n\nText: \n{text}\n\nSummary:\n\n# Title & Authors\n\n# Field & Keywords\n\n# Core Problem (in simple words)\n(explanation + simple example)\n\n# Prerequisites / Background Needed\n(explanation + simple example)\n\n# Main Idea / Proposed Solution\n(explanation + simple example)\n\n# How the Method Works (step-by-step)\n(explanation + simple example)\n\n# Key Results & Numbers\n(explanation + simple example)\n\n# Key Contributions\n• Bullet list with simple explanation + example for each\n\n# Limitations\n(explanation + simple example)\n\n# Conclusion of the Paper\n(explanation + simple example)\n\n# Why This Paper Matters\n(simple takeaway + real-world example)"
             },
             {
                 "id": "contributions",
                 "label": "Contributions",
-                "prompt": "Prompt goes here"
+                "enabled": true,
+                "prompt": "You are an expert in identifying scientific novelty.\nExtract and explain every single contribution (major and minor) of this paper in simple, precise language.\nFor each contribution, give a short intuitive example.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nKey Contributions of This Paper:\n\n# Main Contributions\n• Contribution 1 → explanation in simple words  \n  Example:\n\n• Contribution 2 → explanation  \n  Example:\n\n(...continue for all contributions...)\n\n# Incremental / Minor Contributions\n• ...\n\n# Novelty Check\nCompared to previous work, what is truly new here? (explain simply + example)"
             },
             {
                 "id": "critical-analysis",
                 "label": "Analysis",
-                "prompt": "Prompt goes here"
+                "enabled": true,
+                "prompt": "You are a tough but fair peer reviewer.\nPerform a deep, honest, and balanced critical analysis in simple academic language.\nUse examples wherever possible.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nCritical Analysis:\n\n# Strengths\n• Strength 1 + example from paper\n• Strength 2 + example\n(...at least 5–6...)\n\n# Weaknesses & Limitations\n• Weakness 1 + concrete example\n• Weakness 2 + concrete example\n(...be direct but polite...)\n\n# Questions About Validity\n• Are experiments fair? (example)\n• Are baselines strong? (example)\n• Any cherry-picking of results? (example)\n\n# Is the Novelty Overhyped?\n(simple yes/no + explanation with example)\n\n# Overall Rating (1–10)\nJustification with examples\n\n# Recommendation\nAccept / Minor Revision / Major Revision / Reject + why"
             },
             {
                 "id": "dictionary",
                 "label": "Dictionary",
-                "prompt": "Prompt goes here"
+                "enabled": true,
+                "prompt": "You are a domain expert glossary builder.\nCreate an alphabetized dictionary of all important terms, acronyms, and symbols from the paper.\nEach entry must be simple and include a short example.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nTechnical Dictionary (A–Z):\n\n**Term / Acronym / Symbol**  \nDefinition in simple words  \nExample: ...\n\n(continue for all key terms — aim for 30–60 entries depending on paper length)"
             },
             {
                 "id": "future-work",
                 "label": "Future",
-                "prompt": "Prompt goes here"
+                "enabled": true,
+                "prompt": "You are a leading researcher in this field.\nBased on this paper, propose concrete and exciting future research directions in very simple language.\nEach idea include a small example or thought experiment.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nPromising Future Work Ideas:\n\n# Idea 1\nDescription + why it’s important  \nPossible experiment/example: ...\n\n# Idea 2\n...\n\n(Provide 8–12 high-quality, realistic ideas. Be creative but practical.)"
             }
         ],
-        "customTabs": [
-            {
-                "id": "",
-                "label": "",
-                "prompt": ""
-            }
-        ]
+        "customTabs": []
     },
     "llmConfig": {
         "anthropic": {
             "label": "Claude 2",
             "model_name": "claude-2",
-            "api_key": "",
-            "active": false
+            "api_key": ""
         },
         "google": {
             "label": "Gemini Pro",
             "model_name": "gemini-pro",
-            "api_key": "",
-            "active": false
+            "api_key": ""
         },
         "openai": {
             "label": "GPT-3.5",
             "model_name": "gpt-3.5",
-            "api_key": "",
-            "active": true
+            "api_key": ""
         },
         "xai": {
             "label": "XAI",
             "model_name": "grok",
-            "api_key": "",
-            "active": false
+            "api_key": ""
         }
     },
     "embeddingsConfig": {
         "google": {
             "label": "Google Embeddings",
             "model_name": "google-embedding-model",
-            "api_key": "",
-            "active": false
+            "api_key": ""
         },
         "openai": {
             "label": "OpenAI Embeddings",
             "model_name": "text-embedding-3-small",
-            "api_key": "",
-            "active": true
+            "api_key": ""
         },
         "huggingface": {
             "label": "HuggingFaceEmbeddings",
-            "model_name": "sentence-transformers/all-mpnet-base-v2",
-            "active": true
+            "model_name": "sentence-transformers/all-mpnet-base-v2"
         }
     },
     "vectorStoreConfig": {
         "faiss": {
             "label": "Faiss",
             "environment": "",
-            "index_name": "",
-            "active": true
+            "index_name": ""
         },
         "chroma": {
             "label": "Chroma",
             "url": "",
-            "index_name": "",
-            "active": false
+            "index_name": ""
         }
     },
-    "chatPrompt": "Prompt here."
+    "aiConfig": {
+        "active_llm": "openai",
+        "active_embeddings": "openai",
+        "active_vector_store": "faiss",
+        "chatPrompt": "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}"
+    }
 }
