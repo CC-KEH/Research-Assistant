@@ -110,12 +110,14 @@
         "faiss": {
             "label": "Faiss",
             "environment": "",
-            "index_name": ""
+            "index_name": "",
+            "persist_directory": ""
         },
         "chroma": {
             "label": "Chroma",
             "url": "",
-            "index_name": ""
+            "index_name": "",
+            "persist_directory": ""
         }
     },
     "aiConfig": {

@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-import faiss
 from langchain_xai import ChatXAI
 from langchain_anthropic import ChatAnthropic
 from langchain_core.documents import Document
@@ -62,15 +61,19 @@ class LLM:
             )
         else:
             raise ValueError(f"Unknown model: {self.active_llm}")
-        
+
         return self.model  # FIX: Return the model
 
     def switch_llm(self, model_name: str):
         """Switch to a different LLM provider."""
-        self.ai_config["active_llm"] = model_name  # FIX: Use direct assignment instead of setdefault
+        self.ai_config["active_llm"] = (
+            model_name  # FIX: Use direct assignment instead of setdefault
+        )
         self.config_manager.update_ai_config(self.ai_config)
         self.active_llm = model_name
-        self.llm_config = self.config_manager.get_llm_config(model_name=self.active_llm)  # FIX: Update llm_config
+        self.llm_config = self.config_manager.get_llm_config(
+            model_name=self.active_llm
+        )  # FIX: Update llm_config
         self.model = self.initialize()  # FIX: Assign return value
 
     def get_chat_prompt(self) -> str:
@@ -149,7 +152,7 @@ class Embedding:
             )
         else:
             raise ValueError(f"Unknown embedding model: {self.active_embedding}")
-        
+
         return self.model  # FIX: Return the model
 
     def switch_embedding(self, model_name: str):
@@ -204,21 +207,12 @@ class VectorStore:
             raise ValueError(
                 f"Unknown vector store backend: {self.active_vector_store}"
             )
-        
+
         return self.store  # FIX: Return the store
 
-    def _setup_faiss(self, embedding_dimension: int):
-        """Setup FAISS vector store."""
-        # FIX: Use a dummy text to get proper embedding dimension
-        # embedding_dim = len(self.embedding_model.embed_query(""))
-        embedding_dim = embedding_dimension
-        index = faiss.IndexFlatL2(embedding_dim)
-        self.store = FAISS(
-            embedding_function=self.embedding_model,
-            index=index,
-            docstore=InMemoryDocstore(),
-            index_to_docstore_id={},
-        )
+    def _setup_faiss(self):
+        # add_documents() handles initialization
+        self.store = None
 
     def _setup_chroma(self):
         """Setup Chroma vector store."""
@@ -235,7 +229,7 @@ class VectorStore:
         self.active_vector_store = model_name
         self.store_config = self.config_manager.get_vectorstore_config(
             model_name=self.active_vector_store
-        )  # FIX: Update store_config
+        )
         self.store = self.initialize()  # FIX: Assign return value
 
     def add_documents(self, docs: List[str], metadatas: Optional[List[dict]] = None):
@@ -246,8 +240,7 @@ class VectorStore:
         ]
 
         if self.active_vector_store == "faiss":
-            if self.store is None or not hasattr(self.store, 'index') or self.store.index.ntotal == 0:
-                # FIX: Initialize FAISS store from documents if empty
+            if self.store is None:
                 self.store = FAISS.from_documents(documents, self.embedding_model)
             else:
                 self.store.add_documents(documents)
@@ -270,22 +263,18 @@ class VectorStore:
         results = self.store.similarity_search_with_score(query, k=k)
         return [(doc.page_content, score) for doc, score in results]
 
-    def save(self, path: str = None):
+    def save(self):
         """Save the vector store to disk (FAISS only)."""
         if self.active_vector_store == "faiss" and self.store:
-            save_path = path or self.store_config.get(
-                "persist_directory", "./faiss_index"
-            )
+            save_path = self.store_config.get("persist_directory", "./faiss_index")
             self.store.save_local(save_path)
         elif self.active_vector_store == "chroma":
             print("Chroma auto-persists. No manual save needed.")
 
-    def load(self, path: str = None):
+    def load(self):
         """Load the vector store from disk (FAISS only)."""
         if self.active_vector_store == "faiss":
-            load_path = path or self.store_config.get(
-                "persist_directory", "./faiss_index"
-            )
+            load_path = self.store_config.get("persist_directory", "./faiss_index")
             self.store = FAISS.load_local(
                 load_path, self.embedding_model, allow_dangerous_deserialization=True
             )
@@ -296,8 +285,9 @@ class VectorStore:
 if __name__ == "__main__":
     # FIX: Need to pass config_manager to LLM
     from manager import ConfigManager
+
     config_manager = ConfigManager()
-    
+
     llm = LLM(config_manager)
     llm.switch_llm("openai")
     response = llm.process("Hello, how are you?")
