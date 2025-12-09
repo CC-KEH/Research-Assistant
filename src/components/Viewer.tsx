@@ -6,6 +6,7 @@ import {
   markdownViewerTabs,
   paperViewerTabs,
 } from "@/lib/tabs";
+import Suggestions from "./Suggestions";
 
 interface ViewerProps {
   activeTabGroup: Tab[];
@@ -71,7 +72,7 @@ export default function Viewer({
           case "arxiv":
             return (
               <div className="p-4 text-sm text-muted-foreground">
-                🔗 Arxiv link, metadata, etc.
+                <Suggestions />
               </div>
             );
           default:
@@ -113,7 +114,7 @@ export default function Viewer({
   };
 
   return (
-    <div className="h-[630px] w-full flex flex-col items-center mt-[11px]">
+    <div className="h-[98.5%] w-full flex flex-col items-center mt-[11px]">
       <div className="flex-1 w-full flex justify-center items-center">
         {renderInnerContent()}
       </div>

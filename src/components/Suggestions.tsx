@@ -55,10 +55,12 @@ export default function Suggestions() {
 
   return (
     <div>
+      <h1 className="text-center border-0">Similar Papers</h1>
+      <p className="text-center">Based on the papers in workspace.</p>
       {suggestions.length === 0 ? (
         <p className="text-muted-foreground">No suggestions available.</p>
       ) : (
-        <div className="space-y-4 max-h-[525px] overflow-y-auto pr-2 scrollbar-thin">
+        <div className="space-y-4 min-w-xl max-h-[525px] mx-auto overflow-y-auto scrollbar-thin">
           {suggestions.map((paper, index) => (
             <Card
               key={index}
