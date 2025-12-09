@@ -30,7 +30,6 @@ pub fn run() {
             write_file,
             map_extension_to_type,
             upload_to_knowledge_store,
-            // Python server handlers
             start_python_server,
             stop_python_server,
             check_python_server,
@@ -40,7 +39,6 @@ pub fn run() {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                // You can manually start the server from the frontend instead
                 println!("App ready. Python server can be started via frontend.");
             });
             Ok(())

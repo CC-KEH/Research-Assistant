@@ -31,25 +31,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "resources": [
+      "../src-python/**/*"
     ]
   },
-  "plugins": {
-    "fs": {},
-    "shell": {
-      "open": true,
-      "scope": [
-        {
-          "name": "python",
-          "cmd": "python",
-          "args": true,
-          "sidecar": false
-        },
-        {
-          "name": "python-server",
-          "sidecar": true,
-          "args": true
-        }
-      ]
-    }
-  }
+  "plugins": {}
 }

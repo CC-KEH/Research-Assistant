@@ -1,303 +1,378 @@
-// import { useState, FormEvent, useEffect } from "react";
-// import { Mic, CornerDownLeft, ChevronDown } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-// import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
-// import { ChatMessageList } from "@/components/ui/chat-message-list";
-// import { ChatInput } from "@/components/ui/chat-input";
-// import { useAnimatedText } from "@/components/ui/animated-text";
-// import type { FileInfo } from "@/lib/types";
+import { useState, FormEvent, useEffect } from "react";
+import { Mic, CornerDownLeft, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
+import { ChatMessageList } from "@/components/ui/chat-message-list";
+import { ChatInput } from "@/components/ui/chat-input";
+import { useAnimatedText } from "@/components/ui/animated-text";
+import type { FileInfo } from "@/lib/types";
+import {
+  startPythonServer,
+  initializePythonBackend,
+  getAIConfig,
+  createSession,
+  getAllSessions,
+  getSessionHistory,
+  switchSession,
+  sendChatMessage,
+  switchLLM,
+} from "@/lib/backend";
 
-// interface Message {
-//   id: number;
-//   content: string;
-//   sender: "user" | "ai" | "system";
-// }
+interface Message {
+  id: number;
+  content: string;
+  sender: "user" | "ai" | "system";
+  timestamp?: string;
+}
 
-// interface AssistantProps {
-//   fileInfo: FileInfo | null;
-// }
+interface AssistantProps {
+  fileInfo: FileInfo | null;
+}
 
-// export default function Assistant({ fileInfo }: AssistantProps) {
-//   const [messages, setMessages] = useState<Message[]>([
-//     {
-//       id: 1,
-//       content: "Hello! How can I help you today?",
-//       sender: "ai",
-//     },
-//   ]);
-//   const [input, setInput] = useState("");
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [currentAiMessage, setCurrentAiMessage] = useState("");
-//   const [currentProvider, setCurrentProvider] = useState<string>("");
-//   const [availableProviders, setAvailableProviders] = useState<string[]>([]);
-//   const [modelError, setModelError] = useState<string | null>(null);
+export default function Assistant({ fileInfo }: AssistantProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentAiMessage, setCurrentAiMessage] = useState("");
+  const [currentProvider, setCurrentProvider] = useState<string>("");
+  const [availableProviders, setAvailableProviders] = useState<string[]>([]);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [currentSessionIndex, setCurrentSessionIndex] = useState<number | null>(
+    null
+  );
+  const [initializationStep, setInitializationStep] =
+    useState<string>("Starting...");
 
-//   const animatedText = useAnimatedText(
-//     currentAiMessage,
-//     currentAiMessage ? "" : undefined
-//   );
+  const animatedText = useAnimatedText(
+    currentAiMessage,
+    currentAiMessage ? "" : undefined
+  );
 
-//   // Initialize available providers on mount
-//   useEffect(() => {
-//     try {
-//       const providers = getAvailableLLMProviders();
-//       setAvailableProviders(providers);
-//       if (providers.length > 0) {
-//         setCurrentProvider(providers[0]);
-//       }
-//     } catch (error) {
-//       console.error("Error loading LLM providers:", error);
-//       setModelError(
-//         "Failed to load LLM providers. Please check your configuration."
-//       );
-//     }
-//   }, []);
+  // Initialize backend on mount
+  useEffect(() => {
+    const initializeBackend = async () => {
+      try {
+        setInitializationStep("Starting Python server...");
 
-//   // Notify user of new file selection
-//   useEffect(() => {
-//     if (fileInfo) {
-//       const systemMessage: Message = {
-//         id: Date.now(),
-//         content: `Selected file: ${fileInfo.name} (${fileInfo.type})`,
-//         sender: "system",
-//       };
-//       setMessages((prev) => [...prev, systemMessage]);
-//     }
-//   }, [fileInfo]);
+        // 1. Start Python server
+        await startPythonServer();
 
-//   const handleSubmit = async (e: FormEvent) => {
-//     e.preventDefault();
-//     if (!input.trim() || isLoading) return;
+        // 2. Wait for server to be healthy
+        setInitializationStep("Waiting for server to be ready...");
 
-//     const userMessageContent = input.trim();
-//     const newUserMessage: Message = {
-//       id: Date.now(),
-//       content: userMessageContent,
-//       sender: "user",
-//     };
+        // 3. Initialize Python backend with paths
+        setInitializationStep("Initializing backend...");
+        const initResult = await initializePythonBackend(
+          "config.json",
+          "chats.json"
+        );
+        console.log("Backend initialized:", initResult);
 
-//     setMessages((prev) => [...prev, newUserMessage]);
-//     setInput("");
-//     setIsLoading(true);
-//     setCurrentAiMessage("");
-//     setModelError(null);
+        // 4. Get AI configuration
+        setInitializationStep("Loading AI configuration...");
 
-//     try {
-//       // Create the model based on current provider
-//       const model = currentProvider
-//         ? createModelByProvider(currentProvider)
-//         : createModelFromConfig();
+        const aiConfig = await getAIConfig();
+        console.log("AI Config:", aiConfig);
 
-//       // Build conversation history for context
-//       const conversationHistory = messages
-//         .filter((m) => m.sender !== "system")
-//         .map((m) => {
-//           if (m.sender === "user") {
-//             return new HumanMessage(m.content);
-//           } else {
-//             return new AIMessage(m.content);
-//           }
-//         });
+        // Set current provider
+        const activeLLM = aiConfig.active_llm;
+        setCurrentProvider(activeLLM);
 
-//       // Add system message if file is selected
-//       const systemMessages = [];
-//       if (fileInfo) {
-//         systemMessages.push(
-//           new SystemMessage(
-//             `You have access to a file: ${fileInfo.name} (${fileInfo.type}). The user may ask questions about this file.`
-//           )
-//         );
-//       }
+        // Get available providers (those with API keys)
+        const providers: string[] = [];
+        if (aiConfig.openai?.api_key) providers.push("openai");
+        if (aiConfig.anthropic?.api_key) providers.push("anthropic");
+        if (aiConfig.google?.api_key) providers.push("google");
+        if (aiConfig.xai?.api_key) providers.push("xai");
+        setAvailableProviders(providers);
 
-//       // Prepare messages for the model
-//       const allMessages = [
-//         ...systemMessages,
-//         ...conversationHistory,
-//         new HumanMessage(userMessageContent),
-//       ];
+        // 5. Load or create session
+        setInitializationStep("Loading session...");
+        const sessionsData = await getAllSessions();
 
-//       // Stream the response
-//       let fullResponse = "";
-//       const stream = await model.stream(allMessages);
+        if (sessionsData.sessions && sessionsData.sessions.length > 0) {
+          // Use the most recent session (last one)
+          const sessionIndex = sessionsData.sessions.length - 1;
+          setCurrentSessionIndex(sessionIndex);
 
-//       // Create placeholder for AI message
-//       const aiMessageId = Date.now() + 1;
-//       const aiMessage: Message = {
-//         id: aiMessageId,
-//         content: "",
-//         sender: "ai",
-//       };
-//       setMessages((prev) => [...prev, aiMessage]);
+          // Switch to this session
+          await switchSession(sessionIndex);
 
-//       // Process the stream
-//       for await (const chunk of stream) {
-//         const content = chunk.content;
-//         if (typeof content === "string") {
-//           fullResponse += content;
-//           setCurrentAiMessage(fullResponse);
+          // Load session history
+          const historyData = await getSessionHistory(sessionIndex);
 
-//           // Update the message in the list
-//           setMessages((prev) =>
-//             prev.map((m) =>
-//               m.id === aiMessageId ? { ...m, content: fullResponse } : m
-//             )
-//           );
-//         }
-//       }
+          if (historyData.history && historyData.history.length > 0) {
+            const loadedMessages: Message[] = historyData.history.map(
+              (msg: any, idx: number) => ({
+                id: Date.now() + idx,
+                content: msg.message,
+                sender: msg.is_ai ? "ai" : "user",
+                timestamp: msg.timestamp,
+              })
+            );
+            setMessages(loadedMessages);
+          }
+        } else {
+          // Create a new session
+          const newSessionResult = await createSession("Chat Session");
+          setCurrentSessionIndex(newSessionResult.session_index);
 
-//       setIsLoading(false);
-//     } catch (error) {
-//       console.error("Error calling LLM:", error);
-//       const errorMessage: Message = {
-//         id: Date.now() + 1,
-//         content:
-//           error instanceof Error
-//             ? `Error: ${error.message}`
-//             : "Sorry, I encountered an error. Please check your API configuration.",
-//         sender: "ai",
-//       };
-//       setMessages((prev) => [...prev, errorMessage]);
-//       setModelError(error instanceof Error ? error.message : "Unknown error");
-//       setIsLoading(false);
-//     }
-//   };
+          // Add welcome message
+          setMessages([
+            {
+              id: 1,
+              content: "Hello! How can I help you today?",
+              sender: "ai",
+            },
+          ]);
+        }
 
-//   const handleMicrophoneClick = () => {
-//     // TODO: Implement voice input
-//     console.log("Microphone clicked");
-//   };
+        setInitializationStep("");
+        setIsInitialized(true);
+        console.log("✅ App fully initialized!");
+      } catch (error) {
+        console.error("Error initializing:", error);
+        setModelError(
+          error instanceof Error
+            ? error.message
+            : "Failed to initialize backend"
+        );
+        setInitializationStep("");
+      }
+    };
 
-//   const handleLLMSwitch = () => {
-//     // Cycle through available providers
-//     if (availableProviders.length === 0) {
-//       alert("No LLM providers configured. Please add API keys in Settings.");
-//       return;
-//     }
+    initializeBackend();
+  }, []);
 
-//     const currentIndex = availableProviders.indexOf(currentProvider);
-//     const nextIndex = (currentIndex + 1) % availableProviders.length;
-//     setCurrentProvider(availableProviders[nextIndex]);
-//   };
+  // Notify user of new file selection
+  useEffect(() => {
+    if (fileInfo && isInitialized) {
+      const systemMessage: Message = {
+        id: Date.now(),
+        content: `Selected file: ${fileInfo.name} (${fileInfo.type})`,
+        sender: "system",
+      };
+      setMessages((prev) => [...prev, systemMessage]);
+    }
+  }, [fileInfo, isInitialized]);
 
-//   // Get display name and icon for current provider
-//   const getProviderDisplay = () => {
-//     switch (currentProvider) {
-//       case "openai":
-//         return { icon: "openai.svg", name: "GPT-4" };
-//       case "anthropic":
-//         return { icon: "anthropic.svg", name: "Claude" };
-//       case "google":
-//         return { icon: "google.svg", name: "Gemini" };
-//       case "xai":
-//         return { icon: "xai.svg", name: "Grok" };
-//       default:
-//         return { icon: "openai.svg", name: "AI" };
-//     }
-//   };
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading || !isInitialized) return;
 
-//   const providerDisplay = getProviderDisplay();
+    const userMessageContent = input.trim();
+    const newUserMessage: Message = {
+      id: Date.now(),
+      content: userMessageContent,
+      sender: "user",
+    };
 
-//   return (
-//     <div className="h-full border bg-background rounded-lg flex flex-col relative">
-//       {modelError && (
-//         <div className="p-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
-//           {modelError}
-//         </div>
-//       )}
+    setMessages((prev) => [...prev, newUserMessage]);
+    setInput("");
+    setIsLoading(true);
+    setCurrentAiMessage("");
+    setModelError(null);
 
-//       <div className="flex-1 min-h-0 relative">
-//         <ChatMessageList>
-//           {messages.map((message, index) => {
-//             const isLast = index === messages.length - 1;
-//             const isAnimated =
-//               message.sender === "ai" &&
-//               message.content === currentAiMessage &&
-//               isLast &&
-//               isLoading === false;
+    try {
+      // Call the chat API
+      const data = await sendChatMessage(
+        userMessageContent,
+        false, // useRAG - set to true if you want to use RAG
+        currentSessionIndex ?? undefined,
+        4 // k value for RAG
+      );
 
-//             return (
-//               <ChatBubble
-//                 key={message.id}
-//                 variant={
-//                   message.sender === "user"
-//                     ? "sent"
-//                     : message.sender === "system"
-//                     ? undefined
-//                     : "received"
-//                 }
-//               >
-//                 <ChatBubbleMessage
-//                   variant={
-//                     message.sender === "user"
-//                       ? "sent"
-//                       : message.sender === "system"
-//                       ? undefined
-//                       : "received"
-//                   }
-//                 >
-//                   {isAnimated ? animatedText : message.content}
-//                 </ChatBubbleMessage>
-//               </ChatBubble>
-//             );
-//           })}
-//           {isLoading && (
-//             <ChatBubble variant="received">
-//               <ChatBubbleMessage isLoading />
-//             </ChatBubble>
-//           )}
-//         </ChatMessageList>
-//       </div>
+      // Add AI response to messages
+      const aiMessage: Message = {
+        id: Date.now() + 1,
+        content: data.response,
+        sender: "ai",
+        timestamp: data.timestamp,
+      };
 
-//       <div className="p-4 border-t shrink-0 bg-background z-10">
-//         <form
-//           onSubmit={handleSubmit}
-//           className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
-//         >
-//           <ChatInput
-//             value={input}
-//             onChange={(e) => setInput(e.target.value)}
-//             placeholder="Type your message..."
-//             className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
-//             disabled={isLoading}
-//           />
-//           <div className="flex items-center p-3 pt-2 justify-between">
-//             <div className="flex gap-1">
-//               <Button
-//                 variant="outline"
-//                 size="default"
-//                 type="button"
-//                 onClick={handleLLMSwitch}
-//                 disabled={availableProviders.length === 0}
-//               >
-//                 <img
-//                   src={providerDisplay.icon}
-//                   alt={providerDisplay.name}
-//                   className="pr-1 w-5 h-5"
-//                 />
-//                 {providerDisplay.name}
-//                 <ChevronDown className="ml-1" />
-//               </Button>
-//               <Button
-//                 variant="ghost"
-//                 size="icon"
-//                 type="button"
-//                 onClick={handleMicrophoneClick}
-//               >
-//                 <Mic className="size-4" />
-//               </Button>
-//             </div>
-//             <Button
-//               type="submit"
-//               size="sm"
-//               className="ml-auto gap-1.5"
-//               disabled={isLoading || !input.trim()}
-//             >
-//               Ask
-//               <CornerDownLeft className="size-3.5" />
-//             </Button>
-//           </div>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }
+      setMessages((prev) => [...prev, aiMessage]);
+      setCurrentAiMessage(data.response);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error calling API:", error);
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        content:
+          error instanceof Error
+            ? `Error: ${error.message}`
+            : "Sorry, I encountered an error. Please try again.",
+        sender: "ai",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setModelError(error instanceof Error ? error.message : "Unknown error");
+      setIsLoading(false);
+    }
+  };
+
+  const handleMicrophoneClick = () => {
+    // TODO: Implement voice input
+    console.log("Microphone clicked");
+  };
+
+  const handleLLMSwitch = async () => {
+    if (availableProviders.length === 0) {
+      alert("No LLM providers configured. Please add API keys in Settings.");
+      return;
+    }
+
+    try {
+      // Cycle through available providers
+      const currentIndex = availableProviders.indexOf(currentProvider);
+      const nextIndex = (currentIndex + 1) % availableProviders.length;
+      const nextProvider = availableProviders[nextIndex];
+
+      // Switch the LLM on the backend
+      await switchLLM(nextProvider);
+
+      setCurrentProvider(nextProvider);
+
+      // Show system message
+      const systemMessage: Message = {
+        id: Date.now(),
+        content: `Switched to ${getProviderDisplay(nextProvider).name}`,
+        sender: "system",
+      };
+      setMessages((prev) => [...prev, systemMessage]);
+    } catch (error) {
+      console.error("Error switching LLM:", error);
+      setModelError(
+        error instanceof Error ? error.message : "Failed to switch LLM"
+      );
+    }
+  };
+
+  // Get display name and icon for provider
+  const getProviderDisplay = (provider?: string) => {
+    const p = provider || currentProvider;
+    switch (p) {
+      case "openai":
+        return { icon: "/openai.svg", name: "GPT-4" };
+      case "anthropic":
+        return { icon: "/anthropic.svg", name: "Claude" };
+      case "google":
+        return { icon: "/google.svg", name: "Gemini" };
+      case "xai":
+        return { icon: "/xai.svg", name: "Grok" };
+      default:
+        return { icon: "/openai.svg", name: "AI" };
+    }
+  };
+
+  const providerDisplay = getProviderDisplay();
+
+  return (
+    <div className="h-full border bg-background rounded-lg flex flex-col relative">
+      {!isInitialized && initializationStep && (
+        <div className="p-2 bg-blue-50 border-b border-blue-200 text-blue-700 text-sm">
+          {initializationStep}
+        </div>
+      )}
+
+      {modelError && (
+        <div className="p-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+          {modelError}
+        </div>
+      )}
+
+      <div className="flex-1 min-h-0 relative">
+        <ChatMessageList>
+          {messages.map((message, index) => {
+            const isLast = index === messages.length - 1;
+            const isAnimated =
+              message.sender === "ai" &&
+              message.content === currentAiMessage &&
+              isLast &&
+              isLoading === false;
+
+            return (
+              <ChatBubble
+                key={message.id}
+                variant={
+                  message.sender === "user"
+                    ? "sent"
+                    : message.sender === "system"
+                    ? undefined
+                    : "received"
+                }
+              >
+                <ChatBubbleMessage
+                  variant={
+                    message.sender === "user"
+                      ? "sent"
+                      : message.sender === "system"
+                      ? undefined
+                      : "received"
+                  }
+                >
+                  {isAnimated ? animatedText : message.content}
+                </ChatBubbleMessage>
+              </ChatBubble>
+            );
+          })}
+          {isLoading && (
+            <ChatBubble variant="received">
+              <ChatBubbleMessage isLoading />
+            </ChatBubble>
+          )}
+        </ChatMessageList>
+      </div>
+
+      <div className="p-4 border-t shrink-0 bg-background z-10">
+        <form
+          onSubmit={handleSubmit}
+          className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
+        >
+          <ChatInput
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
+            disabled={isLoading || !isInitialized}
+          />
+          <div className="flex items-center p-3 pt-2 justify-between">
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="default"
+                type="button"
+                onClick={handleLLMSwitch}
+                disabled={availableProviders.length === 0 || !isInitialized}
+              >
+                <img
+                  src={providerDisplay.icon}
+                  alt={providerDisplay.name}
+                  className="pr-1 w-5 h-5"
+                />
+                {providerDisplay.name}
+                <ChevronDown className="ml-1" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                onClick={handleMicrophoneClick}
+              >
+                <Mic className="size-4" />
+              </Button>
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              className="ml-auto gap-1.5"
+              disabled={isLoading || !input.trim() || !isInitialized}
+            >
+              Ask
+              <CornerDownLeft className="size-3.5" />
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
