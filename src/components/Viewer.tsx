@@ -7,6 +7,8 @@ import {
   paperViewerTabs,
 } from "@/lib/tabs";
 import Suggestions from "./Suggestions";
+import MarkdownRenderer from "./small/MarkdownRenderer";
+import { getContent } from "@/lib/backend";
 
 interface ViewerProps {
   activeTabGroup: Tab[];
@@ -48,25 +50,25 @@ export default function Viewer({
           case "summary":
             return (
               <div className="p-4 text-sm text-muted-foreground">
-                🧠 Summary of the paper will go here.
+                <MarkdownRenderer content={getContent("summary")} />
               </div>
             );
           case "contributions":
             return (
               <div className="p-4 text-sm text-muted-foreground">
-                🧩 Key contributions section.
+                <MarkdownRenderer content={getContent("contributions")} />
               </div>
             );
           case "critical-analysis":
             return (
               <div className="p-4 text-sm text-muted-foreground">
-                🔍 Critical analysis or reflection view.
+                <MarkdownRenderer content={getContent("critical-analysis")} />
               </div>
             );
           case "future-work":
             return (
               <div className="p-4 text-sm text-muted-foreground">
-                🚀 Future work suggestions here.
+                <MarkdownRenderer content={getContent("future-work")} />
               </div>
             );
           case "arxiv":

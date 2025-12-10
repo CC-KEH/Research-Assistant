@@ -1,7 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BookmarkIcon } from "lucide-react";
 
 export default function Suggestions() {
+  function toggleReadLater() {}
+
   const suggestions = [
     {
       title: "Efficient Algorithms for Big Data",
@@ -55,16 +58,16 @@ export default function Suggestions() {
 
   return (
     <div>
-      <h1 className="text-center border-0">Similar Papers</h1>
-      <p className="text-center">Based on the papers in workspace.</p>
+      <h1 className="text-center border-0 mb-0">Similar Papers</h1>
+      <p className="text-center mb-2">Based on the papers in workspace.</p>
       {suggestions.length === 0 ? (
         <p className="text-muted-foreground">No suggestions available.</p>
       ) : (
-        <div className="space-y-4 min-w-xl max-h-[525px] mx-auto overflow-y-auto scrollbar-thin">
+        <div className="min-w-xl max-h-[575px] mx-auto overflow-y-auto scrollbar-thin">
           {suggestions.map((paper, index) => (
             <Card
               key={index}
-              className="shadow-md rounded-2xl w-full py-4 min-h-20 max-h-30"
+              className="shadow-md rounded-2xl w-full my-4 min-h-20 max-h-30"
             >
               <CardContent className="space-y-1">
                 <h3 className="text-sm font-medium">{paper.title}</h3>
@@ -79,16 +82,25 @@ export default function Suggestions() {
                       {new Date(paper.publishedDate).toLocaleDateString()}
                     </p>
                   </div>
-                  <a
-                    href={paper.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0"
-                  >
-                    <Button variant="outline" size="sm">
-                      View
+                  <div className="flex flex-row gap-2">
+                    <a
+                      href={paper.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0"
+                    >
+                      <Button variant="outline" size="sm">
+                        View
+                      </Button>
+                    </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={toggleReadLater}
+                    >
+                      <BookmarkIcon />
                     </Button>
-                  </a>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -652,3 +652,22 @@ export const loadConfig = async (config: Config) => {
     return null;
   }
 };
+
+export const getContent = (tab_id: String) => {
+  // let content = "";
+  // switch (tab_id) {
+  //   case "summary":
+  //     return "# h1 Heading 8-) ## h2 Heading \n ### h3 Heading \n #### h4 Heading \n ##### h5 Heading \n ###### h6 Heading \n This is normal text.";
+  //     break;
+  //   case "contributions":
+  //     return "";
+  //     break;
+  //   case "analysis":
+  //     return "";
+  //     break;
+  //   case "future-work":
+  //     return "";
+  //     break;
+  // }
+  return "# h1 Heading 8-) ## h2 Heading \n ### h3 Heading \n #### h4 Heading \n ##### h5 Heading \n ###### h6 Heading \n This is normal text.";
+};
