@@ -148,6 +148,10 @@
   }
 }
 /* Tailwind-compatible custom scrollbar example */
+.scrollbar-thin {
+  scroll-behavior: smooth;
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }

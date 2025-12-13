@@ -48,35 +48,17 @@ export default function Viewer({
           case "view":
             return <PDFView file={filePath} />;
           case "summary":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                <MarkdownRenderer content={getContent("summary")} />
-              </div>
-            );
+            return <MarkdownRenderer content={getContent("summary")} />;
           case "contributions":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                <MarkdownRenderer content={getContent("contributions")} />
-              </div>
-            );
+            return <MarkdownRenderer content={getContent("contributions")} />;
           case "critical-analysis":
             return (
-              <div className="p-4 text-sm text-muted-foreground">
-                <MarkdownRenderer content={getContent("critical-analysis")} />
-              </div>
+              <MarkdownRenderer content={getContent("critical-analysis")} />
             );
           case "future-work":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                <MarkdownRenderer content={getContent("future-work")} />
-              </div>
-            );
+            return <MarkdownRenderer content={getContent("future-work")} />;
           case "arxiv":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                <Suggestions />
-              </div>
-            );
+            return <Suggestions />;
           default:
             return null;
         }
@@ -116,10 +98,8 @@ export default function Viewer({
   };
 
   return (
-    <div className="h-[98.5%] w-full flex flex-col items-center mt-[11px]">
-      <div className="flex-1 w-full flex justify-center items-center">
-        {renderInnerContent()}
-      </div>
+    <div className="h-full flex flex-col items-center pb-12">
+      {renderInnerContent()}
     </div>
   );
 }

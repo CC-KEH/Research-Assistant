@@ -150,7 +150,7 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
   };
 
   return (
-    <div className="prose prose-slate max-w-none p-6 dark:prose-invert">
+    <div className="prose prose-slate max-w-none p-6 dark:prose-invert text-muted-foreground overflow-y-auto scrollbar-thin">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}

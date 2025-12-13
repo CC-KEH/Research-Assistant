@@ -57,17 +57,16 @@ export default function Suggestions() {
   ];
 
   return (
-    <div>
-      <h1 className="text-center border-0 mb-0">Similar Papers</h1>
-      <p className="text-center mb-2">Based on the papers in workspace.</p>
+    <div className="mt-3 text-muted-foreground min-w-xl h-full">
+      <h1 className="text-center mb-0 border-0 mt-6.5">Similar Papers</h1>
       {suggestions.length === 0 ? (
         <p className="text-muted-foreground">No suggestions available.</p>
       ) : (
-        <div className="min-w-xl max-h-[575px] mx-auto overflow-y-auto scrollbar-thin">
+        <div className="mt-7 pb-27 h-full mx-auto overflow-y-auto scrollbar-thin">
           {suggestions.map((paper, index) => (
             <Card
               key={index}
-              className="shadow-md rounded-2xl w-full my-4 min-h-20 max-h-30"
+              className="shadow-md rounded-2xl w-full mb-3 min-h-20 max-h-28"
             >
               <CardContent className="space-y-1">
                 <h3 className="text-sm font-medium">{paper.title}</h3>

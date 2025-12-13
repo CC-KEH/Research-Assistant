@@ -20,7 +20,7 @@ function App() {
       <ConfigProvider
         configPath={projectPath ? `${projectPath}/config.json` : null}
       >
-        <div className="h-full w-full overflow-hidden">
+        <div className="h-screen w-screen overflow-hidden">
           <Routes>
             <Route path="/" element={<Workspace />} />
             <Route path="/About" element={<About />} />
