@@ -2,6 +2,13 @@ export type Project = {
   projectName: string;
   projectPath: string;
 };
+
+export type TreeNode = {
+  id: string;
+  label: string;
+  children?: TreeNode[];
+};
+
 export type Paper = {
   id: string;
   name: string;

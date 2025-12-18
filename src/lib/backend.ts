@@ -1,14 +1,16 @@
-import { invoke } from "@tauri-apps/api/core";
-import { BugType, Item, Project } from "./types";
+import { join } from "path";
 import { Config } from "@/lib/types";
-import { open } from "@tauri-apps/plugin-dialog";
+import { readdir } from "fs/promises";
 import { FileInfo } from "@/lib/types";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
+import { BugType, Item, Project, TreeNode } from "./types";
 
 // Python API Configuration
 const PYTHON_API_BASE = "http://localhost:8000";
 
 //*********************** */
-//* Python Server Management (via Rust)
+//* Server Management
 //*********************** */
 
 export const startPythonServer = async (): Promise<string> => {
@@ -493,6 +495,54 @@ export const getTabs = async () => {
 //* File System Functions (via Rust)
 //*********************** */
 
+export function mapExtensionToType(ext: string): string {
+  switch (ext) {
+    case "pdf":
+      return "pdf";
+    case "md":
+      return "markdown";
+    case "txt":
+      return "text";
+    case "xlsx":
+      return "spreadsheet";
+    case "excalidraw":
+      return "drawing";
+    default:
+      return "unknown";
+  }
+}
+
+export async function getLibraryData(projectPath: string): Promise<TreeNode[]> {
+  try {
+    const entries = await readdir(projectPath, { withFileTypes: true });
+
+    const nodes: TreeNode[] = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const fullPath = join(projectPath, entry.name);
+        const children = await getLibraryData(fullPath); // Recursive
+
+        nodes.push({
+          id: fullPath,
+          label: entry.name,
+          children: children.length > 0 ? children : undefined,
+        });
+      } else {
+        nodes.push({
+          id: join(projectPath, entry.name),
+          label: entry.name,
+        });
+      }
+    }
+
+    return nodes;
+  } catch (error) {
+    console.error(`Failed to read directory ${projectPath}:`, error);
+    return [];
+  }
+}
+
 export const readFile = async (filePath: string): Promise<string> => {
   try {
     const content = await invoke<string>("read_file", { filePath });
@@ -656,7 +706,7 @@ export const loadConfig = async (config: Config) => {
 export const getContent = (tab_id: string) => {
   switch (tab_id) {
     case "summary":
-      return `# Project Summary
+      return `# Summary
 ## Overview
 This project delivers a comprehensive solution for data analysis and visualization. It provides insights into complex datasets through intuitive interfaces and powerful computational tools.
 
@@ -740,3 +790,52 @@ The architecture supports horizontal scaling across multiple server instances wi
       return "No content available for this tab.";
   }
 };
+
+//  [
+//       {
+//         id: "1",
+//         label: "Documents",
+//         children: [
+//           {
+//             id: "1-1",
+//             label: "Papers",
+//             children: [
+//               { id: "1-1-1", label: "Monthly Report.pdf" },
+//               { id: "1-1-2", label: "Annual Report.pdf" },
+//             ],
+//           },
+//           {
+//             id: "1-2",
+//             label: "Reports",
+//             children: [
+//               { id: "1-2-1", label: "Monthly Report.xlsx" },
+//               { id: "1-2-2", label: "Annual Report.pdf" },
+//             ],
+//           },
+//           {
+//             id: "1-3",
+//             label: "Archive",
+//             children: [
+//               { id: "1-3-1", label: "Yearly Report.xlsx" },
+//               { id: "1-3-2", label: "January Report.pdf" },
+//             ],
+//           },
+//         ],
+//       },
+//       {
+//         id: "2",
+//         label: "Notes",
+//         children: [
+//           { id: "2-1", label: "Note 1.md" },
+//           { id: "2-2", label: "Note 2.md" },
+//         ],
+//       },
+//       {
+//         id: "3",
+//         label: "Read later",
+//         children: [
+//           { id: "3-1", label: "reference1.paper" },
+//           { id: "3-2", label: "reference2.paper" },
+//         ],
+//       },
+//     ];

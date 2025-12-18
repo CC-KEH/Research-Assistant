@@ -64,11 +64,22 @@ export default function Viewer({
         }
 
       case markdownViewerTabs:
-        return (
-          <div className="p-4 text-sm text-muted-foreground">
-            📝 Markdown editor or canvas view here.
-          </div>
-        );
+        switch (innerActiveTab) {
+          case "view":
+            return (
+              <div className="p-4 text-sm text-muted-foreground">
+                👁 File preview here.
+              </div>
+            );
+          case "edit":
+            return (
+              <div className="p-4 text-sm text-muted-foreground">
+                ✏️ File editing tools here.
+              </div>
+            );
+          default:
+            return null;
+        }
 
       case fileViewerTabs:
         switch (innerActiveTab) {

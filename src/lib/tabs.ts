@@ -14,7 +14,8 @@ export const paperViewerTabs = [
 ];
 
 export const markdownViewerTabs = [
-  { id: "heading", label: "Canvas", prompt: "Prompt goes here" },
+  { id: "view", label: "View", prompt: "Prompt goes here" },
+  { id: "edit", label: "Edit", prompt: "Prompt goes here" },
 ];
 
 export const fileViewerTabs = [

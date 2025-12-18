@@ -1,21 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TreeView } from "@/components/small/Treeview";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
 import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
-import { FileInfo } from "@/lib/types";
-
-type TreeNode = {
-  id: string;
-  label: string;
-  children?: TreeNode[];
-};
+import { FileInfo, TreeNode } from "@/lib/types";
+import { getLibraryData, mapExtensionToType } from "@/lib/backend";
+import { useConfig } from "@/components/providers/ConfigProvider";
 
 interface LibraryProps {
   onFileSelect: (file: FileInfo) => void;
 }
 
 export default function Library({ onFileSelect }: LibraryProps) {
-  const [treeData, setTreeData] = useState<TreeNode[]>(getLibraryData());
+  const { getBasicConfig } = useConfig();
+  const basicConfig = getBasicConfig();
+  const projectPath = basicConfig?.find((p) => p.project_path)?.project_path;
+
+  const [treeData, setTreeData] = useState<TreeNode[]>([]);
+
+  useEffect(() => {
+    if (!projectPath) return;
+
+    const loadLibrary = async () => {
+      const data = await getLibraryData(projectPath);
+      setTreeData(data);
+    };
+
+    loadLibrary();
+  }, [projectPath]);
 
   const handleNewFile = () => {
     const updated = structuredClone(treeData);
@@ -31,20 +42,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
         });
         setTreeData(updated);
       }
-    }
-  };
-
-  const handleNewDrawing = () => {
-    const updated = structuredClone(treeData);
-    const canvases = updated.find((node) => node.label === "Canvas");
-
-    if (canvases?.children) {
-      canvases.children.push({
-        id: Date.now().toString(),
-        label: "New Drawing",
-        children: [],
-      });
-      setTreeData(updated);
     }
   };
 
@@ -92,7 +89,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
   return (
     <LibraryContextMenu
       onNewFile={handleNewFile}
-      onNewDrawing={handleNewDrawing}
       onDelete={handleDelete}
       onNewProject={handleNewProject}
       onReportBug={handleReportBug}
@@ -107,73 +103,4 @@ export default function Library({ onFileSelect }: LibraryProps) {
       </div>
     </LibraryContextMenu>
   );
-}
-
-function mapExtensionToType(ext: string): string {
-  switch (ext) {
-    case "pdf":
-      return "pdf";
-    case "md":
-      return "markdown";
-    case "txt":
-      return "text";
-    case "xlsx":
-      return "spreadsheet";
-    case "excalidraw":
-      return "drawing";
-    default:
-      return "unknown";
-  }
-}
-
-// --- Static tree data ---
-function getLibraryData(): TreeNode[] {
-  return [
-    {
-      id: "1",
-      label: "Documents",
-      children: [
-        {
-          id: "1-1",
-          label: "Papers",
-          children: [
-            { id: "1-1-1", label: "Monthly Report.pdf" },
-            { id: "1-1-2", label: "Annual Report.pdf" },
-          ],
-        },
-        {
-          id: "1-2",
-          label: "Reports",
-          children: [
-            { id: "1-2-1", label: "Monthly Report.xlsx" },
-            { id: "1-2-2", label: "Annual Report.pdf" },
-          ],
-        },
-        {
-          id: "1-3",
-          label: "Archive",
-          children: [
-            { id: "1-3-1", label: "Yearly Report.xlsx" },
-            { id: "1-3-2", label: "January Report.pdf" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "2",
-      label: "Notes",
-      children: [
-        { id: "2-1", label: "Note 1.md" },
-        { id: "2-2", label: "Note 2.md" },
-      ],
-    },
-    {
-      id: "3",
-      label: "Canvas",
-      children: [
-        { id: "3-1", label: "board1.excalidraw" },
-        { id: "3-2", label: "board2.excalidraw" },
-      ],
-    },
-  ];
 }

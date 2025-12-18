@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  ResizableHandle,
   ResizablePanel,
+  ResizableHandle,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import Frame1 from "@/components/Frame1";
