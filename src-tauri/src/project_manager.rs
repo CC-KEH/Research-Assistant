@@ -90,7 +90,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     }
 
     // Create resources directory if it doesn't exist
-    let resources_path = PathBuf::from(&project.resoures_path);
+    let resources_path = PathBuf::from(&project.resources_path);
     if !resources_path.exists() {
         fs::create_dir_all(&resources_path)
             .map_err(|e| format!("Failed to create resources directory: {}", e))?;
@@ -211,6 +211,12 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
 
     fs::write(&config_path, json_content)
         .map_err(|e| format!("Failed to write config file: {}", e))?;
+
+    // Create 2 directories: Documents, Notes
+    fs::create_dir_all(project_path.join("Documents"))
+        .map_err(|e| format!("Failed to create Documents directory: {}", e))?;
+    fs::create_dir_all(project_path.join("Notes"))
+        .map_err(|e| format!("Failed to create Notes directory: {}", e))?;
 
     Ok(project)
 }

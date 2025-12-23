@@ -2,7 +2,7 @@ export interface Config {
   basicConfig: {
     project_name: string;
     project_path: string;
-    resoures_path: string;
+    resources_path: string;
   }[];
   bookmarks: {
     file_name: string;

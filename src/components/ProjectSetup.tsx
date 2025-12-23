@@ -16,15 +16,9 @@ import { open } from "@tauri-apps/plugin-dialog";
 
 import { useEffect, useState } from "react";
 import { Tabs } from "./ui/Tabs";
-import {
-  createProject,
-  getConfig,
-  getPreviousProjects,
-  loadConfig,
-} from "@/lib/backend";
+import { createProject, getPreviousProjects } from "@/lib/backend";
 import { Project } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
-import { Config } from "@/lib/interfaces";
 
 const formSchema = z.object({
   projectname: z.string().min(2, {
@@ -43,7 +37,11 @@ const tabs = [
   { id: "create-project", label: "Create New Project" },
 ];
 
-export function ProjectSetup() {
+interface ProjectSetupProps {
+  onProjectPathSet: (path: string) => void;
+}
+
+export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -68,8 +66,10 @@ export function ProjectSetup() {
 
     fetchProjects();
   }, []);
+
   const [activeTab, setActiveTab] = useState("load-project");
   const [previousProjects, setPreviousProjects] = useState<Project[]>([]);
+  const navigate = useNavigate();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -85,8 +85,7 @@ export function ProjectSetup() {
       const selected = await open({
         directory: true,
         multiple: false,
-        // Optional: Set a default path or filters
-        defaultPath: "$HOME", // Starts in the user's home directory
+        defaultPath: "$HOME",
       });
 
       console.log("Selected path:", selected);
@@ -95,26 +94,27 @@ export function ProjectSetup() {
         form.setValue(fieldName, selected);
       } else if (selected === null) {
         console.log("User cancelled the dialog");
-        // Optionally inform the user (e.g., show a message)
       } else {
         console.error("Unexpected dialog result:", selected);
       }
     } catch (error) {
       console.error("Error opening directory dialog:", error);
-      // Optionally inform the user of the error
     }
   };
-  let navigate = useNavigate();
 
   async function onLoadProjectSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Submitted:", values);
-    localStorage.setItem("projectPath", values.projectpath);
-    navigate("/Workspace");
-    window.location.reload(); // Reload to trigger ConfigProvider
+    console.log("Loading project:", values);
+    try {
+      onProjectPathSet(values.projectpath);
+      navigate("/Workspace");
+    } catch (error) {
+      console.error("Failed to load project:", error);
+      alert("Failed to load project: " + error);
+    }
   }
 
   async function onCreateProjectSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Submitted:", values);
+    console.log("Creating project:", values);
     try {
       await createProject(
         values.projectname,
@@ -122,9 +122,8 @@ export function ProjectSetup() {
         values.resourcespath
       );
       console.log("✅ Project created");
-      localStorage.setItem("projectPath", values.projectpath);
+      onProjectPathSet(values.projectpath);
       navigate("/Workspace");
-      window.location.reload(); // Reload to trigger ConfigProvider
     } catch (error) {
       console.error("Failed to create project:", error);
       alert("Failed to create project: " + error);
@@ -144,9 +143,6 @@ export function ProjectSetup() {
             onSubmit={form.handleSubmit(onLoadProjectSubmit)}
             className="flex flex-col gap-6 w-full "
           >
-            {/* <h1 className="text-3xl font-semibold self-center">
-              Load Previous Project
-            </h1> */}
             <FormField
               control={form.control}
               name="projectpath"
@@ -169,7 +165,6 @@ export function ProjectSetup() {
                 </FormItem>
               )}
             />
-            {/* Show list of previous projects here*/}
             <div>
               Recent Projects
               <ul className="space-y-2 mt-3">

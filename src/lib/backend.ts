@@ -1,6 +1,4 @@
-import { join } from "path";
 import { Config } from "@/lib/types";
-import { readdir } from "fs/promises";
 import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -492,7 +490,7 @@ export const getTabs = async () => {
 };
 
 //*********************** */
-//* File System Functions (via Rust)
+//* File System Functions (via Tauri/Rust)
 //*********************** */
 
 export function mapExtensionToType(ext: string): string {
@@ -512,30 +510,12 @@ export function mapExtensionToType(ext: string): string {
   }
 }
 
+// Use Tauri command to get library data recursively
 export async function getLibraryData(projectPath: string): Promise<TreeNode[]> {
   try {
-    const entries = await readdir(projectPath, { withFileTypes: true });
-
-    const nodes: TreeNode[] = [];
-
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const fullPath = join(projectPath, entry.name);
-        const children = await getLibraryData(fullPath); // Recursive
-
-        nodes.push({
-          id: fullPath,
-          label: entry.name,
-          children: children.length > 0 ? children : undefined,
-        });
-      } else {
-        nodes.push({
-          id: join(projectPath, entry.name),
-          label: entry.name,
-        });
-      }
-    }
-
+    const nodes = await invoke<TreeNode[]>("get_library_tree", {
+      projectPath,
+    });
     return nodes;
   } catch (error) {
     console.error(`Failed to read directory ${projectPath}:`, error);
@@ -617,7 +597,7 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
 }
 
 //*********************** */
-//* Config Functions (via Rust)
+//* Config Functions (via Tauri/Rust)
 //*********************** */
 
 export const getConfig = async (configPath: string): Promise<Config | null> => {
@@ -662,9 +642,11 @@ export const createProject = async (
 ) => {
   try {
     const result = await invoke("create_new_project", {
-      projectName: project_name,
-      projectPath: project_path,
-      resourcesPath: resources_path,
+      project: {
+        projectName: project_name,
+        projectPath: project_path,
+        resourcesPath: resources_path,
+      },
     });
     return result;
   } catch (error) {
@@ -790,52 +772,3 @@ The architecture supports horizontal scaling across multiple server instances wi
       return "No content available for this tab.";
   }
 };
-
-//  [
-//       {
-//         id: "1",
-//         label: "Documents",
-//         children: [
-//           {
-//             id: "1-1",
-//             label: "Papers",
-//             children: [
-//               { id: "1-1-1", label: "Monthly Report.pdf" },
-//               { id: "1-1-2", label: "Annual Report.pdf" },
-//             ],
-//           },
-//           {
-//             id: "1-2",
-//             label: "Reports",
-//             children: [
-//               { id: "1-2-1", label: "Monthly Report.xlsx" },
-//               { id: "1-2-2", label: "Annual Report.pdf" },
-//             ],
-//           },
-//           {
-//             id: "1-3",
-//             label: "Archive",
-//             children: [
-//               { id: "1-3-1", label: "Yearly Report.xlsx" },
-//               { id: "1-3-2", label: "January Report.pdf" },
-//             ],
-//           },
-//         ],
-//       },
-//       {
-//         id: "2",
-//         label: "Notes",
-//         children: [
-//           { id: "2-1", label: "Note 1.md" },
-//           { id: "2-2", label: "Note 2.md" },
-//         ],
-//       },
-//       {
-//         id: "3",
-//         label: "Read later",
-//         children: [
-//           { id: "3-1", label: "reference1.paper" },
-//           { id: "3-2", label: "reference2.paper" },
-//         ],
-//       },
-//     ];

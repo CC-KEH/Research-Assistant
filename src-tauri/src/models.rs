@@ -25,7 +25,7 @@ pub struct Config {
 pub struct BasicConfig {
     pub project_name: String,
     pub project_path: String,
-    pub resoures_path: String,
+    pub resources_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
