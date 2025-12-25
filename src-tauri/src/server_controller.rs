@@ -23,17 +23,14 @@ pub async fn start_python_server(
     #[cfg(debug_assertions)]
     let (_rx, child) = {
         // Development: run from source with venv activated
-        let app_dir = app
-            .path()
-            .app_config_dir()
-            .map_err(|e| format!("Failed to get app dir: {}", e))?;
 
-        let project_root = app_dir
+        let project_root = std::env::current_dir()
+            .map_err(|e| format!("Failed to get current dir: {}", e))?
             .parent()
-            .and_then(|p| p.parent())
-            .ok_or("Failed to get project root")?;
+            .ok_or("Failed to get project root")?
+            .to_path_buf();
 
-        let venv_path = project_root.join("env");
+        let venv_path = project_root.join("src-python").join("env");
 
         // Determine the Python executable path based on OS
         #[cfg(target_os = "windows")]
@@ -45,7 +42,7 @@ pub async fn start_python_server(
         // Check if venv exists
         if !python_exe.exists() {
             return Err(format!(
-                "Virtual environment not found at {:?}. Please run: python -m venv venv",
+                "Virtual environment not found at {:?}. Please run: python -m venv env",
                 venv_path
             ));
         }
@@ -53,7 +50,7 @@ pub async fn start_python_server(
         shell
             .command(python_exe)
             .args(&["src-python/app.py"])
-            .current_dir(project_root)
+            .current_dir(&project_root)
             .spawn()
             .map_err(|e| format!("Failed to start Python server: {}", e))?
     };
@@ -61,12 +58,12 @@ pub async fn start_python_server(
     #[cfg(not(debug_assertions))]
     let (_rx, child) = {
         // Production: use bundled resources with venv activated
-        let resource_path = app
+        let project_path = app
             .path()
-            .resource_dir()
-            .map_err(|e| format!("Failed to get resource dir: {}", e))?;
-        let python_script = resource_path.join("src-python").join("app.py");
-        let venv_path = resource_path.join("venv");
+            .project_dir()
+            .map_err(|e| format!("Failed to get project dir: {}", e))?;
+        let python_script = project_path.join("src-python").join("app.py");
+        let venv_path = project_path.join("venv");
 
         // Determine the Python executable path based on OS
         #[cfg(target_os = "windows")]

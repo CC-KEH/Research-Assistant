@@ -3,23 +3,9 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-/// Get the config.json path from the project path
-fn get_config_path(project_path: &str) -> PathBuf {
-    PathBuf::from(project_path).join("config.json")
-}
-
-/// Read and parse the config.json file
+// Read and parse the config.json file
 #[tauri::command]
-pub fn get_config(project_path: String) -> Result<Config, String> {
-    let config_path = get_config_path(&project_path);
-
-    if !config_path.exists() {
-        return Err(format!(
-            "Config file not found at: {}",
-            config_path.display()
-        ));
-    }
-
+pub fn get_config(config_path: String) -> Result<Config, String> {
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read config file: {}", e))?;
 
@@ -29,11 +15,9 @@ pub fn get_config(project_path: String) -> Result<Config, String> {
     Ok(config)
 }
 
-/// Update the config.json file
+// Update the config.json file
 #[tauri::command]
-pub fn update_config(project_path: String, config: Config) -> Result<(), String> {
-    let config_path = get_config_path(&project_path);
-
+pub fn update_config(config_path: String, config: Config) -> Result<(), String> {
     let json_content = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
 
@@ -43,7 +27,7 @@ pub fn update_config(project_path: String, config: Config) -> Result<(), String>
     Ok(())
 }
 
-/// Get a list of previous projects by scanning a base directory
+// Get a list of previous projects by scanning a base directory
 fn get_projects_file_path() -> Result<PathBuf, String> {
     // In Tauri v2, use dirs crate or construct path manually
     if cfg!(debug_assertions) {

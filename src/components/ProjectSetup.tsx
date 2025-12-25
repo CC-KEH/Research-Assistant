@@ -57,10 +57,10 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
 
         info(`📦 Raw result: ${result}`);
         info(`📦 Result type: ${typeof result}`);
-        info(`📦 Is array?", {Array.isArray(result)}`);
+        info(`📦 Is array?", ${Array.isArray(result)}`);
 
         if (Array.isArray(result)) {
-          info(`✅ Setting projects:", ${result}`);
+          info(`✅ Setting projects: ${result}`);
           setPreviousProjects(result as Project[]);
         } else {
           warn(`⚠️ Unexpected format for previous projects: ${result} `);
@@ -104,8 +104,6 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
         defaultPath: "$HOME",
       });
 
-      info(`Selected path: ${selected}`);
-
       if (selected && typeof selected === "string") {
         form.setValue(fieldName, selected);
       } else if (selected === null) {
@@ -121,7 +119,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   async function onLoadProjectSubmit(
     values: z.infer<typeof loadProjectSchema>
   ) {
-    info(`Loading project: ${values}`);
+    info(`Loading project at: ${values.projectpath}`);
     try {
       onProjectPathSet(values.projectpath);
       navigate("/Workspace");
@@ -134,7 +132,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   async function onCreateProjectSubmit(
     values: z.infer<typeof createProjectSchema>
   ) {
-    info(`Creating project: ${values}`);
+    info(`Creating project at ${values.projectpath}`);
     try {
       await createProject(
         values.projectname,

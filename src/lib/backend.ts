@@ -601,7 +601,9 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
 
 export const getConfig = async (configPath: string): Promise<Config | null> => {
   try {
-    const config = await invoke<Config>("get_config", { configPath });
+    const config = await invoke<Config>("get_config", {
+      configPath: configPath,
+    });
     return config;
   } catch (err) {
     error(`Failed to load config: ${err}`);
