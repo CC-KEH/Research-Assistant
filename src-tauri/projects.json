@@ -1,7 +1,17 @@
 [
     {
-        "project_name": "Project 1",
-        "project_path": "path here",
-        "resources_path": "resources path here"
+        "projectName": "Project 1",
+        "projectPath": "path here",
+        "resourcesPath": "resources path here"
+    },
+    {
+        "projectName": "Project 1",
+        "projectPath": "path here",
+        "resourcesPath": "resources path here"
+    },
+    {
+        "projectName": "Project 1",
+        "projectPath": "path here",
+        "resourcesPath": "resources path here"
     }
 ]

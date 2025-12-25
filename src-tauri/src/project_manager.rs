@@ -29,10 +29,11 @@ pub fn update_config(config_path: String, config: Config) -> Result<(), String> 
 
 // Get a list of previous projects by scanning a base directory
 fn get_projects_file_path() -> Result<PathBuf, String> {
-    // In Tauri v2, use dirs crate or construct path manually
     if cfg!(debug_assertions) {
         // During development, read from src-tauri directory
-        Ok(PathBuf::from("../projects.json"))
+        let project_root =
+            std::env::current_dir().map_err(|e| format!("Failed to get current dir: {}", e))?;
+        Ok(project_root.join("projects.json"))
     } else {
         // In production, use home directory or app data directory
         if let Some(home) = dirs::home_dir() {
@@ -47,17 +48,13 @@ fn get_projects_file_path() -> Result<PathBuf, String> {
 pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
     let projects_file = get_projects_file_path()?;
 
-    // If projects.json doesn't exist yet, return empty vector
     if !projects_file.exists() {
         return Ok(Vec::new());
     }
-    // Read and parse the projects.json file
     let content = fs::read_to_string(&projects_file)
         .map_err(|e| format!("Failed to read projects.json: {}", e))?;
-
     let projects: Vec<BasicConfig> = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse projects.json: {}", e))?;
-
     Ok(projects)
 }
 
@@ -206,14 +203,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     fs::create_dir_all(project_path.join("Notes"))
         .map_err(|e| format!("Failed to create Notes directory: {}", e))?;
 
-    // Create Python Environment: python -m venv
-    let python_env_path = project_path.join("env");
-    std::process::Command::new("python")
-        .args(&["-m", "venv", python_env_path.to_str().unwrap()])
-        .current_dir(&project_path)
-        .output()
-        .map_err(|e| format!("Failed to create Python environment: {}", e))?;
-
+    // TODO: Add Project BasicConfig to projects.json
     Ok(project)
 }
 

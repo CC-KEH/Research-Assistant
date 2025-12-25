@@ -55,10 +55,6 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
         info("🔍 Fetching projects...");
         const result = await getPreviousProjects();
 
-        info(`📦 Raw result: ${result}`);
-        info(`📦 Result type: ${typeof result}`);
-        info(`📦 Is array?", ${Array.isArray(result)}`);
-
         if (Array.isArray(result)) {
           info(`✅ Setting projects: ${result}`);
           setPreviousProjects(result as Project[]);
@@ -191,7 +187,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
                     onClick={() =>
                       loadForm.setValue("projectpath", item.projectPath)
                     }
-                    className="cursor-pointer hover:bg-muted p-2 rounded transition"
+                    className="cursor-pointer hover:bg-muted p-2 rounded transition border border-l-8 border-l-emerald-300"
                   >
                     <div className="font-semibold">{item.projectName}</div>
                     <div className="text-sm text-muted-foreground">
