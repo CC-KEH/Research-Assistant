@@ -202,8 +202,17 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     // Create 2 directories: Documents, Notes
     fs::create_dir_all(project_path.join("Documents"))
         .map_err(|e| format!("Failed to create Documents directory: {}", e))?;
+
     fs::create_dir_all(project_path.join("Notes"))
         .map_err(|e| format!("Failed to create Notes directory: {}", e))?;
+
+    // Create Python Environment: python -m venv
+    let python_env_path = project_path.join("env");
+    std::process::Command::new("python")
+        .args(&["-m", "venv", python_env_path.to_str().unwrap()])
+        .current_dir(&project_path)
+        .output()
+        .map_err(|e| format!("Failed to create Python environment: {}", e))?;
 
     Ok(project)
 }
