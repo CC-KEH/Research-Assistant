@@ -46,7 +46,7 @@ pub fn run() {
         ])
         .setup(|app| {
             // Optional: Auto-start Python server on app launch
-            let handle = app.handle().clone();
+            let _handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 println!("App ready. Python server can be started via frontend.");

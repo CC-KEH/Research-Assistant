@@ -47,6 +47,7 @@
     "react-router-dom": "^7.6.2",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10",
+    "tauri-plugin-log-api": "github:tauri-apps/tauri-plugin-log",
     "usehooks-ts": "^3.1.1",
     "uuid": "^11.1.0",
     "zod": "^3.25.71"

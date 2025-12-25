@@ -15,7 +15,6 @@ const PYTHON_API_BASE = "http://localhost:8000";
 export const startPythonServer = async (): Promise<string> => {
   try {
     const result = await invoke<string>("start_python_server");
-    info(`Python server started: ${result}`);
 
     // Wait for server to be ready
     await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -48,7 +47,6 @@ export const startPythonServer = async (): Promise<string> => {
 export const stopPythonServer = async (): Promise<string> => {
   try {
     const result = await invoke<string>("stop_python_server");
-    info(`Python server stopped: ${result}`);
     return result;
   } catch (err) {
     error(`Failed to stop Python server: ${err}`);
@@ -162,7 +160,7 @@ export const switchLLM = async (modelName: string) => {
     }
 
     const data = await response.json();
-    info("✅ Switched LLM:", data);
+    info(`✅ [switchLLM] : Switched LLM : ${data}`);
     return data;
   } catch (err) {
     error(`Failed to switch LLM: ${err}`);
@@ -221,7 +219,7 @@ export const createSession = async (
     }
 
     const data = await response.json();
-    info("✅ Session created:", data);
+    info(`✅ [createSession] : Session created : ${data}`);
     return data;
   } catch (err) {
     error(`Failed to create session: ${err}`);
@@ -286,7 +284,7 @@ export const switchSession = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to switch session");
     const data = await response.json();
-    info(`✅ Switched to session: ${sessionIndex}`);
+    info(`✅ [switchSession] : Switched to session : ${sessionIndex}`);
     return data;
   } catch (err) {
     error(`Failed to switch session: ${err}`);
@@ -316,7 +314,7 @@ export const resetSession = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to reset session");
     const data = await response.json();
-    info(`✅ Session reset: ${sessionIndex}`);
+    info(`✅ [resetSession] : Session reset : ${sessionIndex}`);
     return data;
   } catch (err) {
     error(`Failed to reset session: ${err}`);
@@ -385,7 +383,7 @@ export const setupVectorStore = async (
     }
 
     const data = await response.json();
-    info("✅ Vector store setup:", data);
+    info(`✅ [setupVectorStore] : Vector store setup: ${data}`);
     return data;
   } catch (err) {
     error(`Failed to setup vector store: ${err}`);
@@ -410,7 +408,7 @@ export const addDocumentsToVectorStore = async (
     }
 
     const data = await response.json();
-    info("✅ Documents added:", data);
+    info(`✅ [addDocumentsToVectorStore] : Documents added: ${data}`);
     return data;
   } catch (err) {
     error(`Failed to add documents to vector store: ${err}`);
