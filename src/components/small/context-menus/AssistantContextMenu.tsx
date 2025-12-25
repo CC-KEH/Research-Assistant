@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/context-menu";
 import { ResetIcon } from "@radix-ui/react-icons";
 import { Bug, Plus, Settings } from "lucide-react";
+import { info } from "@/lib/logger";
 
 import { ReactNode } from "react";
 
@@ -17,7 +18,7 @@ export const AssistantContextMenu = ({
   children,
 }: AssistantContextMenuProps) => {
   const handleAction = (action: string) => {
-    console.log(`Action selected: ${action}`);
+    info(`Action selected: ${action}`);
     switch (action) {
       case "new-session":
         // createNewSession();

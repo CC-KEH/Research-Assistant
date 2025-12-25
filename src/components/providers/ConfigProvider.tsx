@@ -1,6 +1,7 @@
 import { getConfig } from "@/lib/backend";
 import { Config } from "@/lib/types";
 import React, { createContext, useEffect, useState, useContext } from "react";
+import { error } from "@/lib/logger";
 
 interface ConfigContextType {
   config: Config | null;
@@ -40,8 +41,8 @@ export const ConfigProvider = ({
     try {
       const result = await getConfig(configPath);
       setConfig(result);
-    } catch (error) {
-      console.error("Failed to load config:", error);
+    } catch (err) {
+      error(`Failed to load config: ${err}`);
       setConfig(null);
     } finally {
       setLoading(false);

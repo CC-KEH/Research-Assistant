@@ -17,6 +17,7 @@ import {
   sendChatMessage,
   switchLLM,
 } from "@/lib/backend";
+import { error, info } from "@/lib/logger";
 
 interface Message {
   id: number;
@@ -67,13 +68,13 @@ export default function Assistant({ fileInfo }: AssistantProps) {
           "config.json",
           "chats.json"
         );
-        console.log("Backend initialized:", initResult);
+        info(`Backend initialized: ${initResult}`);
 
         // 4. Get AI configuration
         setInitializationStep("Loading AI configuration...");
 
         const aiConfig = await getAIConfig();
-        console.log("AI Config:", aiConfig);
+        info(`AI Config: ${aiConfig}`);
 
         // Set current provider
         const activeLLM = aiConfig.active_llm;
@@ -130,13 +131,11 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
         setInitializationStep("");
         setIsInitialized(true);
-        console.log("✅ App fully initialized!");
-      } catch (error) {
-        console.error("Error initializing:", error);
+        info("✅ App fully initialized!");
+      } catch (err) {
+        error(`Error initializing: ${err}`);
         setModelError(
-          error instanceof Error
-            ? error.message
-            : "Failed to initialize backend"
+          err instanceof Error ? err.message : "Failed to initialize backend"
         );
         setInitializationStep("");
       }
@@ -194,25 +193,25 @@ export default function Assistant({ fileInfo }: AssistantProps) {
       setMessages((prev) => [...prev, aiMessage]);
       setCurrentAiMessage(data.response);
       setIsLoading(false);
-    } catch (error) {
-      console.error("Error calling API:", error);
+    } catch (err) {
+      error(`Error calling API: ${err}`);
       const errorMessage: Message = {
         id: Date.now() + 1,
         content:
-          error instanceof Error
-            ? `Error: ${error.message}`
+          err instanceof Error
+            ? `Error: ${err.message}`
             : "Sorry, I encountered an error. Please try again.",
         sender: "ai",
       };
       setMessages((prev) => [...prev, errorMessage]);
-      setModelError(error instanceof Error ? error.message : "Unknown error");
+      setModelError(err instanceof Error ? err.message : "Unknown error");
       setIsLoading(false);
     }
   };
 
   const handleMicrophoneClick = () => {
     // TODO: Implement voice input
-    console.log("Microphone clicked");
+    info("Microphone clicked");
   };
 
   const handleLLMSwitch = async () => {
@@ -239,10 +238,10 @@ export default function Assistant({ fileInfo }: AssistantProps) {
         sender: "system",
       };
       setMessages((prev) => [...prev, systemMessage]);
-    } catch (error) {
-      console.error("Error switching LLM:", error);
+    } catch (err) {
+      error(`Error switching LLM: ${err}`);
       setModelError(
-        error instanceof Error ? error.message : "Failed to switch LLM"
+        err instanceof Error ? err.message : "Failed to switch LLM"
       );
     }
   };

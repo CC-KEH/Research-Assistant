@@ -1,3 +1,4 @@
+import { info } from "@/lib/logger";
 import { useState, useEffect } from "react";
 import { FileInfo, TreeNode } from "@/lib/types";
 import { TreeView } from "@/components/small/Treeview";
@@ -70,7 +71,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
   };
 
   const handleNodeClick = (node: TreeNode) => {
-    console.log("Clicked:", node.label);
+    info(`Clicked: ${node.label}`);
 
     const isFile = !node.children || node.children.length === 0;
     if (isFile) {

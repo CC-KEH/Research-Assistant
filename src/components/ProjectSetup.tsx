@@ -19,6 +19,7 @@ import { Tabs } from "./ui/Tabs";
 import { createProject, getPreviousProjects } from "@/lib/backend";
 import { Project } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
+import { error, info, warn } from "@/lib/logger";
 
 const loadProjectSchema = z.object({
   projectpath: z.string().min(2, {
@@ -51,21 +52,21 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        console.log("🔍 Fetching projects...");
+        info("🔍 Fetching projects...");
         const result = await getPreviousProjects();
 
-        console.log("📦 Raw result:", result);
-        console.log("📦 Result type:", typeof result);
-        console.log("📦 Is array?", Array.isArray(result));
+        info(`📦 Raw result: ${result}`);
+        info(`📦 Result type: ${typeof result}`);
+        info(`📦 Is array?", {Array.isArray(result)}`);
 
         if (Array.isArray(result)) {
-          console.log("✅ Setting projects:", result);
+          info(`✅ Setting projects:", ${result}`);
           setPreviousProjects(result as Project[]);
         } else {
-          console.warn("⚠️ Unexpected format for previous projects:", result);
+          warn(`⚠️ Unexpected format for previous projects: ${result} `);
         }
-      } catch (error) {
-        console.error("❌ Error fetching previous projects:", error);
+      } catch (err) {
+        error(`❌ Error fetching previous projects: ${err}`);
       }
     };
 
@@ -103,49 +104,48 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
         defaultPath: "$HOME",
       });
 
-      console.log("Selected path:", selected);
+      info(`Selected path: ${selected}`);
 
       if (selected && typeof selected === "string") {
         form.setValue(fieldName, selected);
       } else if (selected === null) {
-        console.log("User cancelled the dialog");
+        info("User cancelled the dialog");
       } else {
-        console.error("Unexpected dialog result:", selected);
+        error(`Unexpected dialog result: ${selected}`);
       }
-    } catch (error) {
-      console.error("Error opening directory dialog:", error);
+    } catch (err) {
+      error(`Error opening directory dialog: ${err}`);
     }
   };
 
   async function onLoadProjectSubmit(
     values: z.infer<typeof loadProjectSchema>
   ) {
-    console.log("Loading project:", values);
+    info(`Loading project: ${values}`);
     try {
       onProjectPathSet(values.projectpath);
       navigate("/Workspace");
-    } catch (error) {
-      console.error("Failed to load project:", error);
-      alert("Failed to load project: " + error);
+    } catch (err) {
+      error(`Failed to load project: ${err}`);
+      alert("Failed to load project: " + err);
     }
   }
 
   async function onCreateProjectSubmit(
     values: z.infer<typeof createProjectSchema>
   ) {
-    console.log("Creating project:", values);
+    info(`Creating project: ${values}`);
     try {
       await createProject(
         values.projectname,
         values.projectpath,
         values.resourcespath
       );
-      console.log("✅ Project created");
+      info("✅ Project created");
       onProjectPathSet(values.projectpath);
       navigate("/Workspace");
-    } catch (error) {
-      console.error("Failed to create project:", error);
-      alert("Failed to create project: " + error);
+    } catch (err) {
+      error(`Failed to create project: ${err}`);
     }
   }
 

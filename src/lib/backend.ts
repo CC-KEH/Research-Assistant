@@ -3,7 +3,7 @@ import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { BugType, Item, Project, TreeNode } from "./types";
-import { info } from "@/lib/logger";
+import { error, info } from "@/lib/logger";
 
 // Python API Configuration
 const PYTHON_API_BASE = "http://localhost:8000";
@@ -39,9 +39,9 @@ export const startPythonServer = async (): Promise<string> => {
     );
     (error as any).code = "SERVER_HEALTH_CHECK_FAILED";
     throw error;
-  } catch (error) {
-    console.error("Failed to start Python server:", error);
-    throw error;
+  } catch (err) {
+    error(`Failed to start Python server: ${err}`);
+    throw err;
   }
 };
 
@@ -50,8 +50,8 @@ export const stopPythonServer = async (): Promise<string> => {
     const result = await invoke<string>("stop_python_server");
     info(`Python server stopped: ${result}`);
     return result;
-  } catch (error) {
-    console.error("Failed to stop Python server:", error);
+  } catch (err) {
+    error(`Failed to stop Python server: ${err}`);
     throw error;
   }
 };
@@ -59,8 +59,8 @@ export const stopPythonServer = async (): Promise<string> => {
 export const checkPythonServer = async (): Promise<boolean> => {
   try {
     return await invoke<boolean>("check_python_server");
-  } catch (error) {
-    console.error("Failed to check Python server:", error);
+  } catch (err) {
+    error(`Failed to check Python server: ${err}`);
     return false;
   }
 };
@@ -71,7 +71,7 @@ export const checkPythonServerHealth = async (): Promise<boolean> => {
       method: "GET",
     });
     return response.ok;
-  } catch (error) {
+  } catch (err) {
     return false;
   }
 };
@@ -116,8 +116,8 @@ export const initializePythonBackend = async (
     const data = await response.json();
     info("✅ Python backend initialized:", data);
     return data;
-  } catch (error) {
-    console.error("Failed to initialize Python backend:", error);
+  } catch (err) {
+    error(`Failed to initialize Python backend: ${err}`);
     throw error;
   }
 };
@@ -127,8 +127,8 @@ export const getInitializationStatus = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/initialize/status`);
     if (!response.ok) throw new Error("Failed to get initialization status");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get initialization status:", error);
+  } catch (err) {
+    error(`Failed to get initialization status: ${err}`);
     return { initialized: false };
   }
 };
@@ -138,8 +138,8 @@ export const getPythonBackendStatus = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/status`);
     if (!response.ok) throw new Error("Failed to get status");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get Python backend status:", error);
+  } catch (err) {
+    error(`Failed to get Python backend status: ${err}`);
     throw error;
   }
 };
@@ -164,8 +164,8 @@ export const switchLLM = async (modelName: string) => {
     const data = await response.json();
     info("✅ Switched LLM:", data);
     return data;
-  } catch (error) {
-    console.error("Failed to switch LLM:", error);
+  } catch (err) {
+    error(`Failed to switch LLM: ${err}`);
     throw error;
   }
 };
@@ -175,8 +175,8 @@ export const getLLMStatus = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/llm/status`);
     if (!response.ok) throw new Error("Failed to get LLM status");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get LLM status:", error);
+  } catch (err) {
+    error(`Failed to get LLM status: ${err}`);
     throw error;
   }
 };
@@ -223,8 +223,8 @@ export const createSession = async (
     const data = await response.json();
     info("✅ Session created:", data);
     return data;
-  } catch (error) {
-    console.error("Failed to create session:", error);
+  } catch (err) {
+    error(`Failed to create session: ${err}`);
     throw error;
   }
 };
@@ -234,8 +234,8 @@ export const getAllSessions = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/sessions`);
     if (!response.ok) throw new Error("Failed to get sessions");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get sessions:", error);
+  } catch (err) {
+    error(`Failed to get sessions: ${err}`);
     throw error;
   }
 };
@@ -248,8 +248,8 @@ export const getActiveSession = async () => {
       return null;
     }
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get active session:", error);
+  } catch (err) {
+    error(`Failed to get active session: ${err}`);
     return null;
   }
 };
@@ -259,8 +259,8 @@ export const getSession = async (sessionIndex: number) => {
     const response = await fetch(`${PYTHON_API_BASE}/sessions/${sessionIndex}`);
     if (!response.ok) throw new Error("Failed to get session");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get session:", error);
+  } catch (err) {
+    error(`Failed to get session: ${err}`);
     throw error;
   }
 };
@@ -272,8 +272,8 @@ export const getSessionHistory = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to get session history");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get session history:", error);
+  } catch (err) {
+    error(`Failed to get session history: ${err}`);
     throw error;
   }
 };
@@ -288,8 +288,8 @@ export const switchSession = async (sessionIndex: number) => {
     const data = await response.json();
     info(`✅ Switched to session: ${sessionIndex}`);
     return data;
-  } catch (error) {
-    console.error("Failed to switch session:", error);
+  } catch (err) {
+    error(`Failed to switch session: ${err}`);
     throw error;
   }
 };
@@ -302,8 +302,8 @@ export const deleteSession = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to delete session");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to delete session:", error);
+  } catch (err) {
+    error(`Failed to delete session: ${err}`);
     throw error;
   }
 };
@@ -318,8 +318,8 @@ export const resetSession = async (sessionIndex: number) => {
     const data = await response.json();
     info(`✅ Session reset: ${sessionIndex}`);
     return data;
-  } catch (error) {
-    console.error("Failed to reset session:", error);
+  } catch (err) {
+    error(`Failed to reset session: ${err}`);
     throw error;
   }
 };
@@ -358,8 +358,8 @@ export const sendChatMessage = async (
     }
 
     return await response.json();
-  } catch (error) {
-    console.error("Failed to send chat message:", error);
+  } catch (err) {
+    error(`Failed to send chat message: ${err}`);
     throw error;
   }
 };
@@ -387,8 +387,8 @@ export const setupVectorStore = async (
     const data = await response.json();
     info("✅ Vector store setup:", data);
     return data;
-  } catch (error) {
-    console.error("Failed to setup vector store:", error);
+  } catch (err) {
+    error(`Failed to setup vector store: ${err}`);
     throw error;
   }
 };
@@ -412,8 +412,8 @@ export const addDocumentsToVectorStore = async (
     const data = await response.json();
     info("✅ Documents added:", data);
     return data;
-  } catch (error) {
-    console.error("Failed to add documents to vector store:", error);
+  } catch (err) {
+    error(`Failed to add documents to vector store: ${err}`);
     throw error;
   }
 };
@@ -423,8 +423,8 @@ export const getVectorStoreStatus = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/vectorstore/status`);
     if (!response.ok) throw new Error("Failed to get vector store status");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get vector store status:", error);
+  } catch (err) {
+    error(`Failed to get vector store status: ${err}`);
     throw error;
   }
 };
@@ -447,8 +447,8 @@ export const processWithTab = async (tabId: string, text: string) => {
     }
 
     return await response.json();
-  } catch (error) {
-    console.error("Failed to process with tab:", error);
+  } catch (err) {
+    error(`Failed to process with tab: ${err}`);
     throw error;
   }
 };
@@ -462,8 +462,8 @@ export const getPythonConfig = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/config`);
     if (!response.ok) throw new Error("Failed to get config");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get Python config:", error);
+  } catch (err) {
+    error(`Failed to get Python config: ${err}`);
     throw error;
   }
 };
@@ -473,8 +473,8 @@ export const getAIConfig = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/config/ai`);
     if (!response.ok) throw new Error("Failed to get AI config");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get AI config:", error);
+  } catch (err) {
+    error(`Failed to get AI config: ${err}`);
     throw error;
   }
 };
@@ -484,8 +484,8 @@ export const getTabs = async () => {
     const response = await fetch(`${PYTHON_API_BASE}/config/tabs`);
     if (!response.ok) throw new Error("Failed to get tabs");
     return await response.json();
-  } catch (error) {
-    console.error("Failed to get tabs:", error);
+  } catch (err) {
+    error(`Failed to get tabs: ${err}`);
     throw error;
   }
 };
@@ -518,8 +518,8 @@ export async function getLibraryData(projectPath: string): Promise<TreeNode[]> {
       projectPath,
     });
     return nodes;
-  } catch (error) {
-    console.error(`Failed to read directory ${projectPath}:`, error);
+  } catch (err) {
+    error(`Failed to read directory ${projectPath}: ${err}`);
     return [];
   }
 }
@@ -529,7 +529,7 @@ export const readFile = async (filePath: string): Promise<string> => {
     const content = await invoke<string>("read_file", { filePath });
     return content;
   } catch (err) {
-    console.error("Error reading file:", err);
+    error(`Error reading file: ${err}`);
     throw err;
   }
 };
@@ -541,7 +541,7 @@ export const writeFile = async (
   try {
     await invoke("write_file", { filePath, content });
   } catch (err) {
-    console.error("Error writing file:", err);
+    error(`Error writing file: ${err}`);
     throw err;
   }
 };
@@ -551,7 +551,7 @@ export const listDir = async (dirPath: string): Promise<string[]> => {
     const entries = await invoke<string[]>("list_dir", { dirPath });
     return entries;
   } catch (err) {
-    console.error("Error listing directory:", err);
+    error(`Error listing directory: ${err}`);
     throw err;
   }
 };
@@ -560,7 +560,7 @@ export const createDir = async (dirPath: string): Promise<void> => {
   try {
     await invoke("create_dir", { dirPath });
   } catch (err) {
-    console.error("Error creating directory:", err);
+    error(`Error creating directory: ${err}`);
     throw err;
   }
 };
@@ -589,8 +589,8 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
         projectRoot: projectRoot,
       });
       fileInfos.push(fileInfo);
-    } catch (error) {
-      console.error(`Failed to upload ${filePath}:`, error);
+    } catch (err) {
+      error(`Failed to upload ${filePath}: ${err}`);
     }
   }
 
@@ -605,8 +605,8 @@ export const getConfig = async (configPath: string): Promise<Config | null> => {
   try {
     const config = await invoke<Config>("get_config", { configPath });
     return config;
-  } catch (error) {
-    console.error("Failed to load config:", error);
+  } catch (err) {
+    error(`Failed to load config: ${err}`);
     return null;
   }
 };
@@ -617,8 +617,8 @@ export const updateConfig = async (
 ): Promise<void> => {
   try {
     await invoke("update_config", { configPath, newConfig });
-  } catch (error) {
-    console.error("Failed to save config:", error);
+  } catch (err) {
+    error(`Failed to save config: ${err}`);
     throw error;
   }
 };
@@ -627,7 +627,7 @@ export const getPreviousProjects = async (): Promise<Project[]> => {
   try {
     const previousProjects = await invoke<Project[]>("get_previous_projects");
     return Array.isArray(previousProjects) ? previousProjects : [];
-  } catch (error) {
+  } catch (err) {
     info(`Failed loading previous projects: ${error}`);
     return [];
   }
@@ -647,8 +647,8 @@ export const createProject = async (
       },
     });
     return result;
-  } catch (error) {
-    console.error("Error creating a project:", error);
+  } catch (err) {
+    error(`Error creating a project: ${err}`);
     throw error;
   }
 };
@@ -677,8 +677,8 @@ export const loadConfig = async (config: Config) => {
   try {
     // TODO: update project config based on config
     info("Config loaded successfully");
-  } catch (error) {
-    console.error("Failed to load config:", error);
+  } catch (err) {
+    error(`Failed to load config: ${err}`);
     return null;
   }
 };

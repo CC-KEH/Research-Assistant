@@ -1,4 +1,6 @@
 import { TreeView } from "@/components/small/Treeview";
+import { info } from "@/lib/logger";
+
 // TODO: This will be used in Pages, later will be removed from here.
 const DemoOne = () => {
   const treeData = [
@@ -53,7 +55,7 @@ const DemoOne = () => {
       <div className="max-w-xl mx-auto w-full">
         <TreeView
           data={treeData}
-          onNodeClick={(node) => console.log("Clicked:", node.label)}
+          onNodeClick={(node) => info(`Clicked: ${node.label}`)}
           defaultExpandedIds={["1"]}
         />
       </div>

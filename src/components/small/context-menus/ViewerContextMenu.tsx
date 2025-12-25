@@ -5,7 +5,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { BugIcon, MoonIcon, Settings } from "lucide-react";
-
+import { info } from "@/lib/logger";
 import { ReactNode } from "react";
 
 interface ViewerContextMenuProps {
@@ -14,7 +14,7 @@ interface ViewerContextMenuProps {
 
 export const ViewerContextMenu = ({ children }: ViewerContextMenuProps) => {
   const handleAction = (action: string) => {
-    console.log(`Action selected: ${action}`);
+    info(`Action selected: ${action}`);
     switch (action) {
       case "dark-mode":
         // togglePDFDarkMode();
