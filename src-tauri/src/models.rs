@@ -100,3 +100,20 @@ pub struct VectorStoreConfig {
     pub value: String,
     pub api_key: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "serde")]
+pub struct TreeNode {
+    pub id: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option<Vec<TreeNode>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileInfo {
+    pub name: String,
+    pub file_type: String,
+    pub path: String,
+    pub id: String,
+}

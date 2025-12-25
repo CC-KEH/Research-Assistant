@@ -1,5 +1,6 @@
 use crate::models::*;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 /// Get the config.json path from the project path
@@ -43,37 +44,35 @@ pub fn update_config(project_path: String, config: Config) -> Result<(), String>
 }
 
 /// Get a list of previous projects by scanning a base directory
-#[tauri::command]
-pub fn get_previous_projects(base_path: String) -> Result<Vec<BasicConfig>, String> {
-    let base = PathBuf::from(&base_path);
-
-    if !base.exists() {
-        return Ok(Vec::new());
-    }
-
-    let mut projects = Vec::new();
-
-    let entries = fs::read_dir(&base).map_err(|e| format!("Failed to read directory: {}", e))?;
-
-    for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            let config_path = path.join("config.json");
-
-            if config_path.exists() {
-                // Try to read the config
-                if let Ok(content) = fs::read_to_string(&config_path) {
-                    if let Ok(config) = serde_json::from_str::<Config>(&content) {
-                        if !config.basic_config.is_empty() {
-                            projects.push(config.basic_config[0].clone());
-                        }
-                    }
-                }
-            }
+fn get_projects_file_path() -> Result<PathBuf, String> {
+    // In Tauri v2, use dirs crate or construct path manually
+    if cfg!(debug_assertions) {
+        // During development, read from src-tauri directory
+        Ok(PathBuf::from("../projects.json"))
+    } else {
+        // In production, use home directory or app data directory
+        if let Some(home) = dirs::home_dir() {
+            Ok(home.join(".your_app_name").join("projects.json"))
+        } else {
+            Err("Failed to determine app data directory".to_string())
         }
     }
+}
+
+#[tauri::command]
+pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
+    let projects_file = get_projects_file_path()?;
+
+    // If projects.json doesn't exist yet, return empty vector
+    if !projects_file.exists() {
+        return Ok(Vec::new());
+    }
+    // Read and parse the projects.json file
+    let content = fs::read_to_string(&projects_file)
+        .map_err(|e| format!("Failed to read projects.json: {}", e))?;
+
+    let projects: Vec<BasicConfig> = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse projects.json: {}", e))?;
 
     Ok(projects)
 }
@@ -82,6 +81,10 @@ pub fn get_previous_projects(base_path: String) -> Result<Vec<BasicConfig>, Stri
 #[tauri::command]
 pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     let project_path = PathBuf::from(&project.project_path);
+    log::info!(
+        "📁 [create_new_project] : Creating project in {}",
+        project_path.display()
+    );
 
     // Create the project directory if it doesn't exist
     if !project_path.exists() {
@@ -221,6 +224,122 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     Ok(project)
 }
 
+#[tauri::command]
+pub fn get_library_tree(project_path: String) -> Result<Vec<TreeNode>, String> {
+    log::info!(
+        "📁 [get_library_tree] : Loading Library Tree from: {}",
+        project_path
+    );
+    let path = Path::new(&project_path);
+
+    if !path.exists() {
+        return Err(format!("Project path does not exist: {}", project_path));
+    }
+
+    if !path.is_dir() {
+        return Err(format!("Project path is not a directory: {}", project_path));
+    }
+
+    let mut counter = Counter { value: 0 };
+    read_directory_recursive(path, &mut counter)
+}
+
+struct Counter {
+    value: u32,
+}
+
+impl Counter {
+    fn next(&mut self) -> String {
+        self.value += 1;
+        self.value.to_string()
+    }
+}
+
+fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<TreeNode>, String> {
+    let mut nodes = Vec::new();
+
+    match fs::read_dir(path) {
+        Ok(entries) => {
+            let mut entries: Vec<_> = entries.collect();
+
+            // Sort entries for consistent ordering
+            entries.sort_by(|a, b| {
+                let a_name = a
+                    .as_ref()
+                    .ok()
+                    .and_then(|e| e.file_name().into_string().ok())
+                    .unwrap_or_default()
+                    .to_lowercase();
+                let b_name = b
+                    .as_ref()
+                    .ok()
+                    .and_then(|e| e.file_name().into_string().ok())
+                    .unwrap_or_default()
+                    .to_lowercase();
+                a_name.cmp(&b_name)
+            });
+
+            for entry in entries {
+                match entry {
+                    Ok(entry) => {
+                        let entry_path = entry.path();
+
+                        // Skip hidden files/folders (starting with .)
+                        if let Some(file_name) = entry_path.file_name() {
+                            if let Some(name_str) = file_name.to_str() {
+                                if name_str.starts_with('.') {
+                                    continue;
+                                }
+                            }
+                        }
+
+                        let label = entry_path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("Unknown")
+                            .to_string();
+
+                        let id = counter.next();
+
+                        let node = if entry_path.is_dir() {
+                            match read_directory_recursive(&entry_path, counter) {
+                                Ok(children) => TreeNode {
+                                    id,
+                                    label,
+                                    children: if children.is_empty() {
+                                        None
+                                    } else {
+                                        Some(children)
+                                    },
+                                },
+                                Err(_) => {
+                                    // Skip directories we can't read
+                                    continue;
+                                }
+                            }
+                        } else {
+                            TreeNode {
+                                id,
+                                label,
+                                children: None,
+                            }
+                        };
+
+                        nodes.push(node);
+                    }
+                    Err(_) => {
+                        // Skip entries we can't read
+                        continue;
+                    }
+                }
+            }
+        }
+        Err(e) => return Err(format!("Failed to read directory: {}", e)),
+    }
+
+    Ok(nodes)
+}
+
 /// List files and directories in a given path
 #[tauri::command]
 pub fn list_dir(path: String) -> Result<Vec<FileItem>, String> {
@@ -346,43 +465,63 @@ pub fn map_extension_to_type(extension: String) -> String {
 /// Upload a file to the knowledge store (adds it to config)
 #[tauri::command]
 pub fn upload_to_knowledge_store(
-    project_path: String,
-    file_path: String,
-    feed_llm: String,
-) -> Result<(), String> {
+    source_path: String,
+    project_root: String,
+) -> Result<FileInfo, String> {
     // Read current config
-    let mut config = get_config(project_path.clone())?;
+    let mut config = get_config(project_root.clone())?;
 
     // Extract file name from path
-    let path = PathBuf::from(&file_path);
+    let path = PathBuf::from(&source_path);
+
+    // Verify file exists
+    if !path.exists() {
+        return Err(format!("File does not exist: {}", source_path));
+    }
+
     let file_name = path
         .file_name()
         .and_then(|n| n.to_str())
         .ok_or_else(|| "Invalid file path".to_string())?
         .to_string();
 
+    // Get file extension
+    let file_extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("unknown")
+        .to_lowercase();
+
     // Check if file already exists in knowledge store
     let exists = config
         .knowledge_store_config
         .files
         .iter()
-        .any(|f| f.file_path == file_path);
+        .any(|f| f.file_path == source_path);
 
     if exists {
         return Err("File already exists in knowledge store".to_string());
     }
 
-    // Add file to knowledge store
+    // Create file info to return
+    let file_info = FileInfo {
+        name: file_name.clone(),
+        file_type: file_extension.clone(),
+        path: source_path.clone(),
+        id: format!("{:?}", path.canonicalize().unwrap_or(path.clone())),
+    };
+
+    // Add file to knowledge store (always fed to LLM)
     let knowledge_file = KnowledgeFile {
         file_name,
-        file_path,
-        feed_llm,
+        file_path: source_path,
+        feed_llm: "true".to_string(),
     };
 
     config.knowledge_store_config.files.push(knowledge_file);
 
     // Save updated config
-    update_config(project_path, config)?;
+    update_config(project_root, config)?;
 
-    Ok(())
+    Ok(file_info)
 }

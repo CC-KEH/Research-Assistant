@@ -8,9 +8,18 @@ use server_controller::{
 };
 use std::sync::Mutex;
 
+use tauri_plugin_log::{Target, TargetKind};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .target(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::Stdout,
+                ))
+                .build(),
+        )
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -24,6 +33,7 @@ pub fn run() {
             update_config,
             get_previous_projects,
             create_new_project,
+            get_library_tree,
             list_dir,
             create_dir,
             read_file,

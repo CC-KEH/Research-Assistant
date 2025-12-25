@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
+import { FileInfo, TreeNode } from "@/lib/types";
 import { TreeView } from "@/components/small/Treeview";
+import { useConfig } from "@/components/providers/ConfigProvider";
+import { getLibraryData, mapExtensionToType } from "@/lib/backend";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
 import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
-import { FileInfo, TreeNode } from "@/lib/types";
-import { getLibraryData, mapExtensionToType } from "@/lib/backend";
-import { useConfig } from "@/components/providers/ConfigProvider";
 
 interface LibraryProps {
   onFileSelect: (file: FileInfo) => void;

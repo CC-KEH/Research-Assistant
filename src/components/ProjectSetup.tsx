@@ -20,7 +20,13 @@ import { createProject, getPreviousProjects } from "@/lib/backend";
 import { Project } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
 
-const formSchema = z.object({
+const loadProjectSchema = z.object({
+  projectpath: z.string().min(2, {
+    message: "Project path is required.",
+  }),
+});
+
+const createProjectSchema = z.object({
   projectname: z.string().min(2, {
     message: "Project Name must be at least 2 characters.",
   }),
@@ -52,7 +58,6 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
         console.log("📦 Result type:", typeof result);
         console.log("📦 Is array?", Array.isArray(result));
 
-        // Type narrow or cast the result
         if (Array.isArray(result)) {
           console.log("✅ Setting projects:", result);
           setPreviousProjects(result as Project[]);
@@ -71,8 +76,15 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   const [previousProjects, setPreviousProjects] = useState<Project[]>([]);
   const navigate = useNavigate();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const loadForm = useForm<z.infer<typeof loadProjectSchema>>({
+    resolver: zodResolver(loadProjectSchema),
+    defaultValues: {
+      projectpath: "",
+    },
+  });
+
+  const createForm = useForm<z.infer<typeof createProjectSchema>>({
+    resolver: zodResolver(createProjectSchema),
     defaultValues: {
       projectname: "",
       projectpath: "",
@@ -80,7 +92,10 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     },
   });
 
-  const selectFolder = async (fieldName: "projectpath" | "resourcespath") => {
+  const selectFolder = async (
+    fieldName: "projectpath" | "resourcespath",
+    form: any
+  ) => {
     try {
       const selected = await open({
         directory: true,
@@ -102,7 +117,9 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     }
   };
 
-  async function onLoadProjectSubmit(values: z.infer<typeof formSchema>) {
+  async function onLoadProjectSubmit(
+    values: z.infer<typeof loadProjectSchema>
+  ) {
     console.log("Loading project:", values);
     try {
       onProjectPathSet(values.projectpath);
@@ -113,7 +130,9 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     }
   }
 
-  async function onCreateProjectSubmit(values: z.infer<typeof formSchema>) {
+  async function onCreateProjectSubmit(
+    values: z.infer<typeof createProjectSchema>
+  ) {
     console.log("Creating project:", values);
     try {
       await createProject(
@@ -138,13 +157,13 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
         className="mb-3 pb-10"
       />
       {activeTab === "load-project" && (
-        <Form {...form}>
+        <Form {...loadForm}>
           <form
-            onSubmit={form.handleSubmit(onLoadProjectSubmit)}
+            onSubmit={loadForm.handleSubmit(onLoadProjectSubmit)}
             className="flex flex-col gap-6 w-full "
           >
             <FormField
-              control={form.control}
+              control={loadForm.control}
               name="projectpath"
               render={({ field }) => (
                 <FormItem>
@@ -155,7 +174,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
                     </FormControl>
                     <Button
                       type="button"
-                      onClick={() => selectFolder("projectpath")}
+                      onClick={() => selectFolder("projectpath", loadForm)}
                     >
                       Browse
                     </Button>
@@ -172,7 +191,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
                   <li
                     key={index}
                     onClick={() =>
-                      form.setValue("projectpath", item.projectPath)
+                      loadForm.setValue("projectpath", item.projectPath)
                     }
                     className="cursor-pointer hover:bg-muted p-2 rounded transition"
                   >
@@ -190,13 +209,13 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
       )}
 
       {activeTab === "create-project" && (
-        <Form {...form}>
+        <Form {...createForm}>
           <form
-            onSubmit={form.handleSubmit(onCreateProjectSubmit)}
+            onSubmit={createForm.handleSubmit(onCreateProjectSubmit)}
             className="flex flex-col gap-6 w-full "
           >
             <FormField
-              control={form.control}
+              control={createForm.control}
               name="projectname"
               render={({ field }) => (
                 <FormItem>
@@ -211,7 +230,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
             />
 
             <FormField
-              control={form.control}
+              control={createForm.control}
               name="projectpath"
               render={({ field }) => (
                 <FormItem>
@@ -222,7 +241,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
                     </FormControl>
                     <Button
                       type="button"
-                      onClick={() => selectFolder("projectpath")}
+                      onClick={() => selectFolder("projectpath", createForm)}
                     >
                       Browse
                     </Button>
@@ -236,7 +255,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
             />
 
             <FormField
-              control={form.control}
+              control={createForm.control}
               name="resourcespath"
               render={({ field }) => (
                 <FormItem>
@@ -247,7 +266,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
                     </FormControl>
                     <Button
                       type="button"
-                      onClick={() => selectFolder("resourcespath")}
+                      onClick={() => selectFolder("resourcespath", createForm)}
                     >
                       Browse
                     </Button>

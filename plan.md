@@ -2,14 +2,11 @@
 
 ### Version 2.0
 
-- [ ] 
+- [ ] Render Projects
+- [ ] Render Library -> Read PDFs & Markdowns
+- [ ] Knowledge Store
 - [ ] Create Complete Report, out of The Tabs, in PDF Format.
 - [ ] Fixes: Cleanup, Bugs
-
-### Version 2.5
-
-- [ ] Theme: https://dribbble.com/shots/23986240-A-Dynamic-Sidebar-Navigation
-- [ ] Execute Python Program: Coming Soon
 
 ---
 

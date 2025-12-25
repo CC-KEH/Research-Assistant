@@ -3,6 +3,7 @@ import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { BugType, Item, Project, TreeNode } from "./types";
+import { info } from "@/lib/logger";
 
 // Python API Configuration
 const PYTHON_API_BASE = "http://localhost:8000";
@@ -14,7 +15,7 @@ const PYTHON_API_BASE = "http://localhost:8000";
 export const startPythonServer = async (): Promise<string> => {
   try {
     const result = await invoke<string>("start_python_server");
-    console.log("Python server started:", result);
+    info(`Python server started: ${result}`);
 
     // Wait for server to be ready
     await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -24,10 +25,10 @@ export const startPythonServer = async (): Promise<string> => {
     while (retries > 0) {
       const isHealthy = await checkPythonServerHealth();
       if (isHealthy) {
-        console.log("✅ Python server is healthy");
+        info("✅ Python server is healthy");
         return result;
       }
-      console.log(`Health check failed, retries remaining: ${retries}`);
+      info(`Health check failed, retries remaining: ${retries}`);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       retries--;
     }
@@ -47,7 +48,7 @@ export const startPythonServer = async (): Promise<string> => {
 export const stopPythonServer = async (): Promise<string> => {
   try {
     const result = await invoke<string>("stop_python_server");
-    console.log("Python server stopped:", result);
+    info(`Python server stopped: ${result}`);
     return result;
   } catch (error) {
     console.error("Failed to stop Python server:", error);
@@ -113,7 +114,7 @@ export const initializePythonBackend = async (
     }
 
     const data = await response.json();
-    console.log("✅ Python backend initialized:", data);
+    info("✅ Python backend initialized:", data);
     return data;
   } catch (error) {
     console.error("Failed to initialize Python backend:", error);
@@ -161,7 +162,7 @@ export const switchLLM = async (modelName: string) => {
     }
 
     const data = await response.json();
-    console.log("✅ Switched LLM:", data);
+    info("✅ Switched LLM:", data);
     return data;
   } catch (error) {
     console.error("Failed to switch LLM:", error);
@@ -220,7 +221,7 @@ export const createSession = async (
     }
 
     const data = await response.json();
-    console.log("✅ Session created:", data);
+    info("✅ Session created:", data);
     return data;
   } catch (error) {
     console.error("Failed to create session:", error);
@@ -285,7 +286,7 @@ export const switchSession = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to switch session");
     const data = await response.json();
-    console.log("✅ Switched to session:", sessionIndex);
+    info(`✅ Switched to session: ${sessionIndex}`);
     return data;
   } catch (error) {
     console.error("Failed to switch session:", error);
@@ -315,7 +316,7 @@ export const resetSession = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to reset session");
     const data = await response.json();
-    console.log("✅ Session reset:", sessionIndex);
+    info(`✅ Session reset: ${sessionIndex}`);
     return data;
   } catch (error) {
     console.error("Failed to reset session:", error);
@@ -384,7 +385,7 @@ export const setupVectorStore = async (
     }
 
     const data = await response.json();
-    console.log("✅ Vector store setup:", data);
+    info("✅ Vector store setup:", data);
     return data;
   } catch (error) {
     console.error("Failed to setup vector store:", error);
@@ -409,7 +410,7 @@ export const addDocumentsToVectorStore = async (
     }
 
     const data = await response.json();
-    console.log("✅ Documents added:", data);
+    info("✅ Documents added:", data);
     return data;
   } catch (error) {
     console.error("Failed to add documents to vector store:", error);
@@ -570,7 +571,7 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
     filters: [
       {
         name: "Documents",
-        extensions: ["pdf", "md", "txt", "docx", "xlsx", "excalidraw"],
+        extensions: ["pdf", "md", "txt", "docx"],
       },
     ],
   });
@@ -624,13 +625,10 @@ export const updateConfig = async (
 
 export const getPreviousProjects = async (): Promise<Project[]> => {
   try {
-    const previousProjects = await invoke("get_previous_projects");
-    if (Array.isArray(previousProjects)) {
-      return previousProjects as Project[];
-    }
-    return [];
+    const previousProjects = await invoke<Project[]>("get_previous_projects");
+    return Array.isArray(previousProjects) ? previousProjects : [];
   } catch (error) {
-    console.log("Failed loading previous projects.", error);
+    info(`Failed loading previous projects: ${error}`);
     return [];
   }
 };
@@ -660,25 +658,25 @@ export const createProject = async (
 //*********************** */
 
 export const deleteItem = (item: Item) => {
-  console.log("deleteItem not implemented");
+  info("deleteItem not implemented");
 };
 
 export const tabsSettings = () => {
-  console.log("tabsSettings not implemented");
+  info("tabsSettings not implemented");
 };
 
 export const modelSettings = () => {
-  console.log("modelSettings not implemented");
+  info("modelSettings not implemented");
 };
 
 export const reportBug = (bugType: BugType) => {
-  console.log("reportBug not implemented");
+  info("reportBug not implemented");
 };
 
 export const loadConfig = async (config: Config) => {
   try {
     // TODO: update project config based on config
-    console.log("Config loaded successfully");
+    info("Config loaded successfully");
   } catch (error) {
     console.error("Failed to load config:", error);
     return null;
