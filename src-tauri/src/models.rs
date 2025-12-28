@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 // This matches the JSON structure returned by the API
 #[derive(Debug, Serialize, Deserialize)]
@@ -15,9 +16,10 @@ pub struct Config {
     pub bookmarks: Vec<Bookmark>,
     pub knowledge_store_config: KnowledgeStoreConfig,
     pub tabs_config: TabsConfig,
-    pub llm_config: Vec<LLMConfig>, // Changed to Vec<LLMConfig>
-    pub embeddings_config: Vec<EmbeddingsConfig>, // Changed to Vec<EmbeddingsConfig>
-    pub vector_store_config: Vec<VectorStoreConfig>, // Changed to Vec<VectorStoreConfig>
+    pub llm_config: HashMap<String, LLMConfig>,
+    pub embeddings_config: HashMap<String, EmbeddingsConfig>,
+    pub vector_store_config: HashMap<String, VectorStoreConfig>,
+    pub ai_config: AIConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +43,7 @@ pub struct FileItem {
 #[serde(rename_all = "camelCase")]
 pub struct Bookmark {
     pub file_name: String,
-    pub file_path: String, // Add this field
+    pub file_path: String,
     pub page_no: String,
 }
 
@@ -51,7 +53,7 @@ pub struct KnowledgeStoreConfig {
     pub files: Vec<KnowledgeFile>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KnowledgeFile {
     pub file_name: String,
@@ -66,39 +68,48 @@ pub struct TabsConfig {
     pub custom_tabs: Vec<Tab>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tab {
     pub id: String,
     pub label: String,
+    pub enabled: bool,
     pub prompt: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LLMConfig {
-    pub name: String,
     pub label: String,
-    pub value: String,
+    pub model_name: String,
     pub api_key: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbeddingsConfig {
-    pub name: String,
     pub label: String,
-    pub value: String,
-    pub api_key: String,
+    pub model_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VectorStoreConfig {
-    pub name: String,
     pub label: String,
-    pub value: String,
-    pub api_key: String,
+    pub environment: String,
+    pub index_name: String,
+    pub persist_directory: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AIConfig {
+    pub active_llm: String,
+    pub active_embeddings: String,
+    pub active_vector_store: String,
+    pub chat_prompt: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -106,10 +117,11 @@ pub struct VectorStoreConfig {
 pub struct TreeNode {
     pub id: String,
     pub label: String,
+    #[serde(rename = "nodeType")]
+    pub node_type: String, // "file" or "folder"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<TreeNode>>,
 }
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileInfo {
     pub name: String,

@@ -1,7 +1,6 @@
 import { TreeView } from "@/components/small/Treeview";
 import { info } from "@/lib/logger";
 
-// TODO: This will be used in Pages, later will be removed from here.
 const DemoOne = () => {
   const treeData = [
     {

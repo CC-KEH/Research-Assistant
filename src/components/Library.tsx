@@ -14,14 +14,19 @@ interface LibraryProps {
 export default function Library({ onFileSelect }: LibraryProps) {
   const { getBasicConfig } = useConfig();
   const basicConfig = getBasicConfig();
-  const projectPath = basicConfig?.find((p) => p.project_path)?.project_path;
+  info(`Basic config loaded: ${JSON.stringify(basicConfig)}`);
+  const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
 
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
 
   useEffect(() => {
-    if (!projectPath) return;
+    if (!projectPath) {
+      info("Project path not found");
+      return;
+    }
 
     const loadLibrary = async () => {
+      info(`Loading library data from: ${projectPath}`);
       const data = await getLibraryData(projectPath);
       setTreeData(data);
     };

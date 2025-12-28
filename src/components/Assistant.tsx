@@ -9,7 +9,6 @@ import type { FileInfo } from "@/lib/types";
 import {
   startPythonServer,
   initializePythonBackend,
-  getAIConfig,
   createSession,
   getAllSessions,
   getSessionHistory,
@@ -18,6 +17,16 @@ import {
   switchLLM,
 } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
+import { useConfig } from "./providers/ConfigProvider";
+import {
+  Stepper,
+  StepperItem,
+  StepperTitle,
+  StepperTrigger,
+  StepperIndicator,
+  StepperSeparator,
+  StepperDescription,
+} from "./small/Stepper";
 
 interface Message {
   id: number;
@@ -30,7 +39,41 @@ interface AssistantProps {
   fileInfo: FileInfo | null;
 }
 
+const steps = [
+  {
+    step: 1,
+    title: "Setting up server.",
+    description: "Desc for step one",
+  },
+  {
+    step: 2,
+    title: "Loading config",
+    description: "Desc for step two",
+  },
+  {
+    step: 3,
+    title: "Loading chat",
+    description: "Desc for step three",
+  },
+];
+
 export default function Assistant({ fileInfo }: AssistantProps) {
+  const {
+    getBasicConfig,
+    getAIConfig,
+    getLlmConfig,
+    getEmbeddingsConfig,
+    getVectorStoreConfig,
+    getKnowledgeStoreConfig,
+  } = useConfig();
+
+  const basicConfig = getBasicConfig();
+  const aiConfig = getAIConfig();
+  const llmConfig = getLlmConfig();
+  const embeddingsConfig = getEmbeddingsConfig();
+  const vectorStoreConfig = getVectorStoreConfig();
+  const knowledgeStoreConfig = getKnowledgeStoreConfig();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +97,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   useEffect(() => {
     const initializeBackend = async () => {
       try {
-        setInitializationStep("Starting Python server...");
+        setInitializationStep("Starting server...");
 
         // 1. Start Python server
         await startPythonServer();
@@ -64,29 +107,36 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
         // 3. Initialize Python backend with paths
         setInitializationStep("Initializing backend...");
-        const initResult = await initializePythonBackend(
-          "config.json",
-          "chats.json"
-        );
+        const projectPath = basicConfig?.[0]?.project_path;
+        if (!projectPath) {
+          throw new Error("Project path not found in config");
+        }
+
+        const configPath = `${projectPath}\\config.json`;
+        const chatPath = `${projectPath}\\chats.json`;
+        info(`Config path: ${configPath}`);
+
+        const initResult = await initializePythonBackend(configPath, chatPath);
         info(`Backend initialized: ${initResult}`);
 
-        // 4. Get AI configuration
-        setInitializationStep("Loading AI configuration...");
+        // 4. Set current provider from aiConfig
+        if (aiConfig) {
+          setCurrentProvider(aiConfig?.[0]?.active_llm);
 
-        const aiConfig = await getAIConfig();
-        info(`AI Config: ${aiConfig}`);
+          // Get available providers (those with API keys configured)
+          // llmConfig is now a Record/HashMap with keys like "openai", "anthropic", etc.
+          const providers: string[] = [];
 
-        // Set current provider
-        const activeLLM = aiConfig.active_llm;
-        setCurrentProvider(activeLLM);
+          if (llmConfig) {
+            Object.entries(llmConfig).forEach(([key, provider]) => {
+              if (provider.api_key && provider.api_key.trim() !== "") {
+                providers.push(key); // key is "openai", "anthropic", "google", "xai"
+              }
+            });
+          }
 
-        // Get available providers (those with API keys)
-        const providers: string[] = [];
-        if (aiConfig.openai?.api_key) providers.push("openai");
-        if (aiConfig.anthropic?.api_key) providers.push("anthropic");
-        if (aiConfig.google?.api_key) providers.push("google");
-        if (aiConfig.xai?.api_key) providers.push("xai");
-        setAvailableProviders(providers);
+          setAvailableProviders(providers);
+        }
 
         // 5. Load or create session
         setInitializationStep("Loading session...");
@@ -141,8 +191,10 @@ export default function Assistant({ fileInfo }: AssistantProps) {
       }
     };
 
-    initializeBackend();
-  }, []);
+    if (basicConfig && aiConfig && llmConfig) {
+      initializeBackend();
+    }
+  }, [basicConfig, aiConfig, llmConfig]);
 
   // Notify user of new file selection
   useEffect(() => {
@@ -279,6 +331,27 @@ export default function Assistant({ fileInfo }: AssistantProps) {
         </div>
       )}
 
+      <div className="px-10 my-12 self-center">
+        <Stepper defaultValue={2} orientation="vertical">
+          {steps.map(({ step, title, description }) => (
+            <StepperItem
+              key={step}
+              step={step}
+              className="relative items-start [&:not(:last-child)]:flex-1"
+            >
+              <div className="pb-4">
+                <StepperIndicator />
+                <StepperTitle>{title}</StepperTitle>
+                <StepperDescription>{description}</StepperDescription>
+              </div>
+              {step < steps.length && (
+                <StepperSeparator className="absolute inset-y-0 left-3 top-[calc(1.5rem+0.125rem)] -order-1 m-0 -translate-x-1/2 group-data-[orientation=vertical]/stepper:h-[calc(100%-1.5rem-0.25rem)] group-data-[orientation=horizontal]/stepper:w-[calc(100%-1.5rem-0.25rem)] group-data-[orientation=horizontal]/stepper:flex-none" />
+              )}
+            </StepperItem>
+          ))}
+        </Stepper>
+      </div>
+
       <div className="flex-1 min-h-0 relative">
         <ChatMessageList>
           {messages.map((message, index) => {
@@ -332,7 +405,6 @@ export default function Assistant({ fileInfo }: AssistantProps) {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
             className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
-            disabled={isLoading || !isInitialized}
           />
           <div className="flex items-center p-3 pt-2 justify-between">
             <div className="flex gap-1">
@@ -341,7 +413,6 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                 size="default"
                 type="button"
                 onClick={handleLLMSwitch}
-                disabled={availableProviders.length === 0 || !isInitialized}
               >
                 <img
                   src={providerDisplay.icon}
@@ -360,12 +431,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                 <Mic className="size-4" />
               </Button>
             </div>
-            <Button
-              type="submit"
-              size="sm"
-              className="ml-auto gap-1.5"
-              disabled={isLoading || !input.trim() || !isInitialized}
-            >
+            <Button type="submit" size="sm" className="ml-auto gap-1.5">
               Ask
               <CornerDownLeft className="size-3.5" />
             </Button>

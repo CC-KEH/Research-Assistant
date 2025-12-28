@@ -3,20 +3,12 @@ import React, { useState, useCallback } from "react";
 import { ChevronRight, Folder, File, FolderOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-// Types
-export type TreeNode = {
-  id: string;
-  label: string;
-  icon?: React.ReactNode;
-  children?: TreeNode[];
-  data?: any;
-};
+import { TreeNode } from "@/lib/types";
 
 export type TreeViewProps = {
-  data: TreeNode[];
+  data: TreeViewNode[];
   className?: string;
-  onNodeClick?: (node: TreeNode) => void;
+  onNodeClick?: (node: TreeViewNode) => void;
   onNodeExpand?: (nodeId: string, expanded: boolean) => void;
   defaultExpandedIds?: string[];
   showLines?: boolean;
@@ -29,7 +21,6 @@ export type TreeViewProps = {
   animateExpand?: boolean;
 };
 
-// Main TreeView component
 export function TreeView({
   data,
   className,
@@ -96,7 +87,7 @@ export function TreeView({
   );
 
   const renderNode = (
-    node: TreeNode,
+    node: TreeViewNode,
     level = 0,
     isLast = false,
     parentPath: boolean[] = []
@@ -106,8 +97,24 @@ export function TreeView({
     const isSelected = currentSelectedIds.includes(node.id);
     const currentPath = [...parentPath, isLast];
 
-    const getDefaultIcon = () =>
-      hasChildren ? (
+    // Updated: Use nodeType if available, fall back to hasChildren logic
+    const getDefaultIcon = () => {
+      // If nodeType is explicitly set, use it
+      if (node.nodeType === "folder") {
+        return isExpanded ? (
+          <FolderOpen className="h-4 w-4" />
+        ) : (
+          <Folder className="h-4 w-4" />
+        );
+      } else if (node.nodeType === "file") {
+        return <File className="h-4 w-4" />;
+      }
+
+      // Fallback: Check if children array exists (even if empty)
+      // If children prop exists, it's a folder; otherwise it's a file
+      const isFolder = "children" in node;
+
+      return isFolder ? (
         isExpanded ? (
           <FolderOpen className="h-4 w-4" />
         ) : (
@@ -116,6 +123,7 @@ export function TreeView({
       ) : (
         <File className="h-4 w-4" />
       );
+    };
 
     return (
       <div key={node.id} className="select-none">

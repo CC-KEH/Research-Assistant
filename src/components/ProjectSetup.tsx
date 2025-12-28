@@ -115,20 +115,19 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   async function onLoadProjectSubmit(
     values: z.infer<typeof loadProjectSchema>
   ) {
-    info(`Loading project at: ${values.projectpath}`);
     try {
       onProjectPathSet(values.projectpath);
-      navigate("/Workspace");
+      setTimeout(() => navigate("/Workspace"), 500);
     } catch (err) {
       error(`Failed to load project: ${err}`);
       alert("Failed to load project: " + err);
     }
   }
 
+  // In ProjectSetup.tsx
   async function onCreateProjectSubmit(
     values: z.infer<typeof createProjectSchema>
   ) {
-    info(`Creating project at ${values.projectpath}`);
     try {
       await createProject(
         values.projectname,
@@ -137,7 +136,8 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
       );
       info("✅ Project created");
       onProjectPathSet(values.projectpath);
-      navigate("/Workspace");
+      // Give ConfigProvider time to load config before navigating
+      setTimeout(() => navigate("/Workspace"), 500);
     } catch (err) {
       error(`Failed to create project: ${err}`);
     }

@@ -9,7 +9,7 @@ interface Frame3Props {
 export default function Frame3({ fileInfo }: Frame3Props) {
   return (
     <div className="flex h-full w-full items-center justify-center flex-col p-4">
-      <h1 className="text-sm border-b pb-2 mb-3">GPT-5</h1>
+      <h1 className="text-sm border-b pb-2 mb-3">Assistant</h1>
       <AssistantContextMenu>
         <Assistant fileInfo={fileInfo} />
       </AssistantContextMenu>

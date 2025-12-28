@@ -1,7 +1,7 @@
 import { getConfig } from "@/lib/backend";
 import { Config } from "@/lib/types";
 import React, { createContext, useEffect, useState, useContext } from "react";
-import { error } from "@/lib/logger";
+import { error, info } from "@/lib/logger";
 
 interface ConfigContextType {
   config: Config | null;
@@ -17,6 +17,7 @@ interface ConfigContextType {
   getLlmConfig: () => Config["llmConfig"] | null;
   getEmbeddingsConfig: () => Config["embeddingsConfig"] | null;
   getVectorStoreConfig: () => Config["vectorStoreConfig"] | null;
+  getAIConfig: () => Config["aiConfig"] | null;
 }
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
@@ -41,6 +42,7 @@ export const ConfigProvider = ({
     try {
       const result = await getConfig(configPath);
       setConfig(result);
+      info(`✅ Config loaded, ${configPath}`);
     } catch (err) {
       error(`Failed to load config: ${err}`);
       setConfig(null);
@@ -78,6 +80,10 @@ export const ConfigProvider = ({
     return config?.vectorStoreConfig || null;
   };
 
+  const getAIConfig = (): Config["aiConfig"] | null => {
+    return config?.aiConfig || null;
+  };
+
   useEffect(() => {
     if (configPath) {
       reloadConfig();
@@ -100,6 +106,7 @@ export const ConfigProvider = ({
         getLlmConfig,
         getEmbeddingsConfig,
         getVectorStoreConfig,
+        getAIConfig,
       }}
     >
       {children}

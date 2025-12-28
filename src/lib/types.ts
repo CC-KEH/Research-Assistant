@@ -6,6 +6,7 @@ export type Project = {
 export type TreeNode = {
   id: string;
   label: string;
+  nodeType?: "file" | "folder";
   children?: TreeNode[];
 };
 
@@ -42,22 +43,29 @@ export interface VectorStoreProvider {
   api_key: string;
 }
 
+export interface AIConfig {
+  activeLlm: string;
+  activeEmbeddings: string;
+  activeVectorStore: string;
+  chatPrompt: string;
+}
+
 export interface BasicConfig {
-  project_name: string;
-  project_path: string;
-  resources_path: string;
+  projectName: string;
+  projectPath: string;
+  resourcesPath: string;
 }
 
 export interface Bookmark {
-  file_name: string;
-  file_path: string;
-  page_no: string;
+  fileName: string;
+  filePath: string;
+  pageNo: string;
 }
 
 export interface KnowledgeFile {
-  file_name: string;
-  file_path: string;
-  feed_llm: string;
+  fileName: string;
+  filePath: string;
+  feedLlm: string;
 }
 
 export interface Config {
@@ -73,6 +81,7 @@ export interface Config {
   llmConfig: LlmProvider[];
   embeddingsConfig: EmbeddingProvider[];
   vectorStoreConfig: VectorStoreProvider[];
+  aiConfig: AIConfig[];
 }
 
 export enum Item {

@@ -26,7 +26,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <ConfigProvider
-        configPath={projectPath ? `${projectPath}/config.json` : null}
+        configPath={projectPath ? `${projectPath}\\config.json` : null}
       >
         <div className="h-screen w-screen overflow-hidden">
           <Routes>

@@ -1,4 +1,5 @@
 use crate::models::*;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -80,112 +81,147 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             .map_err(|e| format!("Failed to create resources directory: {}", e))?;
     }
 
+    // Create default tabs
+    let tabs = vec![
+        Tab {
+            id: "view".to_string(),
+            label: "View".to_string(),
+            enabled: true,
+            prompt: "You are an expert academic assistant. Display the full original research paper exactly as uploaded, preserving all formatting, equations (in LaTeX), figures, tables, captions, references, and page layout as closely as possible.\n\nText: \n{text}\n\nFull Paper:".to_string(),
+        },
+        Tab {
+            id: "summary".to_string(),
+            label: "Summary".to_string(),
+            enabled: true,
+            prompt: "You are an outstanding research communicator that makes complex papers easy to understand.\nProvide a complete, beginner-friendly summary of the entire paper in simple language.\nAfter explaining each topic, always give a clear real-world or intuitive example.\n\nOutput strictly in clean Markdown format.\n\nText: \n{text}\n\nSummary:\n\n# Title & Authors\n\n# Field & Keywords\n\n# Core Problem (in simple words)\n(explanation + simple example)\n\n# Prerequisites / Background Needed\n(explanation + simple example)\n\n# Main Idea / Proposed Solution\n(explanation + simple example)\n\n# How the Method Works (step-by-step)\n(explanation + simple example)\n\n# Key Results & Numbers\n(explanation + simple example)\n\n# Key Contributions\n• Bullet list with simple explanation + example for each\n\n# Limitations\n(explanation + simple example)\n\n# Conclusion of the Paper\n(explanation + simple example)\n\n# Why This Paper Matters\n(simple takeaway + real-world example)".to_string(),
+        },
+        Tab {
+            id: "contributions".to_string(),
+            label: "Contributions".to_string(),
+            enabled: true,
+            prompt: "You are an expert in identifying scientific novelty.\nExtract and explain every single contribution (major and minor) of this paper in simple, precise language.\nFor each contribution, give a short intuitive example.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nKey Contributions of This Paper:\n\n# Main Contributions\n• Contribution 1 → explanation in simple words  \n  Example:\n\n• Contribution 2 → explanation  \n  Example:\n\n(...continue for all contributions...)\n\n# Incremental / Minor Contributions\n• ...\n\n# Novelty Check\nCompared to previous work, what is truly new here? (explain simply + example)".to_string(),
+        },
+        Tab {
+            id: "critical-analysis".to_string(),
+            label: "Analysis".to_string(),
+            enabled: true,
+            prompt: "You are a tough but fair peer reviewer.\nPerform a deep, honest, and balanced critical analysis in simple academic language.\nUse examples wherever possible.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nCritical Analysis:\n\n# Strengths\n• Strength 1 + example from paper\n• Strength 2 + example\n(...at least 5–6...)\n\n# Weaknesses & Limitations\n• Weakness 1 + concrete example\n• Weakness 2 + concrete example\n(...be direct but polite...)\n\n# Questions About Validity\n• Are experiments fair? (example)\n• Are baselines strong? (example)\n• Any cherry-picking of results? (example)\n\n# Is the Novelty Overhyped?\n(simple yes/no + explanation with example)\n\n# Overall Rating (1–10)\nJustification with examples\n\n# Recommendation\nAccept / Minor Revision / Major Revision / Reject + why".to_string(),
+        },
+        Tab {
+            id: "dictionary".to_string(),
+            label: "Dictionary".to_string(),
+            enabled: true,
+            prompt: "You are a domain expert glossary builder.\nCreate an alphabetized dictionary of all important terms, acronyms, and symbols from the paper.\nEach entry must be simple and include a short example.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nTechnical Dictionary (A–Z):\n\n**Term / Acronym / Symbol**  \nDefinition in simple words  \nExample: ...\n\n(continue for all key terms — aim for 30–60 entries depending on paper length)".to_string(),
+        },
+        Tab {
+            id: "future-work".to_string(),
+            label: "Future".to_string(),
+            enabled: true,
+            prompt: "You are a leading researcher in this field.\nBased on this paper, propose concrete and exciting future research directions in very simple language.\nEach idea include a small example or thought experiment.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nPromising Future Work Ideas:\n\n# Idea 1\nDescription + why it's important  \nPossible experiment/example: ...\n\n# Idea 2\n...\n\n(Provide 8–12 high-quality, realistic ideas. Be creative but practical.)".to_string(),
+        },
+    ];
+
+    // Create default LLM config
+    let mut llm_config = HashMap::new();
+    llm_config.insert(
+        "anthropic".to_string(),
+        LLMConfig {
+            label: "Claude 2".to_string(),
+            model_name: "claude-2".to_string(),
+            api_key: String::new(),
+        },
+    );
+    llm_config.insert(
+        "google".to_string(),
+        LLMConfig {
+            label: "Gemini Pro".to_string(),
+            model_name: "gemini-pro".to_string(),
+            api_key: String::new(),
+        },
+    );
+    llm_config.insert(
+        "openai".to_string(),
+        LLMConfig {
+            label: "GPT-3.5".to_string(),
+            model_name: "gpt-3.5".to_string(),
+            api_key: String::new(),
+        },
+    );
+    llm_config.insert(
+        "xai".to_string(),
+        LLMConfig {
+            label: "XAI".to_string(),
+            model_name: "grok".to_string(),
+            api_key: String::new(),
+        },
+    );
+
+    // Create default embeddings config
+    let mut embeddings_config = HashMap::new();
+    embeddings_config.insert(
+        "google".to_string(),
+        EmbeddingsConfig {
+            label: "Google Embeddings".to_string(),
+            model_name: "google-embedding-model".to_string(),
+            api_key: Some(String::new()),
+        },
+    );
+    embeddings_config.insert(
+        "openai".to_string(),
+        EmbeddingsConfig {
+            label: "OpenAI Embeddings".to_string(),
+            model_name: "text-embedding-3-small".to_string(),
+            api_key: Some(String::new()),
+        },
+    );
+    embeddings_config.insert(
+        "huggingface".to_string(),
+        EmbeddingsConfig {
+            label: "HuggingFaceEmbeddings".to_string(),
+            model_name: "sentence-transformers/all-mpnet-base-v2".to_string(),
+            api_key: None,
+        },
+    );
+
+    // Create default vector store config
+    let mut vector_store_config = HashMap::new();
+    vector_store_config.insert(
+        "faiss".to_string(),
+        VectorStoreConfig {
+            label: "Faiss".to_string(),
+            environment: String::new(),
+            index_name: String::new(),
+            persist_directory: String::new(),
+        },
+    );
+    vector_store_config.insert(
+        "chroma".to_string(),
+        VectorStoreConfig {
+            label: "Chroma".to_string(),
+            environment: String::new(),
+            index_name: String::new(),
+            persist_directory: String::new(),
+        },
+    );
+
     // Create a default config
     let default_config = Config {
         basic_config: vec![project.clone()],
         bookmarks: Vec::new(),
         knowledge_store_config: KnowledgeStoreConfig { files: Vec::new() },
         tabs_config: TabsConfig {
-            tabs: vec![
-                Tab {
-                    id: "view".to_string(),
-                    label: "View".to_string(),
-                    prompt: "Prompt goes here".to_string(),
-                },
-                Tab {
-                    id: "summary".to_string(),
-                    label: "Summary".to_string(),
-                    prompt: "Prompt goes here".to_string(),
-                },
-                Tab {
-                    id: "contributions".to_string(),
-                    label: "Contributions".to_string(),
-                    prompt: "Prompt goes here".to_string(),
-                },
-                Tab {
-                    id: "critical-analysis".to_string(),
-                    label: "Analysis".to_string(),
-                    prompt: "Prompt goes here".to_string(),
-                },
-                Tab {
-                    id: "dictionary".to_string(),
-                    label: "Dictionary".to_string(),
-                    prompt: "Prompt goes here".to_string(),
-                },
-                Tab {
-                    id: "future-work".to_string(),
-                    label: "Future".to_string(),
-                    prompt: "Prompt goes here".to_string(),
-                },
-            ],
+            tabs,
             custom_tabs: Vec::new(),
         },
-        llm_config: vec![
-            LLMConfig {
-                name: "openai".to_string(),
-                label: "GPT-3.5".to_string(),
-                value: "gpt-3.5".to_string(),
-                api_key: String::new(),
-            },
-            LLMConfig {
-                name: "google".to_string(),
-                label: "Gemini".to_string(),
-                value: "gemini".to_string(),
-                api_key: String::new(),
-            },
-            LLMConfig {
-                name: "anthropic".to_string(),
-                label: "Claude".to_string(),
-                value: "claude".to_string(),
-                api_key: String::new(),
-            },
-            LLMConfig {
-                name: "xai".to_string(),
-                label: "Grok".to_string(),
-                value: "grok".to_string(),
-                api_key: String::new(),
-            },
-        ],
-        embeddings_config: vec![
-            EmbeddingsConfig {
-                name: "openai".to_string(),
-                label: "OpenAI".to_string(),
-                value: "openai".to_string(),
-                api_key: String::new(),
-            },
-            EmbeddingsConfig {
-                name: "google".to_string(),
-                label: "Gemini".to_string(),
-                value: "gemini".to_string(),
-                api_key: String::new(),
-            },
-            EmbeddingsConfig {
-                name: "voyage".to_string(),
-                label: "Voyage".to_string(),
-                value: "voyage".to_string(),
-                api_key: String::new(),
-            },
-        ],
-        vector_store_config: vec![
-            VectorStoreConfig {
-                name: "Pinecone".to_string(),
-                label: "Pinecone".to_string(),
-                value: "Pinecone".to_string(),
-                api_key: String::new(),
-            },
-            VectorStoreConfig {
-                name: "Weaviate".to_string(),
-                label: "Weaviate".to_string(),
-                value: "weaviate".to_string(),
-                api_key: String::new(),
-            },
-            VectorStoreConfig {
-                name: "Chroma".to_string(),
-                label: "Chroma".to_string(),
-                value: "chroma".to_string(),
-                api_key: String::new(),
-            },
-        ],
+        llm_config,
+        embeddings_config,
+        vector_store_config,
+        ai_config: AIConfig {
+            active_llm: "openai".to_string(),
+            active_embeddings: "openai".to_string(),
+            active_vector_store: "faiss".to_string(),
+            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
+        },
     };
 
     // Write config to file
@@ -237,7 +273,6 @@ impl Counter {
         self.value.to_string()
     }
 }
-
 fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<TreeNode>, String> {
     let mut nodes = Vec::new();
 
@@ -245,7 +280,6 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
         Ok(entries) => {
             let mut entries: Vec<_> = entries.collect();
 
-            // Sort entries for consistent ordering
             entries.sort_by(|a, b| {
                 let a_name = a
                     .as_ref()
@@ -267,7 +301,6 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                     Ok(entry) => {
                         let entry_path = entry.path();
 
-                        // Skip hidden files/folders (starting with .)
                         if let Some(file_name) = entry_path.file_name() {
                             if let Some(name_str) = file_name.to_str() {
                                 if name_str.starts_with('.') {
@@ -289,31 +322,27 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                                 Ok(children) => TreeNode {
                                     id,
                                     label,
+                                    node_type: "folder".to_string(),
                                     children: if children.is_empty() {
                                         None
                                     } else {
                                         Some(children)
                                     },
                                 },
-                                Err(_) => {
-                                    // Skip directories we can't read
-                                    continue;
-                                }
+                                Err(_) => continue,
                             }
                         } else {
                             TreeNode {
                                 id,
                                 label,
+                                node_type: "file".to_string(),
                                 children: None,
                             }
                         };
 
                         nodes.push(node);
                     }
-                    Err(_) => {
-                        // Skip entries we can't read
-                        continue;
-                    }
+                    Err(_) => continue,
                 }
             }
         }
@@ -322,7 +351,6 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
 
     Ok(nodes)
 }
-
 /// List files and directories in a given path
 #[tauri::command]
 pub fn list_dir(path: String) -> Result<Vec<FileItem>, String> {

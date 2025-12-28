@@ -108,7 +108,7 @@ class ConfigManager:
         self.save()
 
 class SessionManager:
-    def __init__(self, chats_file: str = "chats.json"):
+    def __init__(self, chats_file: str):
         self.chats_file = chats_file
         self.data = self.load_chats()
         self.active_session_index = None
@@ -116,8 +116,13 @@ class SessionManager:
     def load_chats(self) -> dict:
         """Load chats from JSON file."""
         try:
-            with open(self.chats_file, "r") as f:
-                return json.load(f)
+            if not os.path.exists(self.chats_file):
+                with open(self.chats_file, "w") as f:
+                    json.dump({"sessions": {"sessions": []}}, f)
+                    return {"sessions": {"sessions": []}}
+            else:
+                with open(self.chats_file, "r") as f:
+                    return json.load(f)
         except FileNotFoundError:
             return {"sessions": {"sessions": []}}
 
