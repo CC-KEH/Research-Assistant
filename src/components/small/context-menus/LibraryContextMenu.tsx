@@ -10,7 +10,7 @@ import { ReactNode } from "react";
 interface LibraryContextMenuProps {
   children: ReactNode;
   onNewFile?: () => void;
-  onNewDrawing?: () => void;
+  onNewFolder?: () => void;
   onDelete?: () => void;
   onNewProject?: () => void;
   onReportBug?: () => void;
@@ -19,7 +19,7 @@ interface LibraryContextMenuProps {
 export const LibraryContextMenu = ({
   children,
   onNewFile,
-  onNewDrawing,
+  onNewFolder,
   onDelete,
   onNewProject,
   onReportBug,
@@ -38,10 +38,10 @@ export const LibraryContextMenu = ({
           <File />
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={onNewDrawing}
+          onClick={onNewFolder}
           className="flex flex-row justify-between gap-6"
         >
-          New Drawing
+          New Folder
           <Folder />
         </ContextMenuItem>
         <ContextMenuItem

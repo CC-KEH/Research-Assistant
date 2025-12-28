@@ -563,6 +563,15 @@ export const createDir = async (dirPath: string): Promise<void> => {
   }
 };
 
+export const deleteItem = async (path: string): Promise<void> => {
+  try {
+    await invoke("delete_item", { path });
+  } catch (err) {
+    error(`Error deleting item: ${err}`);
+    throw err;
+  }
+};
+
 export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
   const selected = await open({
     multiple: true,
@@ -656,10 +665,6 @@ export const createProject = async (
 //*********************** */
 //* Placeholder Functions
 //*********************** */
-
-export const deleteItem = (item: Item) => {
-  info("deleteItem not implemented");
-};
 
 export const tabsSettings = () => {
   info("tabsSettings not implemented");
