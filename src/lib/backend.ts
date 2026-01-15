@@ -492,23 +492,6 @@ export const getTabs = async () => {
 //* File System Functions (via Tauri/Rust)
 //*********************** */
 
-export function mapExtensionToType(ext: string): string {
-  switch (ext) {
-    case "pdf":
-      return "pdf";
-    case "md":
-      return "markdown";
-    case "txt":
-      return "text";
-    case "xlsx":
-      return "spreadsheet";
-    case "excalidraw":
-      return "drawing";
-    default:
-      return "unknown";
-  }
-}
-
 // Use Tauri command to get library data recursively
 export async function getLibraryData(projectPath: string): Promise<TreeNode[]> {
   try {

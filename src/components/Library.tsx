@@ -8,7 +8,6 @@ import {
   createDir,
   deleteItem,
   getLibraryData,
-  mapExtensionToType,
   writeFile,
 } from "@/lib/backend";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
@@ -214,11 +213,11 @@ export default function Library({ onFileSelect }: LibraryProps) {
       const ext = node.label.split(".").pop()?.toLowerCase() || "";
       const fileInfo: FileInfo = {
         name: node.label,
-        type: mapExtensionToType(ext),
-        path: `/virtual/${node.label}`,
+        type: ext,
+        path: node.path,
         id: `${node.label}`,
       };
-
+      info(`File Info: ${JSON.stringify(fileInfo)}`);
       onFileSelect(fileInfo);
     }
   };

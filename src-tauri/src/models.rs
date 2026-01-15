@@ -117,6 +117,7 @@ pub struct AIConfig {
 pub struct TreeNode {
     pub id: String,
     pub label: String,
+    pub path: String,
     #[serde(rename = "nodeType")]
     pub node_type: String, // "file" or "folder"
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -23,6 +23,10 @@ export const fileViewerTabs = [
   { id: "edit", label: "Edit", prompt: "Prompt goes here" },
 ];
 
+export const invalidTab = [
+  { id: "view", label: "View", prompt: "Coming Soon." },
+];
+
 export const defaultPaperViewerTabs = [
   { id: "view", label: "View" },
   { id: "summary", label: "Summary" },

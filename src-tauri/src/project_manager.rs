@@ -322,6 +322,7 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                                 Ok(children) => TreeNode {
                                     id,
                                     label,
+                                    path: entry_path.to_string_lossy().to_string(),
                                     node_type: "folder".to_string(),
                                     children: if children.is_empty() {
                                         None
@@ -335,6 +336,7 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                             TreeNode {
                                 id,
                                 label,
+                                path: entry_path.to_string_lossy().to_string(),
                                 node_type: "file".to_string(),
                                 children: None,
                             }
@@ -536,7 +538,6 @@ pub fn upload_to_knowledge_store(
 
     Ok(file_info)
 }
-
 
 pub fn delete_item(path: String) -> Result<(), String> {
     let item_path = PathBuf::from(&path);

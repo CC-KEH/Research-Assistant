@@ -6,6 +6,7 @@ export type Project = {
 export type TreeNode = {
   id: string;
   label: string;
+  path: string;
   nodeType?: "file" | "folder";
   children?: TreeNode[];
 };

@@ -4,10 +4,12 @@ import FrameTabs from "@/components/small/FrameTabs";
 import { useState, useEffect } from "react";
 import {
   fileViewerTabs,
+  invalidTab,
   markdownViewerTabs,
   paperViewerTabs,
 } from "@/lib/tabs";
 import type { FileInfo } from "@/lib/types";
+import { info } from "@/lib/logger";
 
 interface Frame2Props {
   fileInfo: FileInfo | null;
@@ -22,17 +24,17 @@ export default function Frame2({ fileInfo }: Frame2Props) {
     if (fileInfo?.path) {
       setFilePath(fileInfo.path);
       switch (fileInfo.type) {
-        case "pdf":
-        case "docx":
-        case "paper":
-          setActiveTabGroup(paperViewerTabs);
-          break;
-        case "markdown":
         case "md":
           setActiveTabGroup(markdownViewerTabs);
           break;
-        default:
+        case "txt":
           setActiveTabGroup(fileViewerTabs);
+          break;
+        case "pdf":
+          setActiveTabGroup(paperViewerTabs);
+          break;
+        default:
+          setActiveTabGroup(invalidTab);
           break;
       }
       setActiveTab(activeTabGroup[0]?.id);

@@ -1,5 +1,5 @@
-import { Bell, HelpCircle, Settings, Sun, Moon, List } from "lucide-react";
 import { ExpandableTabs } from "@/components/ui/expandable-tabs";
+import { Bell, HelpCircle, Settings, Sun, Moon, List } from "lucide-react";
 
 export default function ControlBar() {
   return (
