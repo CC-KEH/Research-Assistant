@@ -8,7 +8,7 @@ export default function Welcome() {
   const [titleNumber, setTitleNumber] = useState(0);
   const titles = useMemo(
     () => ["new", "minimal", "smart", "intelligent", "powerful"],
-    []
+    [],
   );
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function Welcome() {
             rel="noopener noreferrer"
           >
             <Button variant="secondary" size="sm" className="gap-4">
-              Read the launch article <MoveRight className="w-4 h-4" />
+              Read the launch post <MoveRight className="w-4 h-4" />
             </Button>
           </a>
         </div>

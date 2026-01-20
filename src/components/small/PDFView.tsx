@@ -71,7 +71,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     setBookmarks((prev) =>
       prev.includes(pageNumber)
         ? prev.filter((page) => page !== pageNumber)
-        : [...prev, pageNumber]
+        : [...prev, pageNumber],
     );
   };
 
@@ -156,8 +156,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     const updatedPaths = paths.filter(
       (path) =>
         !path.points.some(
-          (pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < radius
-        )
+          (pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < radius,
+        ),
     );
 
     setPaths(updatedPaths); // update paths
@@ -181,7 +181,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   const highlightMatches = () => {
     const textLayers = document.querySelectorAll(
-      ".react-pdf__Page__textContent span"
+      ".react-pdf__Page__textContent span",
     );
     textLayers.forEach((span) => {
       const el = span as HTMLElement;

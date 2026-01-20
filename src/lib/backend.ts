@@ -2,7 +2,7 @@ import { Config } from "@/lib/types";
 import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { BugType, Item, Project, TreeNode } from "./types";
+import { BugType, Project, TreeNode } from "./types";
 import { error, info } from "@/lib/logger";
 
 // Python API Configuration
@@ -34,7 +34,7 @@ export const startPythonServer = async (): Promise<string> => {
 
     // Server started but never became healthy
     const error = new Error(
-      "Python server started but failed health checks after 5 attempts"
+      "Python server started but failed health checks after 5 attempts",
     );
     (error as any).code = "SERVER_HEALTH_CHECK_FAILED";
     throw error;
@@ -94,7 +94,7 @@ export interface InitializeResponse {
 
 export const initializePythonBackend = async (
   configPath: string,
-  chatsPath: string
+  chatsPath: string,
 ): Promise<InitializeResponse> => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/initialize`, {
@@ -204,7 +204,7 @@ export interface SessionCreateResponse {
 export const createSession = async (
   name: string,
   tags?: string[],
-  context?: string
+  context?: string,
 ): Promise<SessionCreateResponse> => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/sessions/create`, {
@@ -266,7 +266,7 @@ export const getSession = async (sessionIndex: number) => {
 export const getSessionHistory = async (sessionIndex: number) => {
   try {
     const response = await fetch(
-      `${PYTHON_API_BASE}/sessions/${sessionIndex}/history`
+      `${PYTHON_API_BASE}/sessions/${sessionIndex}/history`,
     );
     if (!response.ok) throw new Error("Failed to get session history");
     return await response.json();
@@ -280,7 +280,7 @@ export const switchSession = async (sessionIndex: number) => {
   try {
     const response = await fetch(
       `${PYTHON_API_BASE}/sessions/${sessionIndex}/switch`,
-      { method: "POST" }
+      { method: "POST" },
     );
     if (!response.ok) throw new Error("Failed to switch session");
     const data = await response.json();
@@ -296,7 +296,7 @@ export const deleteSession = async (sessionIndex: number) => {
   try {
     const response = await fetch(
       `${PYTHON_API_BASE}/sessions/${sessionIndex}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
     if (!response.ok) throw new Error("Failed to delete session");
     return await response.json();
@@ -310,7 +310,7 @@ export const resetSession = async (sessionIndex: number) => {
   try {
     const response = await fetch(
       `${PYTHON_API_BASE}/sessions/${sessionIndex}/reset`,
-      { method: "POST" }
+      { method: "POST" },
     );
     if (!response.ok) throw new Error("Failed to reset session");
     const data = await response.json();
@@ -336,7 +336,7 @@ export const sendChatMessage = async (
   message: string,
   useRAG: boolean = false,
   sessionIndex?: number,
-  k: number = 4
+  k: number = 4,
 ): Promise<ChatResponse> => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/chat`, {
@@ -368,7 +368,7 @@ export const sendChatMessage = async (
 
 export const setupVectorStore = async (
   documents: string[],
-  metadatas?: Record<string, any>[]
+  metadatas?: Record<string, any>[],
 ) => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/vectorstore/setup`, {
@@ -393,7 +393,7 @@ export const setupVectorStore = async (
 
 export const addDocumentsToVectorStore = async (
   documents: string[],
-  metadatas?: Record<string, any>[]
+  metadatas?: Record<string, any>[],
 ) => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/vectorstore/add`, {
@@ -498,7 +498,7 @@ export async function getLibraryData(projectPath: string): Promise<TreeNode[]> {
     const nodes = await invoke<TreeNode[]>("get_library_tree", {
       projectPath,
     });
-    return nodes;
+    return nodes; // Already filtered by backend
   } catch (err) {
     error(`Failed to read directory ${projectPath}: ${err}`);
     return [];
@@ -507,7 +507,7 @@ export async function getLibraryData(projectPath: string): Promise<TreeNode[]> {
 
 export const readFile = async (filePath: string): Promise<string> => {
   try {
-    const content = await invoke<string>("read_file", { filePath });
+    const content = await invoke<string>("read_file", { path: filePath });
     return content;
   } catch (err) {
     error(`Error reading file: ${err}`);
@@ -517,7 +517,7 @@ export const readFile = async (filePath: string): Promise<string> => {
 
 export const writeFile = async (
   filePath: string,
-  content: string
+  content: string,
 ): Promise<void> => {
   try {
     await invoke("write_file", { filePath, content });
@@ -561,7 +561,7 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
     filters: [
       {
         name: "Documents",
-        extensions: ["pdf", "md", "txt", "docx"],
+        extensions: ["pdf", "md"],
       },
     ],
   });
@@ -605,7 +605,7 @@ export const getConfig = async (configPath: string): Promise<Config | null> => {
 
 export const updateConfig = async (
   configPath: string,
-  newConfig: Config
+  newConfig: Config,
 ): Promise<void> => {
   try {
     await invoke("update_config", { configPath, newConfig });
@@ -628,14 +628,12 @@ export const getPreviousProjects = async (): Promise<Project[]> => {
 export const createProject = async (
   project_name: string,
   project_path: string,
-  resources_path: string
 ) => {
   try {
     const result = await invoke("create_new_project", {
       project: {
         projectName: project_name,
         projectPath: project_path,
-        resourcesPath: resources_path,
       },
     });
     return result;

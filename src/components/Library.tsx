@@ -57,7 +57,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
   // Helper function to find node by ID in tree
   const findNodeById = (
     nodes: TreeNode[],
-    id: string
+    id: string,
   ): TreeNode | undefined => {
     for (const node of nodes) {
       if (node.id === id) return node;
@@ -92,7 +92,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
 
       if (!selectedNodeId) {
         // Create in root (cwd)
-        filePath = `${projectPath}/New File.txt`;
+        filePath = `${projectPath}/New File.md`;
       } else {
         const selectedNode = findNodeById(treeData, selectedNodeId);
 
@@ -106,7 +106,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
           return;
         }
 
-        filePath = `${projectPath}/${selectedNode.label}/New File.txt`;
+        filePath = `${projectPath}/${selectedNode.label}/New File.md`;
       }
 
       // Call Rust function to create file
@@ -208,7 +208,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
     info(`Clicked: ${node.label}`);
     setSelectedNodeId(node.id);
 
-    const isFile = node.nodeType === "file" || !node.children;
+    const isFile = node.nodeType === "file";
     if (isFile) {
       const ext = node.label.split(".").pop()?.toLowerCase() || "";
       const fileInfo: FileInfo = {

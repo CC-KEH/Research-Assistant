@@ -1,9 +1,5 @@
 import { Tabs } from "@/components/ui/Tabs";
-import {
-  fileViewerTabs,
-  markdownViewerTabs,
-  paperViewerTabs,
-} from "@/lib/tabs";
+import { markdownViewerTabs, paperViewerTabs } from "@/lib/tabs";
 import { Tab } from "@/lib/types";
 
 interface FrameTabsProps {
@@ -18,9 +14,6 @@ export default function FrameTabs({
   let tabsData: any = [];
 
   switch (activeTabGroup) {
-    case fileViewerTabs:
-      tabsData = fileViewerTabs;
-      break;
     case paperViewerTabs:
       tabsData = paperViewerTabs;
       break;

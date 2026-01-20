@@ -2,8 +2,12 @@
 
 ### Version 2.0
 
-- [ ] Render Library -> Read PDFs & Markdowns
-- [ ] Knowledge Store
+- [ ] Differentiate between papers (present in KnowledgeStore) & pdfs.
+
+- [ ] Right click on directories functionality: New File, New Folder, Delete
+- [ ] Right click on library: New File, New Folder, Delete, New Project, Report Bug
+
+- [ ] KnowledgeStore JSON file
 - [ ] Create Complete Report, out of The Tabs, in PDF Format.
 - [ ] Fixes: Cleanup, Bugs
 

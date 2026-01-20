@@ -2,8 +2,7 @@
     "basicConfig": [
         {
             "project_name": "Project 1",
-            "project_path": "path here",
-            "resources_path": "resources path here"
+            "project_path": "path here"
         }
     ],
     "bookmarks": [
@@ -23,7 +22,15 @@
             {
                 "file_name": "",
                 "file_path": "",
-                "feed_llm": ""
+                "feed_llm": true,
+                "is_processed": false,
+                "file_data": {
+                    "summary": "",
+                    "critical-analysis": "",
+                    "contributions": "",
+                    "future-work": "",
+                    "arxiv": []
+                }
             }
         ]
     },

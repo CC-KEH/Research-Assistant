@@ -74,13 +74,6 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             .map_err(|e| format!("Failed to create project directory: {}", e))?;
     }
 
-    // Create resources directory if it doesn't exist
-    let resources_path = PathBuf::from(&project.resources_path);
-    if !resources_path.exists() {
-        fs::create_dir_all(&resources_path)
-            .map_err(|e| format!("Failed to create resources directory: {}", e))?;
-    }
-
     // Create default tabs
     let tabs = vec![
         Tab {
@@ -315,6 +308,17 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                             .unwrap_or("Unknown")
                             .to_string();
 
+                        // Filter: only include directories, .md, and .pdf files
+                        let should_include = if entry_path.is_dir() {
+                            true
+                        } else {
+                            label.ends_with(".md") || label.ends_with(".pdf")
+                        };
+
+                        if !should_include {
+                            continue;
+                        }
+
                         let id = counter.next();
 
                         let node = if entry_path.is_dir() {
@@ -528,7 +532,15 @@ pub fn upload_to_knowledge_store(
     let knowledge_file = KnowledgeFile {
         file_name,
         file_path: source_path,
-        feed_llm: "true".to_string(),
+        feed_llm: true,
+        is_processed: false,
+        file_data: FileData {
+            summary: "".to_string(),
+            critical_analysis: "".to_string(),
+            contributions: "".to_string(),
+            future_work: "".to_string(),
+            arxiv: Vec::new(),
+        },
     };
 
     config.knowledge_store_config.files.push(knowledge_file);

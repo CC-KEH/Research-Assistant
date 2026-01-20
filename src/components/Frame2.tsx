@@ -2,14 +2,8 @@ import Viewer from "@/components/Viewer";
 import { ViewerContextMenu } from "@/components/small/context-menus/ViewerContextMenu";
 import FrameTabs from "@/components/small/FrameTabs";
 import { useState, useEffect } from "react";
-import {
-  fileViewerTabs,
-  invalidTab,
-  markdownViewerTabs,
-  paperViewerTabs,
-} from "@/lib/tabs";
+import { invalidTab, markdownViewerTabs, paperViewerTabs } from "@/lib/tabs";
 import type { FileInfo } from "@/lib/types";
-import { info } from "@/lib/logger";
 
 interface Frame2Props {
   fileInfo: FileInfo | null;
@@ -27,14 +21,10 @@ export default function Frame2({ fileInfo }: Frame2Props) {
         case "md":
           setActiveTabGroup(markdownViewerTabs);
           break;
-        case "txt":
-          setActiveTabGroup(fileViewerTabs);
-          break;
-        case "pdf":
+        case "pdf": //TODO: If this file is in knowledgeStore then only paperViewerTabs else pdfViewerTabs
           setActiveTabGroup(paperViewerTabs);
           break;
         default:
-          setActiveTabGroup(invalidTab);
           break;
       }
       setActiveTab(activeTabGroup[0]?.id);

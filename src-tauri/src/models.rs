@@ -27,7 +27,6 @@ pub struct Config {
 pub struct BasicConfig {
     pub project_name: String,
     pub project_path: String,
-    pub resources_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -58,7 +57,26 @@ pub struct KnowledgeStoreConfig {
 pub struct KnowledgeFile {
     pub file_name: String,
     pub file_path: String,
-    pub feed_llm: String,
+    pub feed_llm: bool,
+    pub is_processed: bool,
+    pub file_data: FileData,
+}
+
+#[derive(Debug, Serialize, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileData {
+    pub summary: String,
+    pub critical_analysis: String,
+    pub contributions: String,
+    pub future_work: String,
+    pub arxiv: Vec<Arxiv>,
+}
+
+#[derive(Debug, Serialize, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Arxiv {
+    pub paper_name: String,
+    pub paper_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

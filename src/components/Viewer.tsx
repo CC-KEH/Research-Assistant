@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import PDFView from "@/components/small/PDFView";
 import { Tab } from "@/lib/types";
-import {
-  fileViewerTabs,
-  markdownViewerTabs,
-  paperViewerTabs,
-} from "@/lib/tabs";
+import { pdfViewerTabs, markdownViewerTabs, paperViewerTabs } from "@/lib/tabs";
 import Suggestions from "./Suggestions";
 import MarkdownRenderer from "./small/MarkdownRenderer";
-import { getContent } from "@/lib/backend";
+import { getContent, readFile } from "@/lib/backend";
+import { error, info } from "@/lib/logger";
 
 interface ViewerProps {
   activeTabGroup: Tab[];
@@ -30,6 +27,29 @@ export default function Viewer({
   // Determine group type from first tab (assuming all tabs in group have same type)
   // Inner active tab state
   const [innerActiveTab, setInnerActiveTab] = useState(activeTabGroup[0]?.id);
+  const [markdownContent, setMarkdownContent] = useState<string>("");
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  useEffect(() => {
+    if (!filePath) return;
+
+    const loadMarkdownContent = async () => {
+      if (fileType === "md") {
+        try {
+          setIsLoadingContent(true);
+          const content = await readFile(filePath);
+          setMarkdownContent(content);
+        } catch (err) {
+          error(`Failed to load markdown: ${err}`);
+          setMarkdownContent("");
+        } finally {
+          setIsLoadingContent(false);
+        }
+      }
+    };
+
+    loadMarkdownContent();
+  }, [filePath]);
 
   // Reset innerActiveTab when group changes
   useEffect(() => {
@@ -66,35 +86,26 @@ export default function Viewer({
       case markdownViewerTabs:
         switch (innerActiveTab) {
           case "view":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                👁 File preview here.
-              </div>
+            return isLoadingContent ? (
+              <div>Loading...</div>
+            ) : (
+              <MarkdownRenderer content={markdownContent} />
             );
           case "edit":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                ✏️ File editing tools here.
-              </div>
+            return isLoadingContent ? (
+              <div>Loading...</div>
+            ) : (
+              <MarkdownRenderer content={markdownContent} />
             );
           default:
             return null;
         }
 
-      case fileViewerTabs:
+      case pdfViewerTabs:
         switch (innerActiveTab) {
           case "view":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                👁 File preview here.
-              </div>
-            );
-          case "edit":
-            return (
-              <div className="p-4 text-sm text-muted-foreground">
-                ✏️ File editing tools here.
-              </div>
-            );
+            info(filePath);
+            return <PDFView file={filePath} />;
           default:
             return null;
         }

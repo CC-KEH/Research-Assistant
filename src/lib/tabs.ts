@@ -18,9 +18,8 @@ export const markdownViewerTabs = [
   { id: "edit", label: "Edit", prompt: "Prompt goes here" },
 ];
 
-export const fileViewerTabs = [
+export const pdfViewerTabs = [
   { id: "view", label: "View", prompt: "Prompt goes here" },
-  { id: "edit", label: "Edit", prompt: "Prompt goes here" },
 ];
 
 export const invalidTab = [
