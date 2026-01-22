@@ -34,9 +34,6 @@ const createProjectSchema = z.object({
   projectpath: z.string().min(2, {
     message: "Project path is required.",
   }),
-  resourcespath: z.string().min(2, {
-    message: "Resources path is required.",
-  }),
 });
 
 const tabs = [
@@ -85,14 +82,10 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     defaultValues: {
       projectname: "",
       projectpath: "",
-      resourcespath: "",
     },
   });
 
-  const selectFolder = async (
-    fieldName: "projectpath" | "resourcespath",
-    form: any
-  ) => {
+  const selectFolder = async (fieldName: "projectpath", form: any) => {
     try {
       const selected = await open({
         directory: true,
@@ -113,7 +106,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   };
 
   async function onLoadProjectSubmit(
-    values: z.infer<typeof loadProjectSchema>
+    values: z.infer<typeof loadProjectSchema>,
   ) {
     try {
       onProjectPathSet(values.projectpath);
@@ -126,14 +119,10 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
 
   // In ProjectSetup.tsx
   async function onCreateProjectSubmit(
-    values: z.infer<typeof createProjectSchema>
+    values: z.infer<typeof createProjectSchema>,
   ) {
     try {
-      await createProject(
-        values.projectname,
-        values.projectpath,
-        values.resourcespath
-      );
+      await createProject(values.projectname, values.projectpath);
       info("✅ Project created");
       onProjectPathSet(values.projectpath);
       // Give ConfigProvider time to load config before navigating
@@ -242,31 +231,6 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
                   </div>
                   <FormDescription>
                     Select the main project folder.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={createForm.control}
-              name="resourcespath"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Resources Path</FormLabel>
-                  <div className="flex gap-2 items-center">
-                    <FormControl>
-                      <Input {...field} readOnly />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      onClick={() => selectFolder("resourcespath", createForm)}
-                    >
-                      Browse
-                    </Button>
-                  </div>
-                  <FormDescription>
-                    Select the folder that contains your resources.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

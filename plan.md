@@ -2,14 +2,20 @@
 
 ### Version 2.0
 
-- [ ] Differentiate between papers (present in KnowledgeStore) & pdfs.
-
-- [ ] Right click on directories functionality: New File, New Folder, Delete
+- [ ] Right click on directories, Notes, Papers functionality: New File, New Folder, Delete
 - [ ] Right click on library: New File, New Folder, Delete, New Project, Report Bug
+- [ ] Remove Papers from KnowledgeStore
 
-- [ ] KnowledgeStore JSON file
+- [ ] Display & Edit PDF, Markdown
 - [ ] Create Complete Report, out of The Tabs, in PDF Format.
+
 - [ ] Fixes: Cleanup, Bugs
+
+Documents: Generated Reports,  
+
+Papers: Research Papers (LLM Feeded & Non LLM Feeded)
+
+Notes: Markdown Notes
 
 ---
 

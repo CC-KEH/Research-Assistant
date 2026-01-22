@@ -58,6 +58,7 @@ pub struct KnowledgeFile {
     pub file_name: String,
     pub file_path: String,
     pub feed_llm: bool,
+    pub file_type: String,
     pub is_processed: bool,
     pub file_data: FileData,
 }
@@ -143,8 +144,8 @@ pub struct TreeNode {
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileInfo {
-    pub name: String,
+    pub file_name: String,
     pub file_type: String,
-    pub path: String,
-    pub id: String,
+    pub file_path: String,
+    pub file_id: String,
 }

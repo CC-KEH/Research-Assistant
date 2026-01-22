@@ -1,9 +1,9 @@
 use crate::models::*;
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
-
 // Read and parse the config.json file
 #[tauri::command]
 pub fn get_config(config_path: String) -> Result<Config, String> {
@@ -225,12 +225,15 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     fs::write(&config_path, json_content)
         .map_err(|e| format!("Failed to write config file: {}", e))?;
 
-    // Create 2 directories: Documents, Notes
+    // Create 3 directories: Documents, Notes, Papers
     fs::create_dir_all(project_path.join("Documents"))
         .map_err(|e| format!("Failed to create Documents directory: {}", e))?;
 
     fs::create_dir_all(project_path.join("Notes"))
         .map_err(|e| format!("Failed to create Notes directory: {}", e))?;
+
+    fs::create_dir_all(project_path.join("Papers"))
+        .map_err(|e| format!("Failed to create Papers directory: {}", e))?;
 
     // TODO: Add Project BasicConfig to projects.json
     Ok(project)
@@ -479,59 +482,88 @@ pub fn map_extension_to_type(extension: String) -> String {
     .to_string()
 }
 
-/// Upload a file to the knowledge store (adds it to config)
 #[tauri::command]
 pub fn upload_to_knowledge_store(
     source_path: String,
     project_root: String,
 ) -> Result<FileInfo, String> {
+    // Construct paths
+    let config_path = PathBuf::from(&project_root).join("config.json");
+    let config_path_str = config_path
+        .to_str()
+        .ok_or_else(|| "Invalid config path".to_string())?
+        .to_string();
+
+    let papers_dir = PathBuf::from(&project_root).join("Papers");
+
+    // Create Papers directory if it doesn't exist
+    if !papers_dir.exists() {
+        fs::create_dir_all(&papers_dir)
+            .map_err(|e| format!("Failed to create Papers directory: {}", e))?;
+    }
+
     // Read current config
-    let mut config = get_config(project_root.clone())?;
+    let mut config = get_config(config_path_str.clone())?;
 
     // Extract file name from path
-    let path = PathBuf::from(&source_path);
+    let source_file_path = PathBuf::from(&source_path);
 
-    // Verify file exists
-    if !path.exists() {
+    // Verify source file exists
+    if !source_file_path.exists() {
         return Err(format!("File does not exist: {}", source_path));
     }
 
-    let file_name = path
+    let file_name = source_file_path
         .file_name()
         .and_then(|n| n.to_str())
         .ok_or_else(|| "Invalid file path".to_string())?
         .to_string();
 
     // Get file extension
-    let file_extension = path
+    let file_extension = source_file_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("unknown")
         .to_lowercase();
+
+    // Create destination path in Papers directory
+    let dest_path = papers_dir.join(&file_name);
+    let dest_path_str = dest_path
+        .to_str()
+        .ok_or_else(|| "Invalid destination path".to_string())?
+        .to_string();
 
     // Check if file already exists in knowledge store
     let exists = config
         .knowledge_store_config
         .files
         .iter()
-        .any(|f| f.file_path == source_path);
+        .any(|f| f.file_path == dest_path_str);
 
     if exists {
         return Err("File already exists in knowledge store".to_string());
     }
 
+    // Copy file to Papers directory
+    fs::copy(&source_path, &dest_path)
+        .map_err(|e| format!("Failed to copy file to Papers directory: {}", e))?;
+
     // Create file info to return
     let file_info = FileInfo {
-        name: file_name.clone(),
+        file_name: file_name.clone(),
         file_type: file_extension.clone(),
-        path: source_path.clone(),
-        id: format!("{:?}", path.canonicalize().unwrap_or(path.clone())),
+        file_path: dest_path_str.clone(),
+        file_id: format!(
+            "{:?}",
+            dest_path.canonicalize().unwrap_or(dest_path.clone())
+        ),
     };
 
     // Add file to knowledge store (always fed to LLM)
     let knowledge_file = KnowledgeFile {
         file_name,
-        file_path: source_path,
+        file_path: dest_path_str,
+        file_type: file_extension.clone(),
         feed_llm: true,
         is_processed: false,
         file_data: FileData {
@@ -546,7 +578,7 @@ pub fn upload_to_knowledge_store(
     config.knowledge_store_config.files.push(knowledge_file);
 
     // Save updated config
-    update_config(project_root, config)?;
+    update_config(config_path_str, config)?;
 
     Ok(file_info)
 }

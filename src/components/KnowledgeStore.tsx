@@ -1,5 +1,4 @@
-// npx shadcn@latest add "https://21st.dev/r/isaiahbjork/"
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -11,14 +10,29 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { FileInfo } from "@/lib/types";
-import { uploadFiles } from "@/lib/backend";
+import { updateConfig, uploadFiles } from "@/lib/backend";
+import { useConfig } from "./providers/ConfigProvider";
 
 export default function KnowledgeStore() {
-  const projectRoot = "/Users/you/Projects/MyProject"; // TODO: dynamic later, Create a Provider in Workspace
+  const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
+  const basicConfig = getBasicConfig();
+  const knowledgeStoreConfig = getKnowledgeStoreConfig();
+  const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
   const [papers, setPapers] = useState<FileInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [lastCheckedIndex, setLastCheckedIndex] = useState<number | null>(null);
-
+  // Load papers from knowledge store config on mount
+  useEffect(() => {
+    if (knowledgeStoreConfig?.files) {
+      const loadedPapers = knowledgeStoreConfig.files.map((file) => ({
+        name: file.fileName,
+        path: file.filePath,
+        type: file.fileType,
+        id: file.fileId,
+      }));
+      setPapers(loadedPapers);
+    }
+  }, [knowledgeStoreConfig]);
   const toggleSelect = (index: number, shiftKey: boolean) => {
     const id = papers[index].id;
     const newSelected = new Set(selected);
@@ -53,14 +67,32 @@ export default function KnowledgeStore() {
   };
 
   const addPaper = async () => {
-    const newFiles = await uploadFiles(projectRoot);
+    if (!projectPath) return;
+    const newFiles = await uploadFiles(projectPath);
     if (newFiles.length > 0) {
       setPapers((prev) => [...prev, ...newFiles]);
     }
   };
 
+  // TODO: Remove a specific paper from the knowledge store
+  // const removePaper = async (fileId: string) => {
+  //   if (!knowledgeStoreConfig) return;
+  //   const updatedFiles = knowledgeStoreConfig.files.filter(
+  //     (file) => file.fileId !== fileId,
+  //   );
+  //   const updatedKnowledgeStoreConfig = {
+  //     ...knowledgeStoreConfig,
+  //     files: updatedFiles,
+  //   };
+  //   await updateConfig("config.json", {
+  //     ...knowledgeStoreConfig,
+  //     files: updatedFiles,
+  //   });
+  // };
+
   const removeSelected = () => {
     setPapers(papers.filter((p) => !selected.has(p.id)));
+    // removePaper([...selected][0]);
     setSelected(new Set());
     setLastCheckedIndex(null);
   };

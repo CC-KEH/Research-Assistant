@@ -64,9 +64,19 @@ export interface Bookmark {
 }
 
 export interface KnowledgeFile {
+  fileId: string;
   fileName: string;
   filePath: string;
-  feedLlm: string;
+  fileType: string;
+  feedLlm: boolean;
+  isProcessed: boolean;
+  fileData: {
+    summary: "";
+    criticalAnalysis: "";
+    contributions: "";
+    futureWork: "";
+    arxiv: [];
+  };
 }
 
 export interface Config {
@@ -99,7 +109,7 @@ export enum BugType {
 // /lib/types.ts
 export interface FileInfo {
   name: string;
-  type: string;
   path: string;
   id: string;
+  type: string;
 }

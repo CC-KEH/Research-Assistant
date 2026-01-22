@@ -560,7 +560,7 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
     multiple: true,
     filters: [
       {
-        name: "Documents",
+        name: "Papers",
         extensions: ["pdf", "md"],
       },
     ],

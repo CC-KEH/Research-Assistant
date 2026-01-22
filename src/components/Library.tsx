@@ -22,7 +22,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
   const { getBasicConfig } = useConfig();
 
   const basicConfig = getBasicConfig();
-  info(`Basic config loaded: ${JSON.stringify(basicConfig)}`);
   const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
 
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
@@ -35,7 +34,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
 
     try {
       setIsLoading(true);
-      info(`Reloading library data from: ${projectPath}`);
       const data = await getLibraryData(projectPath);
       setTreeData(data);
     } catch (err) {
