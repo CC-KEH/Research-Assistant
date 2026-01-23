@@ -12,6 +12,7 @@ import {
 } from "@/lib/backend";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
 import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
+import { Button } from "./ui/button";
 
 interface LibraryProps {
   onFileSelect: (file: FileInfo) => void;
@@ -20,18 +21,21 @@ interface LibraryProps {
 export default function Library({ onFileSelect }: LibraryProps) {
   const navigate = useNavigate();
   const { getBasicConfig } = useConfig();
-
   const basicConfig = getBasicConfig();
-  const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
+  const projectPath =
+    basicConfig?.find((p) => p.projectPath)?.projectPath ?? "";
 
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Reload tree data from project path
+  // Dialog state
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [dialogName, setDialogName] = useState("");
+  const [dialogType, setDialogType] = useState<"file" | "folder" | null>(null);
+
   const reloadTreeData = async () => {
     if (!projectPath) return;
-
     try {
       setIsLoading(true);
       const data = await getLibraryData(projectPath);
@@ -48,11 +52,9 @@ export default function Library({ onFileSelect }: LibraryProps) {
       info("Project path not found");
       return;
     }
-
     reloadTreeData();
   }, [projectPath]);
 
-  // Helper function to find node by ID in tree
   const findNodeById = (
     nodes: TreeNode[],
     id: string,
@@ -67,97 +69,55 @@ export default function Library({ onFileSelect }: LibraryProps) {
     return undefined;
   };
 
-  // Helper function to build full path from node
-  const buildPathForNode = (nodeId: string): string => {
-    const node = findNodeById(treeData, nodeId);
-    if (!node || !projectPath) return "";
-
-    // For now, just use label as filename
-    // In a real app, you'd want to track the full path
-    return `${projectPath}/${node.label}`;
+  const getBasePath = (): string => {
+    if (!selectedNodeId) return projectPath;
+    const node = findNodeById(treeData, selectedNodeId);
+    if (!node) return projectPath;
+    return node.nodeType === "folder" ? node.path : projectPath;
   };
 
-  const handleNewFile = async () => {
-    if (!projectPath) {
-      error("Project path not found");
+  const handleNewFile = () => {
+    setDialogType("file");
+    setDialogName("");
+    setShowNameDialog(true);
+  };
+
+  const handleNewFolder = () => {
+    setDialogType("folder");
+    setDialogName("");
+    setShowNameDialog(true);
+  };
+
+  const confirmCreateItem = async () => {
+    if (!projectPath || !dialogName.trim()) {
+      error("Please enter a valid name");
       return;
     }
 
     try {
       setIsLoading(true);
+      const basePath = getBasePath();
+      let itemPath: string;
 
-      let filePath: string;
-
-      if (!selectedNodeId) {
-        // Create in root (cwd)
-        filePath = `${projectPath}/New File.md`;
-      } else {
-        const selectedNode = findNodeById(treeData, selectedNodeId);
-
-        if (!selectedNode) {
-          error("Selected node not found");
-          return;
-        }
-
-        if (selectedNode.nodeType === "file") {
-          error("Please select a folder to create a file in");
-          return;
-        }
-
-        filePath = `${projectPath}/${selectedNode.label}/New File.md`;
+      if (dialogType === "file") {
+        const fileName = dialogName.endsWith(".md")
+          ? dialogName
+          : `${dialogName}.md`;
+        itemPath = `${basePath}/${fileName}`;
+        await writeFile(itemPath, "");
+        info("✅ New file created");
+      } else if (dialogType === "folder") {
+        itemPath = `${basePath}/${dialogName.trim()}`;
+        await createDir(itemPath);
+        info("✅ New folder created");
       }
 
-      // Call Rust function to create file
-      await writeFile(filePath, "");
-      info("✅ New file created");
-
-      // Reload tree data
+      setShowNameDialog(false);
+      setDialogName("");
+      setDialogType(null);
       await reloadTreeData();
     } catch (err) {
-      error(`Failed to create file: ${err}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNewFolder = async () => {
-    if (!projectPath) {
-      error("Project path not found");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      let dirPath: string;
-
-      if (!selectedNodeId) {
-        // Create in root (cwd)
-        dirPath = `${projectPath}/New Folder`;
-      } else {
-        const selectedNode = findNodeById(treeData, selectedNodeId);
-
-        if (!selectedNode) {
-          error("Selected node not found");
-          return;
-        }
-
-        if (selectedNode.nodeType === "file") {
-          error("Please select a folder to create a folder in");
-          return;
-        }
-
-        dirPath = `${projectPath}/${selectedNode.label}/New Folder`;
-      }
-
-      // Call Rust function to create directory
-      await createDir(dirPath);
-      info("✅ New folder created");
-
-      // Reload tree data
-      await reloadTreeData();
-    } catch (err) {
-      error(`Failed to create folder: ${err}`);
+      error(`Failed to create item: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -171,23 +131,15 @@ export default function Library({ onFileSelect }: LibraryProps) {
 
     try {
       setIsLoading(true);
-
-      const selectedNode = findNodeById(treeData, selectedNodeId);
-
-      if (!selectedNode || !projectPath) {
+      const node = findNodeById(treeData, selectedNodeId);
+      if (!node) {
         error("Selected node not found");
         return;
       }
 
-      const itemPath = `${projectPath}/${selectedNode.label}`;
-
-      // Call Rust function to delete
-      await deleteItem(itemPath);
-      info("✅ Node deleted");
-
+      await deleteItem(node.path);
+      info("✅ Item deleted");
       setSelectedNodeId(null);
-
-      // Reload tree data
       await reloadTreeData();
     } catch (err) {
       error(`Failed to delete item: ${err}`);
@@ -200,22 +152,21 @@ export default function Library({ onFileSelect }: LibraryProps) {
     navigate("/project-setup");
   };
 
-  const handleReportBug = () => {};
+  const handleReportBug = () => {
+    // TODO: implement or open issue link
+  };
 
   const handleNodeClick = (node: TreeNode) => {
-    info(`Clicked: ${node.label}`);
     setSelectedNodeId(node.id);
 
-    const isFile = node.nodeType === "file";
-    if (isFile) {
+    if (node.nodeType === "file") {
       const ext = node.label.split(".").pop()?.toLowerCase() || "";
       const fileInfo: FileInfo = {
         name: node.label,
         type: ext,
         path: node.path,
-        id: `${node.label}`,
+        id: node.id, // ← better than using label
       };
-      info(`File Info: ${JSON.stringify(fileInfo)}`);
       onFileSelect(fileInfo);
     }
   };
@@ -236,6 +187,49 @@ export default function Library({ onFileSelect }: LibraryProps) {
           defaultExpandedIds={["1"]}
         />
       </div>
+
+      {showNameDialog && (
+        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="dark:bg-[#0e0f11] bg-white rounded-lg p-6 w-96">
+            <h4 className="text-lg font-semibold mb-4 text-muted-foreground">
+              {dialogType === "file" ? "Create New File" : "Create New Folder"}
+            </h4>
+
+            <input
+              type="text"
+              value={dialogName}
+              onChange={(e) => setDialogName(e.target.value)}
+              placeholder={
+                dialogType === "file" ? "Enter file name" : "Enter folder name"
+              }
+              className="w-full px-3 py-2 border rounded-md mb-4 focus:outline-none focus:ring-1 border-gray-300 focus:border-gray-500"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmCreateItem();
+                if (e.key === "Escape") setShowNameDialog(false);
+              }}
+            />
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowNameDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={confirmCreateItem}
+                disabled={isLoading || !dialogName.trim()}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </LibraryContextMenu>
   );
 }

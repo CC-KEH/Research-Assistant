@@ -2,8 +2,7 @@
 
 ### Version 2.0
 
-- [ ] Right click on directories, Notes, Papers functionality: New File, New Folder, Delete
-- [ ] Right click on library: New File, New Folder, Delete, New Project, Report Bug
+- [ ] Right click on library: New Project, Report Bug
 - [ ] Remove Papers from KnowledgeStore
 
 - [ ] Display & Edit PDF, Markdown
@@ -11,7 +10,7 @@
 
 - [ ] Fixes: Cleanup, Bugs
 
-Documents: Generated Reports,  
+Documents: Generated Reports
 
 Papers: Research Papers (LLM Feeded & Non LLM Feeded)
 

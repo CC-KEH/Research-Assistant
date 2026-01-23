@@ -28,7 +28,6 @@ pub fn run() {
             child: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
-            // Your existing handlers
             get_config,
             update_config,
             get_previous_projects,
@@ -38,6 +37,7 @@ pub fn run() {
             create_dir,
             read_file,
             write_file,
+            delete_item,
             map_extension_to_type,
             upload_to_knowledge_store,
             start_python_server,

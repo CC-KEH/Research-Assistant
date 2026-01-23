@@ -583,6 +583,7 @@ pub fn upload_to_knowledge_store(
     Ok(file_info)
 }
 
+#[tauri::command]
 pub fn delete_item(path: String) -> Result<(), String> {
     let item_path = PathBuf::from(&path);
     if item_path.is_dir() {

@@ -516,11 +516,11 @@ export const readFile = async (filePath: string): Promise<string> => {
 };
 
 export const writeFile = async (
-  filePath: string,
+  path: string,
   content: string,
 ): Promise<void> => {
   try {
-    await invoke("write_file", { filePath, content });
+    await invoke("write_file", { path, content });
   } catch (err) {
     error(`Error writing file: ${err}`);
     throw err;
@@ -539,7 +539,7 @@ export const listDir = async (dirPath: string): Promise<string[]> => {
 
 export const createDir = async (dirPath: string): Promise<void> => {
   try {
-    await invoke("create_dir", { dirPath });
+    await invoke("create_dir", { path: dirPath });
   } catch (err) {
     error(`Error creating directory: ${err}`);
     throw err;
