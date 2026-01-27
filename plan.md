@@ -2,10 +2,9 @@
 
 ### Version 2.0
 
-- [ ] Right click on library: New Project, Report Bug
 - [ ] Remove Papers from KnowledgeStore
-
 - [ ] Display & Edit PDF, Markdown
+
 - [ ] Create Complete Report, out of The Tabs, in PDF Format.
 
 - [ ] Fixes: Cleanup, Bugs

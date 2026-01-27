@@ -10,11 +10,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { FileInfo } from "@/lib/types";
-import { updateConfig, uploadFiles } from "@/lib/backend";
+import { getConfig, updateConfig, uploadFiles } from "@/lib/backend";
 import { useConfig } from "./providers/ConfigProvider";
 
 export default function KnowledgeStore() {
-  const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
+  const { getFullConfig, getBasicConfig, getKnowledgeStoreConfig } =
+    useConfig();
+  const fullConfig = getFullConfig();
   const basicConfig = getBasicConfig();
   const knowledgeStoreConfig = getKnowledgeStoreConfig();
   const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
@@ -74,31 +76,29 @@ export default function KnowledgeStore() {
     }
   };
 
-  // TODO: Remove a specific paper from the knowledge store
-  // const removePaper = async (fileId: string) => {
-  //   if (!knowledgeStoreConfig) return;
-  //   const updatedFiles = knowledgeStoreConfig.files.filter(
-  //     (file) => file.fileId !== fileId,
-  //   );
-  //   const updatedKnowledgeStoreConfig = {
-  //     ...knowledgeStoreConfig,
-  //     files: updatedFiles,
-  //   };
-  //   await updateConfig("config.json", {
-  //     ...knowledgeStoreConfig,
-  //     files: updatedFiles,
-  //   });
-  // };
+  const removePaper = async (fileId: string) => {
+    if (!knowledgeStoreConfig) return;
+    const updatedFiles = knowledgeStoreConfig.files.filter(
+      (file) => file.fileId !== fileId,
+    );
+    const configPath = `${projectPath}/config.json`;
+    await updateConfig(configPath, {
+      ...fullConfig,
+      knowledgeStoreConfig: {
+        files: updatedFiles,
+      },
+    });
+  };
 
   const removeSelected = () => {
     setPapers(papers.filter((p) => !selected.has(p.id)));
-    // removePaper([...selected][0]);
+    removePaper([...selected][0]);
     setSelected(new Set());
     setLastCheckedIndex(null);
   };
 
   return (
-    <div className="flex flex-col justify-center items-center gap-6 max-w-2xl mx-auto py-10">
+    <div className="flex flex-col justify-center items-center gap-6 max-w-2xl mx-auto py-10 overflow-y-auto scrollbar-thin">
       <h1 className="text-3xl font-semibold">Knowledge Store</h1>
       <Table>
         <TableHeader>

@@ -152,10 +152,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
     navigate("/project-setup");
   };
 
-  const handleReportBug = () => {
-    // TODO: implement or open issue link
-  };
-
   const handleNodeClick = (node: TreeNode) => {
     setSelectedNodeId(node.id);
 
@@ -177,7 +173,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
       onNewFolder={handleNewFolder}
       onDelete={handleDelete}
       onNewProject={handleNewProject}
-      onReportBug={handleReportBug}
     >
       <div className="max-w-xl mx-auto w-full h-[580px] flex flex-col gap-2 overflow-y-auto scrollbar-thin">
         <KnowledgeStoreButton />

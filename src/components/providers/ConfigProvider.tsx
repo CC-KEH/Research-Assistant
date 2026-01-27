@@ -10,6 +10,7 @@ interface ConfigContextType {
   loading: boolean;
 
   // Explicit return types for helper functions
+  getFullConfig: () => Config | null;
   getBasicConfig: () => Config["basicConfig"] | null;
   getBookmarks: () => Config["bookmarks"] | null;
   getKnowledgeStoreConfig: () => Config["knowledgeStoreConfig"] | null;
@@ -52,6 +53,11 @@ export const ConfigProvider = ({
   };
 
   // Helper functions with explicit return types
+
+  const getFullConfig = (): Config | null => {
+    return config;
+  };
+
   const getBasicConfig = (): Config["basicConfig"] | null => {
     return config?.basicConfig || null;
   };
@@ -99,6 +105,7 @@ export const ConfigProvider = ({
         setConfig,
         reloadConfig,
         loading,
+        getFullConfig,
         getBasicConfig,
         getBookmarks,
         getKnowledgeStoreConfig,

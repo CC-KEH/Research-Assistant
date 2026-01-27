@@ -5,6 +5,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Bug, File, FileBox, Folder, Trash } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { ReactNode } from "react";
 
 interface LibraryContextMenuProps {
@@ -22,7 +23,6 @@ export const LibraryContextMenu = ({
   onNewFolder,
   onDelete,
   onNewProject,
-  onReportBug,
 }: LibraryContextMenuProps) => {
   return (
     <ContextMenu>
@@ -59,7 +59,11 @@ export const LibraryContextMenu = ({
           <FileBox />
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={onReportBug}
+          onClick={async () => {
+            await openUrl(
+              "https://github.com/CC-KEH/Research-Assistant/issues",
+            );
+          }}
           className="flex flex-row justify-between gap-6"
         >
           Report Bug

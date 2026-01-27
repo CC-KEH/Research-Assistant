@@ -605,13 +605,17 @@ export const getConfig = async (configPath: string): Promise<Config | null> => {
 
 export const updateConfig = async (
   configPath: string,
-  newConfig: Config,
+  newConfig: Partial<Config>,
 ): Promise<void> => {
   try {
-    await invoke("update_config", { configPath, newConfig });
+    await invoke("update_config", {
+      config_path: configPath,
+      config: newConfig,
+    });
   } catch (err) {
-    error(`Failed to save config: ${err}`);
-    throw error;
+    const errorMessage = `Failed to save config: ${err}`;
+    error(errorMessage);
+    throw new Error(errorMessage);
   }
 };
 

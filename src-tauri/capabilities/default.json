@@ -12,7 +12,8 @@
     "dialog:allow-save",
     "dialog:default",
     "fs:default",
-    "log:default"
+    "log:default",
+    "opener:default"
   ],
   "scope": {
     "fs": {
