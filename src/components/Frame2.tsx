@@ -41,7 +41,6 @@ export default function Frame2({ fileInfo }: Frame2Props) {
           filePath={filePath}
           fileName={fileInfo?.name}
           fileType={fileInfo?.type}
-          fileId={fileInfo?.id}
         />
       </ViewerContextMenu>
     </div>

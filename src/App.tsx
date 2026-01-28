@@ -12,7 +12,7 @@ import KnowledgeStore from "@/components/KnowledgeStore";
 
 function App() {
   const [projectPath, setProjectPath] = useState<string | null>(
-    localStorage.getItem("projectPath")
+    localStorage.getItem("projectPath"),
   );
 
   useEffect(() => {
@@ -26,7 +26,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <ConfigProvider
-        configPath={projectPath ? `${projectPath}\\config.json` : null}
+        config_path={projectPath ? `${projectPath}\\config.json` : null}
       >
         <div className="h-screen w-screen overflow-hidden">
           <Routes>

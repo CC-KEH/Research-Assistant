@@ -83,14 +83,14 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   const [modelError, setModelError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentSessionIndex, setCurrentSessionIndex] = useState<number | null>(
-    null
+    null,
   );
   const [initializationStep, setInitializationStep] =
     useState<string>("Starting...");
 
   const animatedText = useAnimatedText(
     currentAiMessage,
-    currentAiMessage ? "" : undefined
+    currentAiMessage ? "" : undefined,
   );
 
   // Initialize backend on mount
@@ -112,11 +112,11 @@ export default function Assistant({ fileInfo }: AssistantProps) {
           throw new Error("Project path not found in config");
         }
 
-        const configPath = `${projectPath}\\config.json`;
+        const config_path = `${projectPath}\\config.json`;
         const chatPath = `${projectPath}\\chats.json`;
-        info(`Config path: ${configPath}`);
+        info(`Config path: ${config_path}`);
 
-        const initResult = await initializePythonBackend(configPath, chatPath);
+        const initResult = await initializePythonBackend(config_path, chatPath);
         info(`Backend initialized: ${initResult}`);
 
         // 4. Set current provider from aiConfig
@@ -160,7 +160,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                 content: msg.message,
                 sender: msg.is_ai ? "ai" : "user",
                 timestamp: msg.timestamp,
-              })
+              }),
             );
             setMessages(loadedMessages);
           }
@@ -185,7 +185,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
       } catch (err) {
         error(`Error initializing: ${err}`);
         setModelError(
-          err instanceof Error ? err.message : "Failed to initialize backend"
+          err instanceof Error ? err.message : "Failed to initialize backend",
         );
         setInitializationStep("");
       }
@@ -231,7 +231,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
         userMessageContent,
         false, // useRAG - set to true if you want to use RAG
         currentSessionIndex ?? undefined,
-        4 // k value for RAG
+        4, // k value for RAG
       );
 
       // Add AI response to messages
@@ -293,7 +293,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     } catch (err) {
       error(`Error switching LLM: ${err}`);
       setModelError(
-        err instanceof Error ? err.message : "Failed to switch LLM"
+        err instanceof Error ? err.message : "Failed to switch LLM",
       );
     }
   };
@@ -369,8 +369,8 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                   message.sender === "user"
                     ? "sent"
                     : message.sender === "system"
-                    ? undefined
-                    : "received"
+                      ? undefined
+                      : "received"
                 }
               >
                 <ChatBubbleMessage
@@ -378,8 +378,8 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                     message.sender === "user"
                       ? "sent"
                       : message.sender === "system"
-                      ? undefined
-                      : "received"
+                        ? undefined
+                        : "received"
                   }
                 >
                   {isAnimated ? animatedText : message.content}

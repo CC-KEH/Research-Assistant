@@ -93,7 +93,7 @@ export interface InitializeResponse {
 }
 
 export const initializePythonBackend = async (
-  configPath: string,
+  config_path: string,
   chatsPath: string,
 ): Promise<InitializeResponse> => {
   try {
@@ -101,7 +101,7 @@ export const initializePythonBackend = async (
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        config_path: configPath,
+        config_path: config_path,
         chats_path: chatsPath,
       }),
     });
@@ -493,21 +493,23 @@ export const getTabs = async () => {
 //*********************** */
 
 // Use Tauri command to get library data recursively
-export async function getLibraryData(projectPath: string): Promise<TreeNode[]> {
+export async function getLibraryData(
+  project_path: string,
+): Promise<TreeNode[]> {
   try {
     const nodes = await invoke<TreeNode[]>("get_library_tree", {
-      projectPath,
+      projectPath: project_path,
     });
     return nodes; // Already filtered by backend
   } catch (err) {
-    error(`Failed to read directory ${projectPath}: ${err}`);
+    error(`Failed to read directory ${project_path}: ${err}`);
     return [];
   }
 }
 
-export const readFile = async (filePath: string): Promise<string> => {
+export const readFile = async (file_path: string): Promise<string> => {
   try {
-    const content = await invoke<string>("read_file", { path: filePath });
+    const content = await invoke<string>("read_file", { path: file_path });
     return content;
   } catch (err) {
     error(`Error reading file: ${err}`);
@@ -591,10 +593,12 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
 //* Config Functions (via Tauri/Rust)
 //*********************** */
 
-export const getConfig = async (configPath: string): Promise<Config | null> => {
+export const getConfig = async (
+  config_path: string,
+): Promise<Config | null> => {
   try {
     const config = await invoke<Config>("get_config", {
-      configPath: configPath,
+      configPath: config_path,
     });
     return config;
   } catch (err) {
@@ -604,13 +608,13 @@ export const getConfig = async (configPath: string): Promise<Config | null> => {
 };
 
 export const updateConfig = async (
-  configPath: string,
-  newConfig: Partial<Config>,
+  config_path: string,
+  new_config: Partial<Config>,
 ): Promise<void> => {
   try {
     await invoke("update_config", {
-      config_path: configPath,
-      config: newConfig,
+      configPath: config_path,
+      config: new_config,
     });
   } catch (err) {
     const errorMessage = `Failed to save config: ${err}`;

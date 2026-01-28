@@ -5,16 +5,11 @@ export type Project = {
 
 export type TreeNode = {
   id: string;
+  icon: string;
   label: string;
   path: string;
   nodeType?: "file" | "folder";
   children?: TreeNode[];
-};
-
-export type Paper = {
-  id: string;
-  name: string;
-  type: string;
 };
 
 export interface Tab {
@@ -54,7 +49,6 @@ export interface AIConfig {
 export interface BasicConfig {
   projectName: string;
   projectPath: string;
-  resourcesPath: string;
 }
 
 export interface Bookmark {
@@ -64,7 +58,6 @@ export interface Bookmark {
 }
 
 export interface KnowledgeFile {
-  fileId: string;
   fileName: string;
   filePath: string;
   fileType: string;
@@ -106,10 +99,9 @@ export enum BugType {
   assistant,
   enhancement,
 }
-// /lib/types.ts
+
 export interface FileInfo {
   name: string;
   path: string;
-  id: string;
   type: string;
 }

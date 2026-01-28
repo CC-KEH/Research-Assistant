@@ -24,7 +24,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
   const basicConfig = getBasicConfig();
   const projectPath =
     basicConfig?.find((p) => p.projectPath)?.projectPath ?? "";
-
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -161,7 +160,6 @@ export default function Library({ onFileSelect }: LibraryProps) {
         name: node.label,
         type: ext,
         path: node.path,
-        id: node.id, // ← better than using label
       };
       onFileSelect(fileInfo);
     }
@@ -174,9 +172,10 @@ export default function Library({ onFileSelect }: LibraryProps) {
       onDelete={handleDelete}
       onNewProject={handleNewProject}
     >
-      <div className="max-w-xl mx-auto w-full h-[580px] flex flex-col gap-2 overflow-y-auto scrollbar-thin">
+      <div className="max-w-xl mx-auto w-full h-[580px] flex flex-col gap-2">
         <KnowledgeStoreButton />
         <TreeView
+          className="overflow-y-auto scrollbar-thin"
           data={treeData}
           onNodeClick={handleNodeClick}
           defaultExpandedIds={["1"]}

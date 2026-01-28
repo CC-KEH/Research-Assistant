@@ -20,7 +20,7 @@ export function Workspace() {
       <ResizableHandle />
 
       <ResizablePanel defaultSize={45}>
-        {/* <Frame2 fileInfo={selectedFile} /> */}
+        <Frame2 fileInfo={selectedFile} />
       </ResizablePanel>
 
       <ResizableHandle />

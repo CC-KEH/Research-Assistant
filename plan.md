@@ -2,7 +2,6 @@
 
 ### Version 2.0
 
-- [ ] Remove Papers from KnowledgeStore
 - [ ] Display & Edit PDF, Markdown
 
 - [ ] Create Complete Report, out of The Tabs, in PDF Format.

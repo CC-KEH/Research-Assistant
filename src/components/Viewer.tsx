@@ -13,7 +13,6 @@ interface ViewerProps {
   filePath: string;
   fileName?: string;
   fileType?: string;
-  fileId?: string;
 }
 
 export default function Viewer({
@@ -22,7 +21,6 @@ export default function Viewer({
   filePath,
   fileName,
   fileType,
-  fileId,
 }: ViewerProps) {
   // Determine group type from first tab (assuming all tabs in group have same type)
   // Inner active tab state
@@ -32,7 +30,6 @@ export default function Viewer({
 
   useEffect(() => {
     if (!filePath) return;
-
     const loadMarkdownContent = async () => {
       if (fileType === "md") {
         try {

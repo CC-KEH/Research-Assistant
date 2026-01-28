@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -7,10 +7,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { info } from "@/lib/logger";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { FileInfo } from "@/lib/types";
-import { getConfig, updateConfig, uploadFiles } from "@/lib/backend";
+import { updateConfig, uploadFiles } from "@/lib/backend";
 import { useConfig } from "./providers/ConfigProvider";
 
 export default function KnowledgeStore() {
@@ -22,7 +23,7 @@ export default function KnowledgeStore() {
   const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
   const [papers, setPapers] = useState<FileInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [lastCheckedIndex, setLastCheckedIndex] = useState<number | null>(null);
+
   // Load papers from knowledge store config on mount
   useEffect(() => {
     if (knowledgeStoreConfig?.files) {
@@ -30,42 +31,33 @@ export default function KnowledgeStore() {
         name: file.fileName,
         path: file.filePath,
         type: file.fileType,
-        id: file.fileId,
       }));
       setPapers(loadedPapers);
     }
   }, [knowledgeStoreConfig]);
-  const toggleSelect = (index: number, shiftKey: boolean) => {
-    const id = papers[index].id;
-    const newSelected = new Set(selected);
-
-    if (shiftKey && lastCheckedIndex !== null) {
-      const [start, end] = [lastCheckedIndex, index].sort((a, b) => a - b);
-      const isSelecting = !selected.has(papers[index].id); // infer intent from target checkbox
-      for (let i = start; i <= end; i++) {
-        const paperId = papers[i].id;
-        isSelecting ? newSelected.add(paperId) : newSelected.delete(paperId);
-      }
-    } else {
-      if (newSelected.has(id)) {
-        newSelected.delete(id);
-      } else {
-        newSelected.add(id);
-      }
-      setLastCheckedIndex(index);
-    }
-
-    setSelected(newSelected);
-  };
 
   const isAllSelected = papers.length > 0 && selected.size === papers.length;
 
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelected(new Set(papers.map((p) => p.id)));
+      info(`Selecting all rows: ${checked}`);
+      setSelected(new Set(papers.map((p) => p.name)));
     } else {
+      info(`Deselecting all rows: ${checked}`);
       setSelected(new Set());
     }
+  };
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    const newSelected = new Set(selected);
+    if (checked) {
+      info(`Selecting row ${id}: ${checked}`);
+      newSelected.add(id);
+    } else {
+      info(`Deselecting row ${id}: ${checked}`);
+      newSelected.delete(id);
+    }
+    setSelected(newSelected);
   };
 
   const addPaper = async () => {
@@ -76,13 +68,14 @@ export default function KnowledgeStore() {
     }
   };
 
-  const removePaper = async (fileId: string) => {
+  const removePaper = async (fileIds: string[]) => {
+    info(`Removing papers:", ${fileIds}`);
     if (!knowledgeStoreConfig) return;
     const updatedFiles = knowledgeStoreConfig.files.filter(
-      (file) => file.fileId !== fileId,
+      (file) => !fileIds.includes(file.fileName),
     );
-    const configPath = `${projectPath}/config.json`;
-    await updateConfig(configPath, {
+    const config_path = `${projectPath}\\config.json`;
+    await updateConfig(config_path, {
       ...fullConfig,
       knowledgeStoreConfig: {
         files: updatedFiles,
@@ -90,47 +83,55 @@ export default function KnowledgeStore() {
     });
   };
 
-  const removeSelected = () => {
-    setPapers(papers.filter((p) => !selected.has(p.id)));
-    removePaper([...selected][0]);
+  const removeSelected = async () => {
+    const selectedArray = [...selected];
+    setPapers(papers.filter((p) => !selected.has(p.name)));
+    await removePaper(selectedArray);
     setSelected(new Set());
-    setLastCheckedIndex(null);
   };
 
   return (
-    <div className="flex flex-col justify-center items-center gap-6 max-w-2xl mx-auto py-10 overflow-y-auto scrollbar-thin">
+    <div className="flex flex-col justify-center items-center gap-6 max-w-2xl mx-auto py-10">
       <h1 className="text-3xl font-semibold">Knowledge Store</h1>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px]">
-              <Checkbox
-                checked={isAllSelected}
-                onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
-              />
-            </TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {papers.map((paper, index) => (
-            <TableRow key={paper.id}>
-              <TableCell>
+      <div className="max-h-80 overflow-y-auto scrollbar-thin">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8">
                 <Checkbox
-                  checked={selected.has(paper.id)}
-                  onClick={(e) => {
-                    e.preventDefault(); // prevent double toggle from both onClick and onChange
-                    toggleSelect(index, (e as React.MouseEvent).shiftKey);
-                  }}
+                  id="select-all-checkbox"
+                  name="select-all-checkbox"
+                  checked={isAllSelected}
+                  onCheckedChange={toggleSelectAll}
                 />
-              </TableCell>
-              <TableCell>{paper.name}</TableCell>
-              <TableCell>{paper.type}</TableCell>
+              </TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {papers.map((paper) => (
+              <TableRow
+                key={paper.name}
+                data-state={selected.has(paper.name) ? "selected" : undefined}
+              >
+                <TableCell>
+                  <Checkbox
+                    id={`row-${paper.name}-checkbox`}
+                    name={`row-${paper.name}-checkbox`}
+                    checked={selected.has(paper.name)}
+                    onCheckedChange={(checked) =>
+                      handleSelectRow(paper.name, checked === true)
+                    }
+                  />
+                </TableCell>
+                <TableCell>{paper.name}</TableCell>
+                <TableCell>{paper.type}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
       <div className="mb-4 flex gap-2">
         <Button onClick={addPaper}>Add</Button>
         <Button onClick={removeSelected} disabled={selected.size === 0}>

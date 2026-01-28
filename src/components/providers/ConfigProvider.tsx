@@ -24,26 +24,26 @@ interface ConfigContextType {
 const ConfigContext = createContext<ConfigContextType | null>(null);
 
 export const ConfigProvider = ({
-  configPath,
+  config_path,
   children,
 }: {
-  configPath: string | null;
+  config_path: string | null;
   children: React.ReactNode;
 }) => {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(false);
 
   const reloadConfig = async () => {
-    if (!configPath) {
+    if (!config_path) {
       setConfig(null);
       return;
     }
 
     setLoading(true);
     try {
-      const result = await getConfig(configPath);
+      const result = await getConfig(config_path);
       setConfig(result);
-      info(`✅ Config loaded, ${configPath}`);
+      info(`✅ Config loaded, ${config_path}`);
     } catch (err) {
       error(`Failed to load config: ${err}`);
       setConfig(null);
@@ -91,12 +91,12 @@ export const ConfigProvider = ({
   };
 
   useEffect(() => {
-    if (configPath) {
+    if (config_path) {
       reloadConfig();
     } else {
       setConfig(null);
     }
-  }, [configPath]);
+  }, [config_path]);
 
   return (
     <ConfigContext.Provider
