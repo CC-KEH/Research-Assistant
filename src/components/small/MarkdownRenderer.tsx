@@ -2,6 +2,9 @@ import React, { FC, HTMLAttributes } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 // Props interface for the MarkdownRenderer component
 interface MarkdownRendererProps {
@@ -9,8 +12,9 @@ interface MarkdownRendererProps {
 }
 
 // Custom component props for HTML elements, extending HTMLAttributes
-interface MarkdownComponentProps<T extends HTMLElement>
-  extends HTMLAttributes<T> {
+interface MarkdownComponentProps<
+  T extends HTMLElement,
+> extends HTMLAttributes<T> {
   children?: React.ReactNode;
 }
 
@@ -152,8 +156,8 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
   return (
     <div className="prose prose-slate max-w-none p-6 dark:prose-invert text-muted-foreground overflow-y-auto scrollbar-thin">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         components={components}
       >
         {content}

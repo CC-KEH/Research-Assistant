@@ -4,8 +4,9 @@ import { Tab } from "@/lib/types";
 import { pdfViewerTabs, markdownViewerTabs, paperViewerTabs } from "@/lib/tabs";
 import Suggestions from "./Suggestions";
 import MarkdownRenderer from "./small/MarkdownRenderer";
-import { getContent, readFile } from "@/lib/backend";
+import { getContent, readFile, writeFile } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
+import MarkdownEditor from "./small/MarkdownEditor";
 
 interface ViewerProps {
   activeTabGroup: Tab[];
@@ -86,13 +87,21 @@ export default function Viewer({
             return isLoadingContent ? (
               <div>Loading...</div>
             ) : (
-              <MarkdownRenderer content={markdownContent} />
+              <MarkdownRenderer
+                content={
+                  markdownContent ? markdownContent : "Go to Edit tab to edit."
+                }
+              />
             );
           case "edit":
             return isLoadingContent ? (
               <div>Loading...</div>
             ) : (
-              <MarkdownRenderer content={markdownContent} />
+              <MarkdownEditor
+                value={markdownContent}
+                onChange={setMarkdownContent}
+                onSave={(content) => writeFile(filePath, content)}
+              />
             );
           default:
             return null;
