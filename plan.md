@@ -2,11 +2,20 @@
 
 ### Version 2.0
 
-- [ ] Display & Edit PDF, Markdown
+[ Frame 1 ]
 
-- [ ] Create Complete Report, out of The Tabs, in PDF Format.
+- [ ] Settings: Functionality
+- [ ] Bugs: Select Component
+- [ ] Functions: Call Config Updates from ConfigProvider, instead of directly calling Components 
+- [ ] Library: Create Complete Report, out of The Tabs, in PDF Format and save to Documents.
 
-- [ ] Fixes: Cleanup, Bugs
+[ Frame 2 ]
+
+- [ ] Viewer: Display PDF
+
+[ Frame 3 ]
+
+- [ ] 
 
 Documents: Generated Reports
 

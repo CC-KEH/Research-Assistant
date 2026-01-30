@@ -13,6 +13,7 @@ import {
   MoonIcon,
   PenIcon,
   SunIcon,
+  DownloadIcon,
 } from "lucide-react";
 
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -40,6 +41,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isDocumentCreated, setIsDocumentCreated] = useState<boolean>(false);
   const [tool, setTool] = useState<
     "pen" | "highlight" | "eraser" | "bookmark" | null
   >(null);
@@ -74,6 +76,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         : [...prev, pageNumber],
     );
   };
+
+  const createDocument = () => {};
 
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -243,7 +247,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       )}
 
       <div className="relative w-fit overflow-y-auto flex justify-center">
-        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-1/4 bottom-4">
+        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-1/4 bottom-4 bg-gray-200 dark:bg-gray-800">
           <Button onClick={handlePrevPage} variant="outline">
             <ChevronLeft />
           </Button>
@@ -278,13 +282,20 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
           <Button onClick={toggleTheme} variant="outline">
             {isDarkMode ? <SunIcon /> : <MoonIcon />}
           </Button>
+          <Button onClick={createDocument} variant="outline">
+            {isDocumentCreated ? <DownloadIcon /> : <DownloadIcon />}
+          </Button>
         </div>
         <div
           style={{
             filter: isDarkMode ? "invert(1) hue-rotate(180deg)" : "none",
           }}
         >
-          <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
+          {/* <Document file={file} onLoadSuccess={onDocumentLoadSuccess}> */}
+          <Document
+            file="assets/sample.pdf"
+            onLoadSuccess={onDocumentLoadSuccess}
+          >
             <Page
               pageNumber={pageNumber}
               renderAnnotationLayer={true}

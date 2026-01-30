@@ -1,7 +1,7 @@
-import { getConfig } from "@/lib/backend";
 import { Config } from "@/lib/types";
-import React, { createContext, useEffect, useState, useContext } from "react";
+import { getConfig } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
+import React, { createContext, useEffect, useState, useContext } from "react";
 
 interface ConfigContextType {
   config: Config | null;
@@ -19,6 +19,24 @@ interface ConfigContextType {
   getEmbeddingsConfig: () => Config["embeddingsConfig"] | null;
   getVectorStoreConfig: () => Config["vectorStoreConfig"] | null;
   getAIConfig: () => Config["aiConfig"] | null;
+  getTodos: () => Config["todos"] | null;
+
+  updateConfig: (newConfig: Config) => void;
+  updateBasicConfig: (basicConfig: Config["basicConfig"]) => void;
+  updateBookmarks: (bookmarks: Config["bookmarks"]) => void;
+  updateKnowledgeStoreConfig: (
+    knowledgeStoreConfig: Config["knowledgeStoreConfig"],
+  ) => void;
+  updateTabsConfig: (tabsConfig: Config["tabsConfig"]) => void;
+  updateLlmConfig: (llmConfig: Config["llmConfig"]) => void;
+  updateEmbeddingsConfig: (
+    embeddingsConfig: Config["embeddingsConfig"],
+  ) => void;
+  updateVectorStoreConfig: (
+    vectorStoreConfig: Config["vectorStoreConfig"],
+  ) => void;
+  updateAIConfig: (aiConfig: Config["aiConfig"]) => void;
+  updateTodos: (todos: Config["todos"]) => void;
 }
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
@@ -90,6 +108,74 @@ export const ConfigProvider = ({
     return config?.aiConfig || null;
   };
 
+  const getTodos = (): Config["todos"] | null => {
+    return config?.todos || null;
+  };
+
+  const updateConfig = (newConfig: Config) => {
+    setConfig(newConfig);
+  };
+
+  const updateBasicConfig = (basicConfig: Config["basicConfig"]) => {
+    if (config) {
+      setConfig({ ...config, basicConfig });
+    }
+  };
+
+  const updateBookmarks = (bookmarks: Config["bookmarks"]) => {
+    if (config) {
+      setConfig({ ...config, bookmarks });
+    }
+  };
+
+  const updateKnowledgeStoreConfig = (
+    knowledgeStoreConfig: Config["knowledgeStoreConfig"],
+  ) => {
+    if (config) {
+      setConfig({ ...config, knowledgeStoreConfig });
+    }
+  };
+
+  const updateTabsConfig = (tabsConfig: Config["tabsConfig"]) => {
+    if (config) {
+      setConfig({ ...config, tabsConfig });
+    }
+  };
+
+  const updateLlmConfig = (llmConfig: Config["llmConfig"]) => {
+    if (config) {
+      setConfig({ ...config, llmConfig });
+    }
+  };
+
+  const updateEmbeddingsConfig = (
+    embeddingsConfig: Config["embeddingsConfig"],
+  ) => {
+    if (config) {
+      setConfig({ ...config, embeddingsConfig });
+    }
+  };
+
+  const updateVectorStoreConfig = (
+    vectorStoreConfig: Config["vectorStoreConfig"],
+  ) => {
+    if (config) {
+      setConfig({ ...config, vectorStoreConfig });
+    }
+  };
+
+  const updateAIConfig = (aiConfig: Config["aiConfig"]) => {
+    if (config) {
+      setConfig({ ...config, aiConfig });
+    }
+  };
+
+  const updateTodos = (todos: Config["todos"]) => {
+    if (config) {
+      setConfig({ ...config, todos });
+    }
+  };
+
   useEffect(() => {
     if (config_path) {
       reloadConfig();
@@ -114,6 +200,17 @@ export const ConfigProvider = ({
         getEmbeddingsConfig,
         getVectorStoreConfig,
         getAIConfig,
+        getTodos,
+        updateConfig,
+        updateBasicConfig,
+        updateBookmarks,
+        updateKnowledgeStoreConfig,
+        updateTabsConfig,
+        updateLlmConfig,
+        updateEmbeddingsConfig,
+        updateVectorStoreConfig,
+        updateAIConfig,
+        updateTodos,
       }}
     >
       {children}

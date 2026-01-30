@@ -764,3 +764,5 @@ The architecture supports horizontal scaling across multiple server instances wi
       return "No content available for this tab.";
   }
 };
+
+export const saveContentToPDF = (content: string, filePath: string) => {};

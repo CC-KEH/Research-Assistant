@@ -16,6 +16,7 @@ export interface Tab {
   id: string;
   label: string;
   prompt?: string;
+  enabled: boolean;
 }
 
 export interface LlmProvider {
@@ -72,6 +73,15 @@ export interface KnowledgeFile {
   };
 }
 
+export interface Todo {
+  id: number;
+  title: string;
+  priority: string;
+  date: string;
+  time: string;
+  completed: boolean;
+}
+
 export interface Config {
   basicConfig: BasicConfig[];
   bookmarks: Bookmark[];
@@ -86,6 +96,7 @@ export interface Config {
   embeddingsConfig: EmbeddingProvider[];
   vectorStoreConfig: VectorStoreProvider[];
   aiConfig: AIConfig[];
+  todos: Todo[];
 }
 
 export enum Item {

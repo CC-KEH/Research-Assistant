@@ -19,25 +19,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import { Todo } from "@/lib/types";
 import { CheckCircle2, XCircle, Plus } from "lucide-react";
+import { useConfig } from "@/components/providers/ConfigProvider";
 
 const priorities = ["Low", "Medium", "High"];
 
-type Todo = {
-  id: number;
-  title: string;
-  priority: string;
-  date: string;
-  time: string;
-  done: boolean;
-  createdAt: Date;
-};
-
 export default function Todos() {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [newTodo, setNewTodo] = useState<
-    Omit<Todo, "id" | "done" | "createdAt">
-  >({
+  const { getTodos, updateTodos } = useConfig();
+  const [todos, setTodos] = useState<Todo[]>(getTodos() || []);
+  const [newTodo, setNewTodo] = useState<Omit<Todo, "id" | "completed">>({
     title: "",
     priority: "Medium",
     date: "",
@@ -50,28 +41,30 @@ export default function Todos() {
       setError("Task title is required");
       return;
     }
-    setTodos([
-      ...todos,
-      {
-        id: Date.now(),
-        ...newTodo,
-        done: false,
-        createdAt: new Date(),
-      },
-    ]);
+    const todoToAdd = {
+      id: Date.now(),
+      ...newTodo,
+      completed: false,
+    };
+    const updatedTodos = [...todos, todoToAdd];
+    setTodos(updatedTodos);
+    updateTodos(updatedTodos);
     setNewTodo({ title: "", priority: "Medium", date: "", time: "" });
     setError(null);
   };
 
   const toggleDone = (id: number) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, done: !todo.done } : todo
-      )
+    const updatedTodos = todos.map((todo) =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo,
     );
+    setTodos(updatedTodos);
+    updateTodos(updatedTodos);
   };
 
-  const clearAll = () => setTodos([]);
+  const clearAll = () => {
+    setTodos([]);
+    updateTodos([]);
+  };
 
   return (
     <div className="p-6 flex justify-center">
@@ -102,19 +95,20 @@ export default function Todos() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (!newTodo.title.trim()) return;
                   addTodo();
                 }}
                 className="space-y-4"
               >
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
                   <Input
                     placeholder="Task title"
                     value={newTodo.title}
                     onChange={(e) =>
                       setNewTodo({ ...newTodo, title: e.target.value })
                     }
-                    className="border-gray-300 focus:border-gray-500"
                     aria-label="Task title"
                     onFocus={() => setError(null)}
                   />
@@ -122,60 +116,61 @@ export default function Todos() {
                     <p className="mt-1 text-sm text-red-600">{error}</p>
                   )}
                 </div>
-                <Select
-                  value={newTodo.priority}
-                  onValueChange={(value) =>
-                    setNewTodo({ ...newTodo, priority: value })
-                  }
-                >
-                  <SelectTrigger
-                    className="border-gray-300 focus:ring-2 focus:ring-gray-500"
-                    aria-label="Task priority"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <Select
+                    value={newTodo.priority}
+                    onValueChange={(value) =>
+                      setNewTodo({ ...newTodo, priority: value })
+                    }
                   >
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {priorities.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="date"
-                  className="border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-500"
-                  value={newTodo.date}
-                  onChange={(e) =>
-                    setNewTodo({ ...newTodo, date: e.target.value })
-                  }
-                  aria-label="Task date"
-                />
-                <Input
-                  type="time"
-                  className="border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-500"
-                  value={newTodo.time}
-                  onChange={(e) =>
-                    setNewTodo({ ...newTodo, time: e.target.value })
-                  }
-                  aria-label="Task time"
-                />
+                    <SelectTrigger aria-label="Task priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorities.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={newTodo.date}
+                    onChange={(e) =>
+                      setNewTodo({ ...newTodo, date: e.target.value })
+                    }
+                    aria-label="Task date"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Time
+                  </label>
+                  <Input
+                    type="time"
+                    value={newTodo.time}
+                    onChange={(e) =>
+                      setNewTodo({ ...newTodo, time: e.target.value })
+                    }
+                    aria-label="Task time"
+                  />
+                </div>
                 <DialogFooter>
                   <DialogClose asChild>
                     <Button type="button" variant="outline">
                       Cancel
                     </Button>
                   </DialogClose>
-                  <DialogClose asChild>
-                    <Button
-                      type="submit"
-                      onClick={() => {
-                        if (newTodo.title.trim()) addTodo();
-                      }}
-                    >
-                      Add Task
-                    </Button>
-                  </DialogClose>
+                  <Button type="submit">Add Task</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -197,7 +192,7 @@ export default function Todos() {
                   <div className="space-y-1">
                     <h2
                       className={`text-base font-medium ${
-                        todo.done ? "line-through text-gray-400" : ""
+                        todo.completed ? "line-through text-gray-400" : ""
                       }`}
                     >
                       {todo.title}
@@ -216,8 +211,8 @@ export default function Todos() {
                           todo.priority === "High"
                             ? "border-red-200 text-red-700"
                             : todo.priority === "Medium"
-                            ? "border-yellow-200 text-yellow-700"
-                            : "border-green-200 text-green-700"
+                              ? "border-yellow-200 text-yellow-700"
+                              : "border-green-200 text-green-700"
                         }
                       >
                         {todo.priority}
@@ -225,12 +220,12 @@ export default function Todos() {
                       <Badge
                         variant="outline"
                         className={
-                          todo.done
+                          todo.completed
                             ? "border-green-200 text-green-700"
                             : "border-gray-200 text-gray-700"
                         }
                       >
-                        {todo.done ? "Done" : "Pending"}
+                        {todo.completed ? "Done" : "Pending"}
                       </Badge>
                     </div>
                   </div>
@@ -239,7 +234,9 @@ export default function Todos() {
                     size="sm"
                     onClick={() => toggleDone(todo.id)}
                     className="text-gray-500 hover:text-gray-700"
-                    aria-label={todo.done ? "Mark as not done" : "Mark as done"}
+                    aria-label={
+                      todo.completed ? "Mark as not done" : "Mark as done"
+                    }
                   >
                     <CheckCircle2 className="h-5 w-5" />
                   </Button>

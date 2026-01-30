@@ -20,6 +20,7 @@ pub struct Config {
     pub embeddings_config: HashMap<String, EmbeddingsConfig>,
     pub vector_store_config: HashMap<String, VectorStoreConfig>,
     pub ai_config: AIConfig,
+    pub todos: Vec<Todo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,6 +130,17 @@ pub struct AIConfig {
     pub active_embeddings: String,
     pub active_vector_store: String,
     pub chat_prompt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Todo {
+    pub id: i64,
+    pub title: String,
+    pub priority: String,
+    pub date: String,
+    pub time: String,
+    pub completed: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
