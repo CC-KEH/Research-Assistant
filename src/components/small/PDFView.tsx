@@ -20,6 +20,9 @@ import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
+import { saveContentToPDF } from "@/lib/backend";
+import { error } from "@/lib/logger";
+import { useConfig } from "../providers/ConfigProvider";
 
 // TODO: Add Search in File Functionality: ctrl + f
 
@@ -77,7 +80,16 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     );
   };
 
-  const createDocument = () => {};
+  const createDocument = async () => {
+    try {
+      const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
+      const basicConfig = getBasicConfig();
+      const knowledgeStoreConfig = getKnowledgeStoreConfig();
+      saveContentToPDF(basicConfig, knowledgeStoreConfig, file);
+    } catch (err) {
+      error(`Failed to create document: ${err}`);
+    }
+  };
 
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -247,7 +259,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       )}
 
       <div className="relative w-fit overflow-y-auto flex justify-center">
-        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-1/4 bottom-4 bg-gray-200 dark:bg-gray-800">
+        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-[30%] bottom-4 bg-gray-200 dark:bg-gray-800">
           <Button onClick={handlePrevPage} variant="outline">
             <ChevronLeft />
           </Button>

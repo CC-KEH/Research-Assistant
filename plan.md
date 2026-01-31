@@ -4,9 +4,6 @@
 
 [ Frame 1 ]
 
-- [ ] Settings: Functionality
-- [ ] Bugs: Select Component
-- [ ] Functions: Call Config Updates from ConfigProvider, instead of directly calling Components 
 - [ ] Library: Create Complete Report, out of The Tabs, in PDF Format and save to Documents.
 
 [ Frame 2 ]
@@ -16,6 +13,11 @@
 [ Frame 3 ]
 
 - [ ] 
+
+[ Bugs ]
+
+- [ ] Select Component
+- [ ] Correct the model names in Settings
 
 Documents: Generated Reports
 

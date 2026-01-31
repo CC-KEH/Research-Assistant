@@ -11,13 +11,15 @@ import { info } from "@/lib/logger";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { FileInfo } from "@/lib/types";
-import { updateConfig, uploadFiles } from "@/lib/backend";
-import { useConfig } from "./providers/ConfigProvider";
+import { uploadFiles } from "@/lib/backend";
+import { useConfig } from "@/components/providers/ConfigProvider";
 
 export default function KnowledgeStore() {
-  const { getFullConfig, getBasicConfig, getKnowledgeStoreConfig } =
-    useConfig();
-  const fullConfig = getFullConfig();
+  const {
+    getBasicConfig,
+    getKnowledgeStoreConfig,
+    updateKnowledgeStoreConfig,
+  } = useConfig();
   const basicConfig = getBasicConfig();
   const knowledgeStoreConfig = getKnowledgeStoreConfig();
   const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
@@ -74,12 +76,9 @@ export default function KnowledgeStore() {
     const updatedFiles = knowledgeStoreConfig.files.filter(
       (file) => !fileIds.includes(file.fileName),
     );
-    const config_path = `${projectPath}\\config.json`;
-    await updateConfig(config_path, {
-      ...fullConfig,
-      knowledgeStoreConfig: {
-        files: updatedFiles,
-      },
+    await updateKnowledgeStoreConfig({
+      ...knowledgeStoreConfig,
+      files: updatedFiles,
     });
   };
 

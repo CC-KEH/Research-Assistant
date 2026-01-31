@@ -1,5 +1,5 @@
 import { Config } from "@/lib/types";
-import { getConfig } from "@/lib/backend";
+import { getConfig, saveConfig } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
 import React, { createContext, useEffect, useState, useContext } from "react";
 
@@ -176,6 +176,7 @@ export const ConfigProvider = ({
     }
   };
 
+  // Load config when config_path changes
   useEffect(() => {
     if (config_path) {
       reloadConfig();
@@ -183,6 +184,12 @@ export const ConfigProvider = ({
       setConfig(null);
     }
   }, [config_path]);
+
+  useEffect(() => {
+    if (config_path && config) {
+      saveConfig(config_path, config);
+    }
+  }, [config, config_path]);
 
   return (
     <ConfigContext.Provider

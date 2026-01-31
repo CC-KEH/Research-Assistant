@@ -23,9 +23,7 @@ export default function Viewer({
   fileName,
   fileType,
 }: ViewerProps) {
-  // Determine group type from first tab (assuming all tabs in group have same type)
-  // Inner active tab state
-  const [innerActiveTab, setInnerActiveTab] = useState(activeTabGroup[0]?.id);
+  const [innerActiveTab, setInnerActiveTab] = useState(activeTab);
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isLoadingContent, setIsLoadingContent] = useState(false);
 
@@ -50,8 +48,11 @@ export default function Viewer({
   }, [filePath]);
 
   // Reset innerActiveTab when group changes
+  // Reset innerActiveTab when group changes
   useEffect(() => {
-    setInnerActiveTab(activeTabGroup[0]?.id);
+    if (activeTabGroup && activeTabGroup.length > 0) {
+      setInnerActiveTab(activeTabGroup[0].id);
+    }
   }, [activeTabGroup]);
 
   // Sync with parent activeTab when changed

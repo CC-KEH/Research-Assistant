@@ -1,9 +1,11 @@
-import { Config } from "@/lib/types";
+import { jsPDF } from "jspdf";
+import { BasicConfig, Config, KnowledgeFile } from "@/lib/types";
 import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { BugType, Project, TreeNode } from "./types";
 import { error, info } from "@/lib/logger";
+import { useConfig } from "@/components/providers/ConfigProvider";
+import { BugType, Project, TreeNode } from "@/lib/types";
 
 // Python API Configuration
 const PYTHON_API_BASE = "http://localhost:8000";
@@ -607,9 +609,9 @@ export const getConfig = async (
   }
 };
 
-export const updateConfig = async (
+export const saveConfig = async (
   config_path: string,
-  new_config: Partial<Config>,
+  new_config: Config,
 ): Promise<void> => {
   try {
     await invoke("update_config", {
@@ -765,4 +767,134 @@ The architecture supports horizontal scaling across multiple server instances wi
   }
 };
 
-export const saveContentToPDF = (content: string, filePath: string) => {};
+export const saveContentToPDF = (
+  basicConfig: BasicConfig,
+  knowledgeStoreConfig: KnowledgeFile[],
+  file: string,
+) => {
+  if (!knowledgeStoreConfig || !knowledgeStoreConfig.length) {
+    alert("No files in knowledge store to create document");
+    return;
+  }
+  const pdfContent = knowledgeStoreConfig.map((file) => ({
+    fileName: file.fileName,
+    summary: file.fileData?.summary || "N/A",
+    criticalAnalysis: file.fileData?.criticalAnalysis || "N/A",
+    contributions: file.fileData?.contributions || "N/A",
+    futureWork: file.fileData?.futureWork || "N/A",
+    arxiv: file.fileData?.arxiv || [],
+  }));
+
+  const projectPath = basicConfig.projectPath;
+  const fileName =
+    knowledgeStoreConfig?.find((p) => p.filePath === file)?.fileName ||
+    "Summary";
+  const documentsPath = projectPath
+    ? `${projectPath}\\documents\\${fileName}.pdf`
+    : "";
+
+  try {
+    if (!pdfContent || pdfContent.length === 0) {
+      throw new Error("No content provided");
+    }
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let yPosition = 15;
+    let isFirstPage = true;
+
+    // Process each file in pdfContent
+    pdfContent.forEach((file, index) => {
+      // Add page break between files (not before first)
+      if (!isFirstPage) {
+        pdf.addPage();
+        yPosition = 15;
+      }
+      isFirstPage = false;
+
+      // Title
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(file.fileName, pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 12;
+
+      // Summary
+      if (file.summary && file.summary !== "N/A") {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Summary", 10, yPosition);
+        yPosition += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        const summaryLines = pdf.splitTextToSize(file.summary, 190);
+        pdf.text(summaryLines, 10, yPosition);
+        yPosition += summaryLines.length * 5 + 5;
+      }
+
+      // Critical Analysis
+      if (file.criticalAnalysis && file.criticalAnalysis !== "N/A") {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Critical Analysis", 10, yPosition);
+        yPosition += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        const analysisLines = pdf.splitTextToSize(file.criticalAnalysis, 190);
+        pdf.text(analysisLines, 10, yPosition);
+        yPosition += analysisLines.length * 5 + 5;
+      }
+
+      // Contributions
+      if (file.contributions && file.contributions !== "N/A") {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Contributions", 10, yPosition);
+        yPosition += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        const contribLines = pdf.splitTextToSize(file.contributions, 190);
+        pdf.text(contribLines, 10, yPosition);
+        yPosition += contribLines.length * 5 + 5;
+      }
+
+      // Future Work
+      if (file.futureWork && file.futureWork !== "N/A") {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Future Work", 10, yPosition);
+        yPosition += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        const futureLines = pdf.splitTextToSize(file.futureWork, 190);
+        pdf.text(futureLines, 10, yPosition);
+        yPosition += futureLines.length * 5 + 5;
+      }
+
+      // ArXiv
+      if (file.arxiv && file.arxiv.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("ArXiv References", 10, yPosition);
+        yPosition += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        file.arxiv.forEach((arxiv) => {
+          const arxivLines = pdf.splitTextToSize(`• ${arxiv}`, 185);
+          pdf.text(arxivLines, 12, yPosition);
+          yPosition += arxivLines.length * 5 + 2;
+        });
+      }
+    });
+
+    pdf.save(documentsPath);
+    console.log(`PDF saved: ${documentsPath}`);
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    throw error;
+  }
+};

@@ -4,9 +4,9 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Card, CardContent } from "./ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import type { AIConfig, Tab } from "@/lib/types";
 import CustomSelect from "@/components/small/CustomSelect";
 import { useConfig } from "@/components/providers/ConfigProvider";
-import type { AIConfig, Tab } from "@/lib/types"; // Adjust path to your types
 
 const tabs = [
   { id: "file-viewer", label: "File Viewer" },
@@ -55,15 +55,6 @@ const embeddingModelsByProvider: Record<
     },
   ],
 };
-
-const vectorStoreOptions = [
-  { label: "Pinecone", value: "pinecone" },
-  { label: "Weaviate", value: "weaviate" },
-  { label: "Qdrant", value: "qdrant" },
-  { label: "Chroma", value: "chroma" },
-  { label: "Milvus", value: "milvus" },
-  { label: "FAISS", value: "faiss" },
-];
 
 export default function Settings() {
   const {
