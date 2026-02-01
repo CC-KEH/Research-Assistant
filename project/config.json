@@ -57,13 +57,13 @@
                 "prompt": "Prompt goes here"
             },
             {
-                "id": "dictionary",
-                "label": "Dictionary",
+                "id": "future-work",
+                "label": "Future",
                 "prompt": "Prompt goes here"
             },
             {
-                "id": "future-work",
-                "label": "Future",
+                "id": "arxiv",
+                "label": "Arxiv",
                 "prompt": "Prompt goes here"
             }
         ],

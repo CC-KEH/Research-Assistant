@@ -100,14 +100,14 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             prompt: "You are a tough but fair peer reviewer.\nPerform a deep, honest, and balanced critical analysis in simple academic language.\nUse examples wherever possible.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nCritical Analysis:\n\n# Strengths\n• Strength 1 + example from paper\n• Strength 2 + example\n(...at least 5–6...)\n\n# Weaknesses & Limitations\n• Weakness 1 + concrete example\n• Weakness 2 + concrete example\n(...be direct but polite...)\n\n# Questions About Validity\n• Are experiments fair? (example)\n• Are baselines strong? (example)\n• Any cherry-picking of results? (example)\n\n# Is the Novelty Overhyped?\n(simple yes/no + explanation with example)\n\n# Overall Rating (1–10)\nJustification with examples\n\n# Recommendation\nAccept / Minor Revision / Major Revision / Reject + why".to_string(),
         },
         Tab {
-            id: "dictionary".to_string(),
-            label: "Dictionary".to_string(),
-            enabled: true,
-            prompt: "You are a domain expert glossary builder.\nCreate an alphabetized dictionary of all important terms, acronyms, and symbols from the paper.\nEach entry must be simple and include a short example.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nTechnical Dictionary (A–Z):\n\n**Term / Acronym / Symbol**  \nDefinition in simple words  \nExample: ...\n\n(continue for all key terms — aim for 30–60 entries depending on paper length)".to_string(),
-        },
-        Tab {
             id: "future-work".to_string(),
             label: "Future".to_string(),
+            enabled: true,
+            prompt: "You are a leading researcher in this field.\nBased on this paper, propose concrete and exciting future research directions in very simple language.\nEach idea include a small example or thought experiment.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nPromising Future Work Ideas:\n\n# Idea 1\nDescription + why it's important  \nPossible experiment/example: ...\n\n# Idea 2\n...\n\n(Provide 8–12 high-quality, realistic ideas. Be creative but practical.)".to_string(),
+        },
+        Tab {
+            id: "arxiv".to_string(),
+            label: "Arxiv".to_string(),
             enabled: true,
             prompt: "You are a leading researcher in this field.\nBased on this paper, propose concrete and exciting future research directions in very simple language.\nEach idea include a small example or thought experiment.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nPromising Future Work Ideas:\n\n# Idea 1\nDescription + why it's important  \nPossible experiment/example: ...\n\n# Idea 2\n...\n\n(Provide 8–12 high-quality, realistic ideas. Be creative but practical.)".to_string(),
         },
@@ -591,4 +591,10 @@ pub fn delete_item(path: String) -> Result<(), String> {
     } else {
         fs::remove_file(&item_path).map_err(|e| format!("Failed to delete file: {}", e))
     }
+}
+
+#[tauri::command]
+pub fn save_pdf(file_path: String, pdf_data: Vec<u8>) -> Result<(), String> {
+    std::fs::write(&file_path, pdf_data).map_err(|e| format!("Failed to write PDF: {}", e))?;
+    Ok(())
 }

@@ -28,7 +28,7 @@ export default function Frame2({ fileInfo }: Frame2Props) {
           const knowledgeStoreConfig = getKnowledgeStoreConfig();
           if (
             knowledgeStoreConfig?.files.find(
-              (file: any) => file.path === fileInfo.path,
+              (file: any) => file.filePath === fileInfo.path,
             )
           ) {
             setActiveTabGroup(paperViewerTabs);
@@ -56,7 +56,6 @@ export default function Frame2({ fileInfo }: Frame2Props) {
               activeTabGroup={activeTabGroup}
               activeTab={activeTab!}
               filePath={filePath}
-              fileName={fileInfo?.name}
               fileType={fileInfo?.type}
             />
           </ViewerContextMenu>

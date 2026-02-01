@@ -426,8 +426,8 @@ async def process_with_tab(request: TabProcessRequest):
     - summary: Summarize the text
     - contributions: Extract main contributions
     - critical-analysis: Provide critical analysis
-    - dictionary: Define terms/concepts
     - future-work: Suggest future research directions
+    - arxiv: Extract Arxiv metadata
     - Any custom tab IDs defined in config.json
     
     """

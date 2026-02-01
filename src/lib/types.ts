@@ -15,8 +15,8 @@ export type TreeNode = {
 export interface Tab {
   id: string;
   label: string;
-  prompt?: string;
   enabled: boolean;
+  prompt?: string;
 }
 
 export interface LlmProvider {

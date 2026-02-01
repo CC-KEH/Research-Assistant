@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import PDFView from "@/components/small/PDFView";
 import { Tab } from "@/lib/types";
-import { pdfViewerTabs, markdownViewerTabs, paperViewerTabs } from "@/lib/tabs";
+import { pdfViewerTabs, markdownViewerTabs } from "@/lib/tabs";
 import Suggestions from "./Suggestions";
 import MarkdownRenderer from "./small/MarkdownRenderer";
 import { getContent, readFile, writeFile } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
 import MarkdownEditor from "./small/MarkdownEditor";
+import { useConfig } from "./providers/ConfigProvider";
 
 interface ViewerProps {
   activeTabGroup: Tab[];
@@ -20,12 +21,13 @@ export default function Viewer({
   activeTabGroup,
   activeTab,
   filePath,
-  fileName,
   fileType,
 }: ViewerProps) {
   const [innerActiveTab, setInnerActiveTab] = useState(activeTab);
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const { getTabsConfig } = useConfig();
+  const paperViewerTabs = getTabsConfig()?.tabs;
 
   useEffect(() => {
     if (!filePath) return;
@@ -47,7 +49,6 @@ export default function Viewer({
     loadMarkdownContent();
   }, [filePath]);
 
-  // Reset innerActiveTab when group changes
   // Reset innerActiveTab when group changes
   useEffect(() => {
     if (activeTabGroup && activeTabGroup.length > 0) {
@@ -79,7 +80,7 @@ export default function Viewer({
           case "arxiv":
             return <Suggestions />;
           default:
-            return null;
+            return <MarkdownRenderer content={getContent("customTab")} />;
         }
 
       case markdownViewerTabs:

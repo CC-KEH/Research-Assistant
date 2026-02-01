@@ -4,7 +4,6 @@ import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { error, info } from "@/lib/logger";
-import { useConfig } from "@/components/providers/ConfigProvider";
 import { BugType, Project, TreeNode } from "@/lib/types";
 
 // Python API Configuration
@@ -767,16 +766,17 @@ The architecture supports horizontal scaling across multiple server instances wi
   }
 };
 
-export const saveContentToPDF = (
-  basicConfig: BasicConfig,
-  knowledgeStoreConfig: KnowledgeFile[],
+export const saveContentToPDF = async (
+  basicConfig: BasicConfig[] | null,
+  knowledgeStoreConfig: { files: KnowledgeFile[] } | null,
   file: string,
 ) => {
-  if (!knowledgeStoreConfig || !knowledgeStoreConfig.length) {
+  if (!knowledgeStoreConfig || !knowledgeStoreConfig.files.length) {
     alert("No files in knowledge store to create document");
     return;
   }
-  const pdfContent = knowledgeStoreConfig.map((file) => ({
+
+  const pdfContent = knowledgeStoreConfig.files.map((file) => ({
     fileName: file.fileName,
     summary: file.fileData?.summary || "N/A",
     criticalAnalysis: file.fileData?.criticalAnalysis || "N/A",
@@ -785,17 +785,22 @@ export const saveContentToPDF = (
     arxiv: file.fileData?.arxiv || [],
   }));
 
-  const projectPath = basicConfig.projectPath;
+  const projectPath = basicConfig?.[0]?.projectPath || "";
   const fileName =
-    knowledgeStoreConfig?.find((p) => p.filePath === file)?.fileName ||
+    knowledgeStoreConfig?.files.find((p) => p.filePath === file)?.fileName ||
     "Summary";
+  const pdfName = `Doc_${fileName}`;
   const documentsPath = projectPath
-    ? `${projectPath}\\documents\\${fileName}.pdf`
+    ? `${projectPath}\\documents\\${pdfName}.pdf`
     : "";
 
   try {
     if (!pdfContent || pdfContent.length === 0) {
       throw new Error("No content provided");
+    }
+
+    if (!documentsPath) {
+      throw new Error("Invalid documents path");
     }
 
     const pdf = new jsPDF({
@@ -809,7 +814,7 @@ export const saveContentToPDF = (
     let isFirstPage = true;
 
     // Process each file in pdfContent
-    pdfContent.forEach((file, index) => {
+    pdfContent.forEach((fileData) => {
       // Add page break between files (not before first)
       if (!isFirstPage) {
         pdf.addPage();
@@ -820,70 +825,75 @@ export const saveContentToPDF = (
       // Title
       pdf.setFontSize(18);
       pdf.setFont("helvetica", "bold");
-      pdf.text(file.fileName, pageWidth / 2, yPosition, { align: "center" });
+      pdf.text(fileData.fileName, pageWidth / 2, yPosition, {
+        align: "center",
+      });
       yPosition += 12;
 
       // Summary
-      if (file.summary && file.summary !== "N/A") {
+      if (fileData.summary && fileData.summary !== "N/A") {
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.text("Summary", 10, yPosition);
         yPosition += 8;
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "normal");
-        const summaryLines = pdf.splitTextToSize(file.summary, 190);
+        const summaryLines = pdf.splitTextToSize(fileData.summary, 190);
         pdf.text(summaryLines, 10, yPosition);
         yPosition += summaryLines.length * 5 + 5;
       }
 
       // Critical Analysis
-      if (file.criticalAnalysis && file.criticalAnalysis !== "N/A") {
+      if (fileData.criticalAnalysis && fileData.criticalAnalysis !== "N/A") {
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.text("Critical Analysis", 10, yPosition);
         yPosition += 8;
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "normal");
-        const analysisLines = pdf.splitTextToSize(file.criticalAnalysis, 190);
+        const analysisLines = pdf.splitTextToSize(
+          fileData.criticalAnalysis,
+          190,
+        );
         pdf.text(analysisLines, 10, yPosition);
         yPosition += analysisLines.length * 5 + 5;
       }
 
       // Contributions
-      if (file.contributions && file.contributions !== "N/A") {
+      if (fileData.contributions && fileData.contributions !== "N/A") {
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.text("Contributions", 10, yPosition);
         yPosition += 8;
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "normal");
-        const contribLines = pdf.splitTextToSize(file.contributions, 190);
+        const contribLines = pdf.splitTextToSize(fileData.contributions, 190);
         pdf.text(contribLines, 10, yPosition);
         yPosition += contribLines.length * 5 + 5;
       }
 
       // Future Work
-      if (file.futureWork && file.futureWork !== "N/A") {
+      if (fileData.futureWork && fileData.futureWork !== "N/A") {
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.text("Future Work", 10, yPosition);
         yPosition += 8;
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "normal");
-        const futureLines = pdf.splitTextToSize(file.futureWork, 190);
+        const futureLines = pdf.splitTextToSize(fileData.futureWork, 190);
         pdf.text(futureLines, 10, yPosition);
         yPosition += futureLines.length * 5 + 5;
       }
 
-      // ArXiv
-      if (file.arxiv && file.arxiv.length > 0) {
+      // ArXiv References
+      if (fileData.arxiv && fileData.arxiv.length > 0) {
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.text("ArXiv References", 10, yPosition);
         yPosition += 8;
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "normal");
-        file.arxiv.forEach((arxiv) => {
+        fileData.arxiv.forEach((arxiv) => {
           const arxivLines = pdf.splitTextToSize(`• ${arxiv}`, 185);
           pdf.text(arxivLines, 12, yPosition);
           yPosition += arxivLines.length * 5 + 2;
@@ -891,10 +901,22 @@ export const saveContentToPDF = (
       }
     });
 
-    pdf.save(documentsPath);
-    console.log(`PDF saved: ${documentsPath}`);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-    throw error;
+    // Get PDF as array buffer
+    const pdfBytes = pdf.output("arraybuffer");
+    const uint8Array = new Uint8Array(pdfBytes);
+    const pdfData = Array.from(uint8Array);
+
+    // Call Tauri command to save PDF file
+    await invoke("save_pdf", {
+      filePath: documentsPath,
+      pdfData: pdfData,
+    });
+
+    info(`Generated PDF for ${pdfContent.length} files`);
+    info(`PDF saved: ${documentsPath}`);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    error(`Error generating PDF: ${errorMessage}`);
+    throw err;
   }
 };

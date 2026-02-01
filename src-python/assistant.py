@@ -65,7 +65,7 @@ class Assistant:
         Process text using a tab's custom prompt from config.json.
 
         Supports all standard tabs (view, summary, contributions, critical-analysis,
-        dictionary, future-work) and custom tabs defined in config.
+        future-work, arxiv) and custom tabs defined in config.
 
         Args:
             tab_id: ID of the tab (e.g., "summary", "contributions", "custom-tab-1")

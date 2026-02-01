@@ -57,6 +57,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [showSearchBox, setShowSearchBox] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
+  const basicConfig = getBasicConfig();
+  const knowledgeStoreConfig = getKnowledgeStoreConfig();
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -82,9 +85,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   const createDocument = async () => {
     try {
-      const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
-      const basicConfig = getBasicConfig();
-      const knowledgeStoreConfig = getKnowledgeStoreConfig();
       saveContentToPDF(basicConfig, knowledgeStoreConfig, file);
     } catch (err) {
       error(`Failed to create document: ${err}`);
@@ -239,10 +239,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   useEffect(() => {
     redrawCanvas();
   }, [paths, pageNumber]);
-  // TODO: Fix the PDF Height
   return (
     <div
-      className={`h-full rounded-md overflow-hidden ${
+      className={`mt-3 h-[690px] rounded-md overflow-hidden ${
         isDarkMode ? "bg-black text-white" : "bg-white text-black"
       }`}
     >
@@ -259,7 +258,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       )}
 
       <div className="relative w-fit overflow-y-auto flex justify-center">
-        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-[30%] bottom-4 bg-gray-200 dark:bg-gray-800">
+        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-[30%] bottom-4 bg-clip-padding backdrop-filter backdrop-blur-md bg-opacity-70 bg-gray-100 dark:bg-gray-800">
           <Button onClick={handlePrevPage} variant="outline">
             <ChevronLeft />
           </Button>

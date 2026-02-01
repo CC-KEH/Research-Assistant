@@ -1,25 +1,39 @@
-export const libraryTabs = [
-  { id: "library", label: "Library" },
-  { id: "web", label: "Web" },
-  { id: "suggested", label: "Suggested" },
-];
-
 export const paperViewerTabs = [
-  { id: "view", label: "View", prompt: "Prompt goes here" },
-  { id: "summary", label: "Summary", prompt: "Prompt goes here" },
-  { id: "contributions", label: "Contributions", prompt: "Prompt goes here" },
-  { id: "critical-analysis", label: "Analysis", prompt: "Prompt goes here" },
-  { id: "future-work", label: "Future", prompt: "Prompt goes here" },
-  { id: "arxiv", label: "Arxiv", prompt: "Prompt goes here" },
+  { id: "view", label: "View", enabled: true, prompt: "Prompt goes here" },
+  {
+    id: "summary",
+    label: "Summary",
+    enabled: true,
+    prompt: "Prompt goes here",
+  },
+  {
+    id: "contributions",
+    label: "Contributions",
+    enabled: true,
+    prompt: "Prompt goes here",
+  },
+  {
+    id: "critical-analysis",
+    label: "Analysis",
+    enabled: true,
+    prompt: "Prompt goes here",
+  },
+  {
+    id: "future-work",
+    label: "Future",
+    enabled: true,
+    prompt: "Prompt goes here",
+  },
+  { id: "arxiv", label: "Arxiv", enabled: true, prompt: "Prompt goes here" },
 ];
 
 export const markdownViewerTabs = [
-  { id: "view", label: "View", prompt: "Prompt goes here" },
-  { id: "edit", label: "Edit", prompt: "Prompt goes here" },
+  { id: "view", label: "View", enabled: true, prompt: "Prompt goes here" },
+  { id: "edit", label: "Edit", enabled: true, prompt: "Prompt goes here" },
 ];
 
 export const pdfViewerTabs = [
-  { id: "view", label: "View", prompt: "Prompt goes here" },
+  { id: "view", label: "View", enabled: true, prompt: "Prompt goes here" },
 ];
 
 export const invalidTab = [
@@ -31,8 +45,8 @@ export const defaultPaperViewerTabs = [
   { id: "summary", label: "Summary" },
   { id: "contributions", label: "Contributions" },
   { id: "critical-analysis", label: "Analysis" },
-  { id: "dictionary", label: "Dictionary" },
   { id: "future-work", label: "Future" },
+  { id: "arxiv", label: "Arxiv" },
 ];
 
 export const assistantTabs = [
