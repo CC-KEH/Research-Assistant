@@ -778,10 +778,18 @@ export const saveContentToPDF = async (
 
   const pdfContent = knowledgeStoreConfig.files.map((file) => ({
     fileName: file.fileName,
-    summary: file.fileData?.summary || "N/A",
-    criticalAnalysis: file.fileData?.criticalAnalysis || "N/A",
-    contributions: file.fileData?.contributions || "N/A",
-    futureWork: file.fileData?.futureWork || "N/A",
+    summary:
+      file.fileData?.summary ||
+      "Minim nostrud do voluptate in adipisicing sit duis. Occaecat sint cillum proident exercitation aliquip. Non incididunt sit ipsum ut nisi pariatur aliquip do esse ad id. Non cillum eiusmod elit anim ut proident quis duis non. Nulla cupidatat cillum in velit pariatur.",
+    criticalAnalysis:
+      file.fileData?.criticalAnalysis ||
+      "Reprehenderit ullamco cupidatat laboris dolore. Cillum dolor eiusmod eu mollit dolore veniam id. Aliqua consectetur pariatur qui irure consectetur ut incididunt aliqua aute. Officia elit amet enim veniam aliqua veniam Lorem occaecat officia dolor excepteur cillum tempor. Pariatur labore cillum nostrud esse dolor laborum eu enim fugiat labore pariatur quis exercitation nostrud. Sint elit labore dolor irure fugiat magna magna cupidatat minim consequat.",
+    contributions:
+      file.fileData?.contributions ||
+      "Est quis sint minim ut do. Commodo adipisicing qui ipsum adipisicing consectetur enim ex nostrud sit. Enim excepteur excepteur reprehenderit laborum aliqua aliqua occaecat aute pariatur. Exercitation aliqua dolore pariatur anim non exercitation et enim esse. Nostrud aliqua minim ut commodo labore occaecat nisi tempor officia eiusmod eu.",
+    futureWork:
+      file.fileData?.futureWork ||
+      "Aliqua ad consequat sint ea laborum aliqua est ut officia. Mollit mollit non non quis proident cupidatat. Exercitation qui ex sint pariatur ad voluptate esse cillum proident.",
     arxiv: file.fileData?.arxiv || [],
   }));
 
@@ -791,7 +799,7 @@ export const saveContentToPDF = async (
     "Summary";
   const pdfName = `Doc_${fileName}`;
   const documentsPath = projectPath
-    ? `${projectPath}\\documents\\${pdfName}.pdf`
+    ? `${projectPath}\\documents\\${pdfName}`
     : "";
 
   try {

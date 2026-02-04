@@ -43,7 +43,8 @@ pub fn run() {
             start_python_server,
             stop_python_server,
             check_python_server,
-            save_pdf
+            save_pdf,
+            read_pdf_file
         ])
         .setup(|app| {
             // Optional: Auto-start Python server on app launch

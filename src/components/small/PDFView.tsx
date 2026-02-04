@@ -15,6 +15,7 @@ import {
   SunIcon,
   DownloadIcon,
 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -32,7 +33,7 @@ interface Point {
 }
 
 interface PDFViewerProps {
-  file: string;
+  file: string; // This can now be a full file path like "C:/Users/..."
 }
 
 interface Path {
@@ -57,9 +58,36 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [showSearchBox, setShowSearchBox] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [pdfSource, setPdfSource] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(false);
   const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
   const basicConfig = getBasicConfig();
   const knowledgeStoreConfig = getKnowledgeStoreConfig();
+
+  // Load PDF from file path using Tauri
+  useEffect(() => {
+    const loadPdfFromPath = async () => {
+      if (!file) return;
+
+      setIsLoadingPdf(true);
+      try {
+        // Call Tauri command to read PDF as base64
+        const base64String = await invoke<string>("read_pdf_file", {
+          filePath: file,
+        });
+
+        // Convert to data URL
+        const dataUrl = `data:application/pdf;base64,${base64String}`;
+        setPdfSource(dataUrl);
+      } catch (err) {
+        error(`Failed to load PDF from ${file}: ${err}`);
+      } finally {
+        setIsLoadingPdf(false);
+      }
+    };
+
+    loadPdfFromPath();
+  }, [file]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -239,6 +267,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   useEffect(() => {
     redrawCanvas();
   }, [paths, pageNumber]);
+
   return (
     <div
       className={`mt-3 h-[690px] rounded-md overflow-hidden ${
@@ -297,36 +326,43 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
             {isDocumentCreated ? <DownloadIcon /> : <DownloadIcon />}
           </Button>
         </div>
-        <div
-          style={{
-            filter: isDarkMode ? "invert(1) hue-rotate(180deg)" : "none",
-          }}
-        >
-          {/* <Document file={file} onLoadSuccess={onDocumentLoadSuccess}> */}
-          <Document
-            file="assets/sample.pdf"
-            onLoadSuccess={onDocumentLoadSuccess}
+
+        {isLoadingPdf ? (
+          <div className="flex items-center justify-center h-full">
+            <p>Loading PDF...</p>
+          </div>
+        ) : pdfSource ? (
+          <div
+            style={{
+              filter: isDarkMode ? "invert(1) hue-rotate(180deg)" : "none",
+            }}
           >
-            <Page
-              pageNumber={pageNumber}
-              renderAnnotationLayer={true}
-              renderTextLayer={true}
+            <Document file={pdfSource} onLoadSuccess={onDocumentLoadSuccess}>
+              <Page
+                pageNumber={pageNumber}
+                renderAnnotationLayer={true}
+                renderTextLayer={true}
+              />
+            </Document>
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={1000}
+              className={`absolute top-0 left-0 z-10 bg-transparent ${
+                tool === "pen" || tool === "highlight" || tool === "eraser"
+                  ? "pointer-events-auto"
+                  : "pointer-events-none"
+              }`}
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
             />
-          </Document>
-          <canvas
-            ref={canvasRef}
-            width={800}
-            height={1000}
-            className={`absolute top-0 left-0 z-10 bg-transparent ${
-              tool === "pen" || tool === "highlight" || tool === "eraser"
-                ? "pointer-events-auto"
-                : "pointer-events-none"
-            }`}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-            onMouseMove={handleMouseMove}
-          />
-        </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p>No PDF loaded</p>
+          </div>
+        )}
       </div>
 
       <p

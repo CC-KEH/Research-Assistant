@@ -8,7 +8,7 @@
 
 [ Frame 2 ]
 
-- [ ] Viewer: Display PDF
+- [ ] 
 
 [ Frame 3 ]
 
@@ -16,7 +16,6 @@
 
 [ Bugs ]
 
-- [ ] Select Component
 - [ ] Correct the model names in Settings
 
 Documents: Generated Reports

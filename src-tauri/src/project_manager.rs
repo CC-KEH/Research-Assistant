@@ -598,3 +598,18 @@ pub fn save_pdf(file_path: String, pdf_data: Vec<u8>) -> Result<(), String> {
     std::fs::write(&file_path, pdf_data).map_err(|e| format!("Failed to write PDF: {}", e))?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn read_pdf_file(file_path: String) -> Result<String, String> {
+    std::fs::read(&file_path)
+        .map(|bytes| {
+            // Convert bytes to base64
+            base64_encode(&bytes)
+        })
+        .map_err(|e| format!("Failed to read PDF: {}", e))
+}
+
+fn base64_encode(data: &[u8]) -> String {
+    use base64::{engine::general_purpose, Engine as _};
+    general_purpose::STANDARD.encode(data)
+}

@@ -13,7 +13,18 @@
     "dialog:default",
     "fs:default",
     "log:default",
-    "opener:default"
+    "opener:default",
+    {
+      "identifier": "fs:allow-read",
+      "allow": [
+        {
+          "path": "$HOME/Documents/**"
+        },
+        {
+          "path": "$DESKTOP/**"
+        }
+      ]
+    }
   ],
   "scope": {
     "fs": {

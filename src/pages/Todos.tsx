@@ -11,19 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { format } from "date-fns";
 import { Todo } from "@/lib/types";
 import { CheckCircle2, XCircle, Plus } from "lucide-react";
 import { useConfig } from "@/components/providers/ConfigProvider";
-
-const priorities = ["Low", "Medium", "High"];
 
 export default function Todos() {
   const { getTodos, updateTodos } = useConfig();
@@ -120,23 +111,44 @@ export default function Todos() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Priority
                   </label>
-                  <Select
-                    value={newTodo.priority}
-                    onValueChange={(value) =>
-                      setNewTodo({ ...newTodo, priority: value })
-                    }
-                  >
-                    <SelectTrigger aria-label="Task priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {priorities.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={
+                        newTodo.priority === "Low" ? "default" : "outline"
+                      }
+                      onClick={() =>
+                        setNewTodo({ ...newTodo, priority: "Low" })
+                      }
+                      className="flex-1"
+                    >
+                      Low
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={
+                        newTodo.priority === "Medium" ? "default" : "outline"
+                      }
+                      onClick={() =>
+                        setNewTodo({ ...newTodo, priority: "Medium" })
+                      }
+                      className="flex-1"
+                    >
+                      Medium
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={
+                        newTodo.priority === "High" ? "default" : "outline"
+                      }
+                      onClick={() =>
+                        setNewTodo({ ...newTodo, priority: "High" })
+                      }
+                      className="flex-1"
+                    >
+                      High
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -209,10 +221,10 @@ export default function Todos() {
                         variant="outline"
                         className={
                           todo.priority === "High"
-                            ? "border-red-200 text-red-700"
+                            ? "border-red-700 text-red-700 bg-red-200/10 backdrop-blur-sm border"
                             : todo.priority === "Medium"
-                              ? "border-yellow-200 text-yellow-700"
-                              : "border-green-200 text-green-700"
+                              ? "border-yellow-700 text-yellow-700 bg-yellow-200/10 backdrop-blur-sm border"
+                              : "border-green-700 text-green-700 bg-green-200/10 backdrop-blur-sm border"
                         }
                       >
                         {todo.priority}
@@ -221,8 +233,8 @@ export default function Todos() {
                         variant="outline"
                         className={
                           todo.completed
-                            ? "border-green-200 text-green-700"
-                            : "border-gray-200 text-gray-700"
+                            ? "border-green-700 text-green-700"
+                            : "border-gray-700 text-gray-700"
                         }
                       >
                         {todo.completed ? "Done" : "Pending"}

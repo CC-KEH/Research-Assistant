@@ -5,7 +5,6 @@ import { Card, CardContent } from "./ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import type { AIConfig, Tab } from "@/lib/types";
-import CustomSelect from "@/components/small/CustomSelect";
 import { useConfig } from "@/components/providers/ConfigProvider";
 
 const tabs = [
@@ -13,6 +12,13 @@ const tabs = [
   { id: "llm", label: "LLM" },
   { id: "embeddings", label: "Embeddings" },
   { id: "vector-store", label: "Vector Store" },
+];
+
+const llmProviders = [
+  { label: "OpenAI", value: "openai" },
+  { label: "Anthropic", value: "anthropic" },
+  { label: "Google", value: "google" },
+  { label: "XAI", value: "xai" },
 ];
 
 const modelsByProvider: Record<string, { label: string; value: string }[]> = {
@@ -32,6 +38,14 @@ const modelsByProvider: Record<string, { label: string; value: string }[]> = {
   ],
   xai: [{ label: "Grok Beta", value: "grok-beta" }],
 };
+
+const embeddingProviders = [
+  { label: "OpenAI", value: "openai" },
+  { label: "Anthropic", value: "anthropic" },
+  { label: "Google", value: "google" },
+  { label: "Cohere", value: "cohere" },
+  { label: "HuggingFace", value: "huggingface" },
+];
 
 const embeddingModelsByProvider: Record<
   string,
@@ -56,6 +70,13 @@ const embeddingModelsByProvider: Record<
   ],
 };
 
+const vectorStoreProviders = [
+  { label: "Pinecone", value: "pinecone" },
+  { label: "Weaviate", value: "weaviate" },
+  { label: "Milvus", value: "milvus" },
+  { label: "Qdrant", value: "qdrant" },
+];
+
 export default function Settings() {
   const {
     config,
@@ -73,17 +94,20 @@ export default function Settings() {
   const [fileViewerTabs, setFileViewerTabs] = useState<Tab[]>([]);
 
   // LLM state
-  const [selectedLlmName, setSelectedLlmName] = useState("");
-  const [selectedLlmModel, setSelectedLlmModel] = useState("");
+  const [selectedLlmName, setSelectedLlmName] = useState("openai");
+  const [selectedLlmModel, setSelectedLlmModel] = useState("gpt-4");
   const [llmApiKey, setLlmApiKey] = useState("");
 
   // Embeddings state
-  const [selectedEmbeddingName, setSelectedEmbeddingName] = useState("");
-  const [selectedEmbeddingModel, setSelectedEmbeddingModel] = useState("");
+  const [selectedEmbeddingName, setSelectedEmbeddingName] = useState("openai");
+  const [selectedEmbeddingModel, setSelectedEmbeddingModel] = useState(
+    "text-embedding-3-large",
+  );
   const [embeddingApiKey, setEmbeddingApiKey] = useState("");
 
   // Vector store state
-  const [selectedVectorStoreName, setSelectedVectorStoreName] = useState("");
+  const [selectedVectorStoreName, setSelectedVectorStoreName] =
+    useState("pinecone");
   const [vectorStoreApiKey, setVectorStoreApiKey] = useState("");
 
   // Initialize state from config
@@ -296,28 +320,6 @@ export default function Settings() {
     updateAIConfig([updatedAiConfig]);
   };
 
-  // Get provider options from arrays
-  const llmProviderOptions = Array.isArray(config?.llmConfig)
-    ? config.llmConfig.map((provider) => ({
-        label: provider.label,
-        value: provider.name,
-      }))
-    : [];
-
-  const embeddingProviderOptions = Array.isArray(config?.embeddingsConfig)
-    ? config.embeddingsConfig.map((provider) => ({
-        label: provider.label,
-        value: provider.name,
-      }))
-    : [];
-
-  const vectorStoreProviderOptions = Array.isArray(config?.vectorStoreConfig)
-    ? config.vectorStoreConfig.map((provider) => ({
-        label: provider.label,
-        value: provider.name,
-      }))
-    : [];
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -380,33 +382,68 @@ export default function Settings() {
           {/* LLM Tab */}
           {activeTab === "llm" && (
             <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
-              <CustomSelect
-                label="LLM Provider"
-                value={selectedLlmName}
-                onChange={(name) => {
-                  setSelectedLlmName(name);
-                  const provider = Array.isArray(config?.llmConfig)
-                    ? config.llmConfig.find((llm) => llm.name === name)
-                    : null;
-                  if (provider) {
-                    setSelectedLlmModel(provider.value);
-                    setLlmApiKey(provider.api_key || "");
-                  }
-                }}
-                options={llmProviderOptions}
-              />
-              <CustomSelect
-                label="Model"
-                value={selectedLlmModel}
-                onChange={setSelectedLlmModel}
-                options={modelsByProvider[selectedLlmName] || []}
-                disabled={!selectedLlmName}
-              />
-              <Textarea
-                placeholder="Enter your LLM API Key here..."
-                value={llmApiKey}
-                onChange={(e) => setLlmApiKey(e.target.value)}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  LLM Provider
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {llmProviders.map((provider) => (
+                    <Button
+                      key={provider.value}
+                      type="button"
+                      variant={
+                        selectedLlmName === provider.value
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => {
+                        setSelectedLlmName(provider.value);
+                        // Set first model of the new provider
+                        const firstModel =
+                          modelsByProvider[provider.value]?.[0];
+                        if (firstModel) {
+                          setSelectedLlmModel(firstModel.value);
+                        }
+                      }}
+                    >
+                      {provider.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Model
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {(modelsByProvider[selectedLlmName] || []).map((model) => (
+                    <Button
+                      key={model.value}
+                      type="button"
+                      variant={
+                        selectedLlmModel === model.value ? "default" : "outline"
+                      }
+                      onClick={() => setSelectedLlmModel(model.value)}
+                      size="sm"
+                    >
+                      {model.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  API Key
+                </label>
+                <Textarea
+                  placeholder="Enter your LLM API Key here..."
+                  value={llmApiKey}
+                  onChange={(e) => setLlmApiKey(e.target.value)}
+                />
+              </div>
+
               <Button onClick={handleSaveLLM} className="w-full">
                 Save LLM Configuration
               </Button>
@@ -416,33 +453,72 @@ export default function Settings() {
           {/* Embeddings Tab */}
           {activeTab === "embeddings" && (
             <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
-              <CustomSelect
-                label="Embedding Provider"
-                value={selectedEmbeddingName}
-                onChange={(name) => {
-                  setSelectedEmbeddingName(name);
-                  const provider = Array.isArray(config?.embeddingsConfig)
-                    ? config.embeddingsConfig.find((emb) => emb.name === name)
-                    : null;
-                  if (provider) {
-                    setSelectedEmbeddingModel(provider.value);
-                    setEmbeddingApiKey(provider.api_key || "");
-                  }
-                }}
-                options={embeddingProviderOptions}
-              />
-              <CustomSelect
-                label="Embedding Model"
-                value={selectedEmbeddingModel}
-                onChange={setSelectedEmbeddingModel}
-                options={embeddingModelsByProvider[selectedEmbeddingName] || []}
-                disabled={!selectedEmbeddingName}
-              />
-              <Textarea
-                placeholder="Enter your Embedding API Key here..."
-                value={embeddingApiKey}
-                onChange={(e) => setEmbeddingApiKey(e.target.value)}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Embedding Provider
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {embeddingProviders.map((provider) => (
+                    <Button
+                      key={provider.value}
+                      type="button"
+                      variant={
+                        selectedEmbeddingName === provider.value
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => {
+                        setSelectedEmbeddingName(provider.value);
+                        // Set first model of the new provider
+                        const firstModel =
+                          embeddingModelsByProvider[provider.value]?.[0];
+                        if (firstModel) {
+                          setSelectedEmbeddingModel(firstModel.value);
+                        }
+                      }}
+                    >
+                      {provider.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Embedding Model
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {(embeddingModelsByProvider[selectedEmbeddingName] || []).map(
+                    (model) => (
+                      <Button
+                        key={model.value}
+                        type="button"
+                        variant={
+                          selectedEmbeddingModel === model.value
+                            ? "default"
+                            : "outline"
+                        }
+                        onClick={() => setSelectedEmbeddingModel(model.value)}
+                        size="sm"
+                      >
+                        {model.label}
+                      </Button>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  API Key
+                </label>
+                <Textarea
+                  placeholder="Enter your Embedding API Key here..."
+                  value={embeddingApiKey}
+                  onChange={(e) => setEmbeddingApiKey(e.target.value)}
+                />
+              </div>
+
               <Button onClick={handleSaveEmbeddings} className="w-full">
                 Save Embeddings Configuration
               </Button>
@@ -452,25 +528,39 @@ export default function Settings() {
           {/* Vector Store Tab */}
           {activeTab === "vector-store" && (
             <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
-              <CustomSelect
-                label="Vector Store Provider"
-                value={selectedVectorStoreName}
-                onChange={(name) => {
-                  setSelectedVectorStoreName(name);
-                  const store = Array.isArray(config?.vectorStoreConfig)
-                    ? config.vectorStoreConfig.find((s) => s.name === name)
-                    : null;
-                  if (store) {
-                    setVectorStoreApiKey(store.api_key || "");
-                  }
-                }}
-                options={vectorStoreProviderOptions}
-              />
-              <Textarea
-                placeholder="Enter your Vector Store API Key here..."
-                value={vectorStoreApiKey}
-                onChange={(e) => setVectorStoreApiKey(e.target.value)}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vector Store Provider
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {vectorStoreProviders.map((provider) => (
+                    <Button
+                      key={provider.value}
+                      type="button"
+                      variant={
+                        selectedVectorStoreName === provider.value
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => setSelectedVectorStoreName(provider.value)}
+                    >
+                      {provider.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  API Key
+                </label>
+                <Textarea
+                  placeholder="Enter your Vector Store API Key here..."
+                  value={vectorStoreApiKey}
+                  onChange={(e) => setVectorStoreApiKey(e.target.value)}
+                />
+              </div>
+
               <Button onClick={handleSaveVectorStore} className="w-full">
                 Save Vector Store Configuration
               </Button>
