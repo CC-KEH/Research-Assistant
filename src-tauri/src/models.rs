@@ -17,8 +17,6 @@ pub struct Config {
     pub knowledge_store_config: KnowledgeStoreConfig,
     pub tabs_config: TabsConfig,
     pub llm_config: HashMap<String, LLMConfig>,
-    pub embeddings_config: HashMap<String, EmbeddingsConfig>,
-    pub vector_store_config: HashMap<String, VectorStoreConfig>,
     pub ai_config: AIConfig,
     pub todos: Vec<Todo>,
 }
@@ -107,28 +105,8 @@ pub struct LLMConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EmbeddingsConfig {
-    pub label: String,
-    pub model_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub api_key: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VectorStoreConfig {
-    pub label: String,
-    pub environment: String,
-    pub index_name: String,
-    pub persist_directory: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct AIConfig {
     pub active_llm: String,
-    pub active_embeddings: String,
-    pub active_vector_store: String,
     pub chat_prompt: String,
 }
 

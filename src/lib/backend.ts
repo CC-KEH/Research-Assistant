@@ -16,7 +16,7 @@ const PYTHON_API_BASE = "http://localhost:8000";
 export const startPythonServer = async (): Promise<string> => {
   try {
     const result = await invoke<string>("start_python_server");
-
+    info(`Python server started with result: ${result}`);
     // Wait for server to be ready
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
@@ -35,7 +35,7 @@ export const startPythonServer = async (): Promise<string> => {
 
     // Server started but never became healthy
     const error = new Error(
-      "Python server started but failed health checks after 5 attempts",
+      "Python server either failed to start or did not respond to health checks in time.",
     );
     (error as any).code = "SERVER_HEALTH_CHECK_FAILED";
     throw error;
@@ -51,7 +51,7 @@ export const stopPythonServer = async (): Promise<string> => {
     return result;
   } catch (err) {
     error(`Failed to stop Python server: ${err}`);
-    throw error;
+    throw err;
   }
 };
 

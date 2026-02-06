@@ -1,17 +1,14 @@
 from typing import List, Optional
 
-from langchain_xai import ChatXAI
-from langchain_anthropic import ChatAnthropic
 from langchain_core.documents import Document
+from langchain_anthropic import ChatAnthropic
+from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS, Chroma
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 from manager import *
-
 
 class LLM:
     def __init__(self, config_manager: ConfigManager):

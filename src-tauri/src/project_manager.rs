@@ -139,62 +139,6 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             api_key: String::new(),
         },
     );
-    llm_config.insert(
-        "xai".to_string(),
-        LLMConfig {
-            label: "XAI".to_string(),
-            model_name: "grok".to_string(),
-            api_key: String::new(),
-        },
-    );
-
-    // Create default embeddings config
-    let mut embeddings_config = HashMap::new();
-    embeddings_config.insert(
-        "google".to_string(),
-        EmbeddingsConfig {
-            label: "Google Embeddings".to_string(),
-            model_name: "google-embedding-model".to_string(),
-            api_key: Some(String::new()),
-        },
-    );
-    embeddings_config.insert(
-        "openai".to_string(),
-        EmbeddingsConfig {
-            label: "OpenAI Embeddings".to_string(),
-            model_name: "text-embedding-3-small".to_string(),
-            api_key: Some(String::new()),
-        },
-    );
-    embeddings_config.insert(
-        "huggingface".to_string(),
-        EmbeddingsConfig {
-            label: "HuggingFaceEmbeddings".to_string(),
-            model_name: "sentence-transformers/all-mpnet-base-v2".to_string(),
-            api_key: None,
-        },
-    );
-
-    // Create default vector store config
-    let mut vector_store_config = HashMap::new();
-    vector_store_config.insert(
-        "faiss".to_string(),
-        VectorStoreConfig {
-            label: "Faiss".to_string(),
-            environment: String::new(),
-            index_name: String::new(),
-            persist_directory: String::new(),
-        },
-    );
-    vector_store_config.insert(
-        "chroma".to_string(),
-        VectorStoreConfig {
-            label: "Chroma".to_string(),
-            environment: String::new(),
-            index_name: String::new(),
-            persist_directory: String::new(),
-        },
-    );
 
     // Create a default config
     let default_config = Config {
@@ -206,12 +150,8 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             custom_tabs: Vec::new(),
         },
         llm_config,
-        embeddings_config,
-        vector_store_config,
         ai_config: AIConfig {
             active_llm: "openai".to_string(),
-            active_embeddings: "openai".to_string(),
-            active_vector_store: "faiss".to_string(),
             chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
         },
         todos: Vec::new(),

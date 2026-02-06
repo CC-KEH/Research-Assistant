@@ -27,13 +27,6 @@ class ConfigManager:
         """Get LLM configuration by name."""
         return self.config.get("llmConfig", {}).get(llm_name)
 
-    def get_embedding_config(self, embedding_name: str) -> Optional[dict]:
-        """Get embedding configuration by name."""
-        return self.config.get("embeddingsConfig", {}).get(embedding_name)
-
-    def get_vectorstore_config(self, store_name: str) -> Optional[dict]:
-        """Get vector store configuration by name."""
-        return self.config.get("vectorStoreConfig", {}).get(store_name.lower())
 
     def get_knowledge_store_files(self) -> List[dict]:
         """Get knowledge store files."""

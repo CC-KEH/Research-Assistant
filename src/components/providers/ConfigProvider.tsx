@@ -16,8 +16,6 @@ interface ConfigContextType {
   getKnowledgeStoreConfig: () => Config["knowledgeStoreConfig"] | null;
   getTabsConfig: () => Config["tabsConfig"] | null;
   getLlmConfig: () => Config["llmConfig"] | null;
-  getEmbeddingsConfig: () => Config["embeddingsConfig"] | null;
-  getVectorStoreConfig: () => Config["vectorStoreConfig"] | null;
   getAIConfig: () => Config["aiConfig"] | null;
   getTodos: () => Config["todos"] | null;
 
@@ -29,12 +27,6 @@ interface ConfigContextType {
   ) => void;
   updateTabsConfig: (tabsConfig: Config["tabsConfig"]) => void;
   updateLlmConfig: (llmConfig: Config["llmConfig"]) => void;
-  updateEmbeddingsConfig: (
-    embeddingsConfig: Config["embeddingsConfig"],
-  ) => void;
-  updateVectorStoreConfig: (
-    vectorStoreConfig: Config["vectorStoreConfig"],
-  ) => void;
   updateAIConfig: (aiConfig: Config["aiConfig"]) => void;
   updateTodos: (todos: Config["todos"]) => void;
 }
@@ -96,14 +88,6 @@ export const ConfigProvider = ({
     return config?.llmConfig || null;
   };
 
-  const getEmbeddingsConfig = (): Config["embeddingsConfig"] | null => {
-    return config?.embeddingsConfig || null;
-  };
-
-  const getVectorStoreConfig = (): Config["vectorStoreConfig"] | null => {
-    return config?.vectorStoreConfig || null;
-  };
-
   const getAIConfig = (): Config["aiConfig"] | null => {
     return config?.aiConfig || null;
   };
@@ -148,22 +132,6 @@ export const ConfigProvider = ({
     }
   };
 
-  const updateEmbeddingsConfig = (
-    embeddingsConfig: Config["embeddingsConfig"],
-  ) => {
-    if (config) {
-      setConfig({ ...config, embeddingsConfig });
-    }
-  };
-
-  const updateVectorStoreConfig = (
-    vectorStoreConfig: Config["vectorStoreConfig"],
-  ) => {
-    if (config) {
-      setConfig({ ...config, vectorStoreConfig });
-    }
-  };
-
   const updateAIConfig = (aiConfig: Config["aiConfig"]) => {
     if (config) {
       setConfig({ ...config, aiConfig });
@@ -204,8 +172,6 @@ export const ConfigProvider = ({
         getKnowledgeStoreConfig,
         getTabsConfig,
         getLlmConfig,
-        getEmbeddingsConfig,
-        getVectorStoreConfig,
         getAIConfig,
         getTodos,
         updateConfig,
@@ -214,8 +180,6 @@ export const ConfigProvider = ({
         updateKnowledgeStoreConfig,
         updateTabsConfig,
         updateLlmConfig,
-        updateEmbeddingsConfig,
-        updateVectorStoreConfig,
         updateAIConfig,
         updateTodos,
       }}

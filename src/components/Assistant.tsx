@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
 import { Mic, CornerDownLeft, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
@@ -15,18 +15,10 @@ import {
   switchSession,
   sendChatMessage,
   switchLLM,
+  stopPythonServer,
 } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
 import { useConfig } from "./providers/ConfigProvider";
-import {
-  Stepper,
-  StepperItem,
-  StepperTitle,
-  StepperTrigger,
-  StepperIndicator,
-  StepperSeparator,
-  StepperDescription,
-} from "./small/Stepper";
 
 interface Message {
   id: number;
@@ -39,121 +31,146 @@ interface AssistantProps {
   fileInfo: FileInfo | null;
 }
 
-const steps = [
-  {
-    step: 1,
-    title: "Setting up server.",
-    description: "Desc for step one",
-  },
-  {
-    step: 2,
-    title: "Loading config",
-    description: "Desc for step two",
-  },
-  {
-    step: 3,
-    title: "Loading chat",
-    description: "Desc for step three",
-  },
-];
+type InitializationPhase =
+  | "idle"
+  | "starting-server"
+  | "initializing-backend"
+  | "loading-session"
+  | "complete"
+  | "error";
+
+interface InitializationState {
+  phase: InitializationPhase;
+  message: string;
+  error?: string;
+}
+
+const INITIAL_STATE: InitializationState = {
+  phase: "idle",
+  message: "",
+};
 
 export default function Assistant({ fileInfo }: AssistantProps) {
-  const {
-    getBasicConfig,
-    getAIConfig,
-    getLlmConfig,
-    getEmbeddingsConfig,
-    getVectorStoreConfig,
-    getKnowledgeStoreConfig,
-  } = useConfig();
+  const { getBasicConfig, getAIConfig, getLlmConfig } = useConfig();
 
   const basicConfig = getBasicConfig();
   const aiConfig = getAIConfig();
   const llmConfig = getLlmConfig();
-  const embeddingsConfig = getEmbeddingsConfig();
-  const vectorStoreConfig = getVectorStoreConfig();
-  const knowledgeStoreConfig = getKnowledgeStoreConfig();
 
+  // State
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentAiMessage, setCurrentAiMessage] = useState("");
   const [currentProvider, setCurrentProvider] = useState<string>("");
   const [availableProviders, setAvailableProviders] = useState<string[]>([]);
-  const [modelError, setModelError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [initState, setInitState] =
+    useState<InitializationState>(INITIAL_STATE);
   const [currentSessionIndex, setCurrentSessionIndex] = useState<number | null>(
     null,
   );
-  const [initializationStep, setInitializationStep] =
-    useState<string>("Starting...");
+
+  // Refs
+  const initializationAttempted = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const animatedText = useAnimatedText(
     currentAiMessage,
     currentAiMessage ? "" : undefined,
   );
 
+  const isInitialized = initState.phase === "complete";
+  const isInitializing =
+    initState.phase !== "idle" &&
+    initState.phase !== "complete" &&
+    initState.phase !== "error";
+
+  // Helper: Update initialization state
+  const updateInitState = useCallback(
+    (phase: InitializationPhase, message: string, errorMsg?: string) => {
+      setInitState({ phase, message, error: errorMsg });
+    },
+    [],
+  );
+
+  // Helper: Get provider display info
+  const getProviderDisplay = useCallback(
+    (provider?: string) => {
+      const p = provider || currentProvider;
+      const providers: Record<string, { icon: string; name: string }> = {
+        openai: { icon: "/openai.svg", name: "GPT-4" },
+        anthropic: { icon: "/anthropic.svg", name: "Claude" },
+        google: { icon: "/google.svg", name: "Gemini" },
+        xai: { icon: "/xai.svg", name: "Grok" },
+      };
+      return providers[p] || { icon: "/openai.svg", name: "AI" };
+    },
+    [currentProvider],
+  );
+
   // Initialize backend on mount
   useEffect(() => {
+    if (initializationAttempted.current) return;
+    if (!basicConfig || !aiConfig || !llmConfig) return;
+
+    initializationAttempted.current = true;
+
     const initializeBackend = async () => {
       try {
-        setInitializationStep("Starting server...");
-
-        // 1. Start Python server
+        // Step 1: Start Python server
+        updateInitState("starting-server", "Starting server...");
         await startPythonServer();
+        info("✅ Python server started");
 
-        // 2. Wait for server to be healthy
-        setInitializationStep("Waiting for server to be ready...");
-
-        // 3. Initialize Python backend with paths
-        setInitializationStep("Initializing backend...");
-        const projectPath = basicConfig?.[0]?.project_path;
+        // Step 2: Initialize backend with config paths
+        updateInitState("initializing-backend", "Initializing backend...");
+        const projectPath = basicConfig?.[0]?.projectPath;
         if (!projectPath) {
           throw new Error("Project path not found in config");
         }
 
-        const config_path = `${projectPath}\\config.json`;
+        const configPath = `${projectPath}\\config.json`;
         const chatPath = `${projectPath}\\chats.json`;
-        info(`Config path: ${config_path}`);
+        info(`Config path: ${configPath}`);
 
-        const initResult = await initializePythonBackend(config_path, chatPath);
+        const initResult = await initializePythonBackend(configPath, chatPath);
         info(`Backend initialized: ${initResult}`);
 
-        // 4. Set current provider from aiConfig
-        if (aiConfig) {
-          setCurrentProvider(aiConfig?.[0]?.active_llm);
+        // Step 3: Configure LLM providers
+        if (aiConfig?.[0]?.activeLlm) {
+          setCurrentProvider(aiConfig[0].activeLlm);
 
-          // Get available providers (those with API keys configured)
-          // llmConfig is now a Record/HashMap with keys like "openai", "anthropic", etc.
           const providers: string[] = [];
-
           if (llmConfig) {
             Object.entries(llmConfig).forEach(([key, provider]) => {
-              if (provider.api_key && provider.api_key.trim() !== "") {
-                providers.push(key); // key is "openai", "anthropic", "google", "xai"
+              if (provider.api_key?.trim()) {
+                providers.push(key);
               }
             });
           }
 
+          if (providers.length === 0) {
+            throw new Error(
+              "No LLM providers configured. Add API keys in Settings.",
+            );
+          }
+
           setAvailableProviders(providers);
+          info(`Available providers: ${providers.join(", ")}`);
         }
 
-        // 5. Load or create session
-        setInitializationStep("Loading session...");
+        // Step 4: Load or create session
+        updateInitState("loading-session", "Loading session...");
         const sessionsData = await getAllSessions();
 
-        if (sessionsData.sessions && sessionsData.sessions.length > 0) {
-          // Use the most recent session (last one)
+        if (sessionsData.sessions?.length > 0) {
           const sessionIndex = sessionsData.sessions.length - 1;
           setCurrentSessionIndex(sessionIndex);
 
-          // Switch to this session
           await switchSession(sessionIndex);
-
-          // Load session history
           const historyData = await getSessionHistory(sessionIndex);
 
-          if (historyData.history && historyData.history.length > 0) {
+          if (historyData.history?.length > 0) {
             const loadedMessages: Message[] = historyData.history.map(
               (msg: any, idx: number) => ({
                 id: Date.now() + idx,
@@ -163,13 +180,12 @@ export default function Assistant({ fileInfo }: AssistantProps) {
               }),
             );
             setMessages(loadedMessages);
+            info(`Loaded ${loadedMessages.length} messages from session`);
           }
         } else {
-          // Create a new session
           const newSessionResult = await createSession("Chat Session");
           setCurrentSessionIndex(newSessionResult.session_index);
 
-          // Add welcome message
           setMessages([
             {
               id: 1,
@@ -177,40 +193,58 @@ export default function Assistant({ fileInfo }: AssistantProps) {
               sender: "ai",
             },
           ]);
+          info("Created new session");
         }
 
-        setInitializationStep("");
-        setIsInitialized(true);
+        updateInitState("complete", "");
         info("✅ App fully initialized!");
       } catch (err) {
-        error(`Error initializing: ${err}`);
-        setModelError(
-          err instanceof Error ? err.message : "Failed to initialize backend",
-        );
-        setInitializationStep("");
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to initialize backend";
+        error(`Initialization failed: ${errorMsg}`);
+        updateInitState("error", "Initialization failed", errorMsg);
       }
     };
 
-    if (basicConfig && aiConfig && llmConfig) {
-      initializeBackend();
-    }
-  }, [basicConfig, aiConfig, llmConfig]);
+    initializeBackend();
 
-  // Notify user of new file selection
+    // Cleanup on unmount
+    return () => {
+      stopPythonServer().catch((err) =>
+        error(`Failed to stop server on unmount: ${err}`),
+      );
+    };
+  }, [basicConfig, aiConfig, llmConfig, updateInitState]);
+
+  // Handle file selection
   useEffect(() => {
     if (fileInfo && isInitialized) {
       const systemMessage: Message = {
         id: Date.now(),
-        content: `Selected file: ${fileInfo.name} (${fileInfo.type})`,
+        content: `📁 Selected file: ${fileInfo.name} (${fileInfo.type})`,
         sender: "system",
       };
       setMessages((prev) => [...prev, systemMessage]);
     }
   }, [fileInfo, isInitialized]);
 
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !isInitialized) return;
+
+    if (
+      !input.trim() ||
+      isLoading ||
+      !isInitialized ||
+      currentSessionIndex === null
+    ) {
+      return;
+    }
 
     const userMessageContent = input.trim();
     const newUserMessage: Message = {
@@ -223,18 +257,15 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     setInput("");
     setIsLoading(true);
     setCurrentAiMessage("");
-    setModelError(null);
 
     try {
-      // Call the chat API
       const data = await sendChatMessage(
         userMessageContent,
-        false, // useRAG - set to true if you want to use RAG
-        currentSessionIndex ?? undefined,
+        false, // useRAG
+        currentSessionIndex,
         4, // k value for RAG
       );
 
-      // Add AI response to messages
       const aiMessage: Message = {
         id: Date.now() + 1,
         content: data.response,
@@ -244,136 +275,125 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
       setMessages((prev) => [...prev, aiMessage]);
       setCurrentAiMessage(data.response);
-      setIsLoading(false);
     } catch (err) {
-      error(`Error calling API: ${err}`);
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      error(`Error calling API: ${errorMsg}`);
+
       const errorMessage: Message = {
         id: Date.now() + 1,
-        content:
-          err instanceof Error
-            ? `Error: ${err.message}`
-            : "Sorry, I encountered an error. Please try again.",
+        content: `❌ Error: ${errorMsg}`,
         sender: "ai",
       };
+
       setMessages((prev) => [...prev, errorMessage]);
-      setModelError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleMicrophoneClick = () => {
-    // TODO: Implement voice input
-    info("Microphone clicked");
-  };
-
+  // Handle LLM provider switch
   const handleLLMSwitch = async () => {
     if (availableProviders.length === 0) {
       alert("No LLM providers configured. Please add API keys in Settings.");
       return;
     }
 
+    if (!currentProvider) {
+      error("No current provider set");
+      return;
+    }
+
     try {
-      // Cycle through available providers
       const currentIndex = availableProviders.indexOf(currentProvider);
       const nextIndex = (currentIndex + 1) % availableProviders.length;
       const nextProvider = availableProviders[nextIndex];
 
-      // Switch the LLM on the backend
       await switchLLM(nextProvider);
-
       setCurrentProvider(nextProvider);
 
-      // Show system message
+      const providerName = getProviderDisplay(nextProvider).name;
       const systemMessage: Message = {
         id: Date.now(),
-        content: `Switched to ${getProviderDisplay(nextProvider).name}`,
+        content: `🤖 Switched to ${providerName}`,
         sender: "system",
       };
+
       setMessages((prev) => [...prev, systemMessage]);
+      info(`Switched LLM to ${providerName}`);
     } catch (err) {
-      error(`Error switching LLM: ${err}`);
-      setModelError(
-        err instanceof Error ? err.message : "Failed to switch LLM",
-      );
+      const errorMsg =
+        err instanceof Error ? err.message : "Failed to switch LLM";
+      error(`Error switching LLM: ${errorMsg}`);
+
+      const errorMessage: Message = {
+        id: Date.now(),
+        content: `❌ Failed to switch provider: ${errorMsg}`,
+        sender: "ai",
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 
-  // Get display name and icon for provider
-  const getProviderDisplay = (provider?: string) => {
-    const p = provider || currentProvider;
-    switch (p) {
-      case "openai":
-        return { icon: "/openai.svg", name: "GPT-4" };
-      case "anthropic":
-        return { icon: "/anthropic.svg", name: "Claude" };
-      case "google":
-        return { icon: "/google.svg", name: "Gemini" };
-      case "xai":
-        return { icon: "/xai.svg", name: "Grok" };
-      default:
-        return { icon: "/openai.svg", name: "AI" };
-    }
+  // Handle microphone (placeholder)
+  const handleMicrophoneClick = () => {
+    info("Microphone clicked - TODO: implement voice input");
+    // TODO: Implement voice input with speech recognition
   };
 
   const providerDisplay = getProviderDisplay();
 
+  // Render initialization state
+  if (initState.phase === "error") {
+    return (
+      <div className="h-full border bg-background rounded-lg flex flex-col items-center justify-center p-8">
+        <div className="text-center max-w-md">
+          <h2 className="text-xl font-semibold mb-2">Initialization Failed</h2>
+          <p className="text-sm text-destructive mb-4">{initState.error}</p>
+          <Button onClick={() => window.location.reload()} className="w-full">
+            Reload Application
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full border bg-background rounded-lg flex flex-col relative">
-      {!isInitialized && initializationStep && (
-        <div className="p-2 bg-blue-50 border-b border-blue-200 text-blue-700 text-sm">
-          {initializationStep}
+      {/* Initialization Status Bar */}
+      {isInitializing && (
+        <div className="p-3 bg-blue-50 border-b border-blue-200 text-blue-700 text-sm flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent" />
+          {initState.message}
         </div>
       )}
 
-      {modelError && (
-        <div className="p-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
-          {modelError}
-        </div>
-      )}
-
-      <div className="px-10 my-12 self-center">
-        <Stepper defaultValue={2} orientation="vertical">
-          {steps.map(({ step, title, description }) => (
-            <StepperItem
-              key={step}
-              step={step}
-              className="relative items-start [&:not(:last-child)]:flex-1"
-            >
-              <div className="pb-4">
-                <StepperIndicator />
-                <StepperTitle>{title}</StepperTitle>
-                <StepperDescription>{description}</StepperDescription>
+      {/* Messages Container */}
+      <div className="flex-1 min-h-0 relative overflow-hidden">
+        {!isInitialized ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-pulse mb-4">
+                <div className="h-12 w-12 bg-gray-300 rounded-full mx-auto mb-4" />
               </div>
-              {step < steps.length && (
-                <StepperSeparator className="absolute inset-y-0 left-3 top-[calc(1.5rem+0.125rem)] -order-1 m-0 -translate-x-1/2 group-data-[orientation=vertical]/stepper:h-[calc(100%-1.5rem-0.25rem)] group-data-[orientation=horizontal]/stepper:w-[calc(100%-1.5rem-0.25rem)] group-data-[orientation=horizontal]/stepper:flex-none" />
-              )}
-            </StepperItem>
-          ))}
-        </Stepper>
-      </div>
+              <p className="text-gray-600">
+                {initState.message || "Starting..."}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <ChatMessageList>
+            {messages.map((message, index) => {
+              const isLast = index === messages.length - 1;
+              const isAnimated =
+                message.sender === "ai" &&
+                message.content === currentAiMessage &&
+                isLast &&
+                !isLoading;
 
-      <div className="flex-1 min-h-0 relative">
-        <ChatMessageList>
-          {messages.map((message, index) => {
-            const isLast = index === messages.length - 1;
-            const isAnimated =
-              message.sender === "ai" &&
-              message.content === currentAiMessage &&
-              isLast &&
-              isLoading === false;
-
-            return (
-              <ChatBubble
-                key={message.id}
-                variant={
-                  message.sender === "user"
-                    ? "sent"
-                    : message.sender === "system"
-                      ? undefined
-                      : "received"
-                }
-              >
-                <ChatBubbleMessage
+              return (
+                <ChatBubble
+                  key={message.id}
                   variant={
                     message.sender === "user"
                       ? "sent"
@@ -382,62 +402,91 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                         : "received"
                   }
                 >
-                  {isAnimated ? animatedText : message.content}
-                </ChatBubbleMessage>
+                  <ChatBubbleMessage
+                    variant={
+                      message.sender === "user"
+                        ? "sent"
+                        : message.sender === "system"
+                          ? undefined
+                          : "received"
+                    }
+                  >
+                    {isAnimated ? animatedText : message.content}
+                  </ChatBubbleMessage>
+                </ChatBubble>
+              );
+            })}
+
+            {isLoading && (
+              <ChatBubble variant="received">
+                <ChatBubbleMessage isLoading />
               </ChatBubble>
-            );
-          })}
-          {isLoading && (
-            <ChatBubble variant="received">
-              <ChatBubbleMessage isLoading />
-            </ChatBubble>
-          )}
-        </ChatMessageList>
+            )}
+
+            <div ref={messagesEndRef} />
+          </ChatMessageList>
+        )}
       </div>
 
-      <div className="p-4 border-t shrink-0 bg-background z-10">
-        <form
-          onSubmit={handleSubmit}
-          className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
-        >
-          <ChatInput
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
-          />
-          <div className="flex items-center p-3 pt-2 justify-between">
-            <div className="flex gap-1">
+      {/* Input Area */}
+      {isInitialized && (
+        <div className="p-4 border-t shrink-0 bg-background z-10">
+          <form
+            onSubmit={handleSubmit}
+            className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
+          >
+            <ChatInput
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              disabled={isLoading}
+              className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0 disabled:opacity-50"
+            />
+
+            <div className="flex items-center p-3 pt-2 justify-between">
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="default"
+                  type="button"
+                  onClick={handleLLMSwitch}
+                  disabled={isLoading || availableProviders.length === 0}
+                  title={`Current: ${providerDisplay.name}`}
+                >
+                  <img
+                    src={providerDisplay.icon}
+                    alt={providerDisplay.name}
+                    className="pr-1 w-5 h-5"
+                  />
+                  {providerDisplay.name}
+                  <ChevronDown className="ml-1 h-4 w-4" />
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  onClick={handleMicrophoneClick}
+                  disabled={isLoading}
+                  title="Voice input (coming soon)"
+                >
+                  <Mic className="size-4" />
+                </Button>
+              </div>
+
               <Button
-                variant="outline"
-                size="default"
-                type="button"
-                onClick={handleLLMSwitch}
+                type="submit"
+                size="sm"
+                disabled={!input.trim() || isLoading}
+                className="ml-auto gap-1.5"
               >
-                <img
-                  src={providerDisplay.icon}
-                  alt={providerDisplay.name}
-                  className="pr-1 w-5 h-5"
-                />
-                {providerDisplay.name}
-                <ChevronDown className="ml-1" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={handleMicrophoneClick}
-              >
-                <Mic className="size-4" />
+                Ask
+                <CornerDownLeft className="size-3.5" />
               </Button>
             </div>
-            <Button type="submit" size="sm" className="ml-auto gap-1.5">
-              Ask
-              <CornerDownLeft className="size-3.5" />
-            </Button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

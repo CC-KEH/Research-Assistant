@@ -26,24 +26,8 @@ export interface LlmProvider {
   api_key: string;
 }
 
-export interface EmbeddingProvider {
-  name: string;
-  label: string;
-  value: string;
-  api_key: string;
-}
-
-export interface VectorStoreProvider {
-  name: string;
-  label: string;
-  value: string;
-  api_key: string;
-}
-
 export interface AIConfig {
   activeLlm: string;
-  activeEmbeddings: string;
-  activeVectorStore: string;
   chatPrompt: string;
 }
 
@@ -93,8 +77,6 @@ export interface Config {
     customTabs: Tab[];
   };
   llmConfig: LlmProvider[];
-  embeddingsConfig: EmbeddingProvider[];
-  vectorStoreConfig: VectorStoreProvider[];
   aiConfig: AIConfig[];
   todos: Todo[];
 }

@@ -453,4 +453,4 @@ async def process_with_tab(request: TabProcessRequest):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     print(f"🌐 Starting server on http://127.0.0.1:{port}")
-    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=port, reload=True)

@@ -1,6 +1,7 @@
 langchain
 langchain-core
 langchain-community
+langchain-xai
 langchain-openai
 langchain-google-genai
 langchain-anthropic

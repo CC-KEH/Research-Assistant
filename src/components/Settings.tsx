@@ -18,64 +18,43 @@ const llmProviders = [
   { label: "OpenAI", value: "openai" },
   { label: "Anthropic", value: "anthropic" },
   { label: "Google", value: "google" },
-  { label: "XAI", value: "xai" },
 ];
 
 const modelsByProvider: Record<string, { label: string; value: string }[]> = {
   openai: [
-    { label: "GPT-4", value: "gpt-4" },
+    // Latest reasoning models
+    { label: "o4-mini (Reasoning)", value: "o4-mini" },
+    { label: "o4-mini-high (Reasoning)", value: "o4-mini-high" },
+    { label: "o3-pro (Reasoning)", value: "o3-pro" },
+    { label: "o3-mini (Reasoning)", value: "o3-mini" },
+
+    // Latest GPT models
+    { label: "GPT-4o", value: "gpt-4o" },
+    { label: "GPT-4o mini", value: "gpt-4o-mini" },
     { label: "GPT-4 Turbo", value: "gpt-4-turbo" },
-    { label: "GPT-3.5 Turbo", value: "gpt-3.5-turbo" },
+    { label: "GPT-4", value: "gpt-4" },
+
+    // Image generation
+    { label: "GPT-4o (with vision)", value: "gpt-4-vision" },
+    { label: "gpt-image-1 (Image Generation)", value: "gpt-image-1" },
   ],
   anthropic: [
-    { label: "Claude 3.5 Sonnet", value: "claude-3-5-sonnet-20241022" },
-    { label: "Claude 3 Opus", value: "claude-3-opus-20240229" },
-    { label: "Claude 3 Sonnet", value: "claude-3-sonnet-20240229" },
+    // Latest Claude models
+    { label: "Claude Opus 4.6", value: "claude-opus-4-6-20250205" },
+    { label: "Claude Opus 4.5", value: "claude-opus-4-5-20251101" },
+    { label: "Claude Sonnet 4.5", value: "claude-sonnet-4-5-20250929" },
+    { label: "Claude Sonnet 4", value: "claude-sonnet-4-20250514" },
+    { label: "Claude Haiku 4.5", value: "claude-haiku-4-5-20251001" },
+    { label: "Claude Haiku 3.5", value: "claude-haiku-3-5-20241022" },
   ],
   google: [
-    { label: "Gemini Pro", value: "gemini-pro" },
-    { label: "Gemini Pro Vision", value: "gemini-pro-vision" },
-  ],
-  xai: [{ label: "Grok Beta", value: "grok-beta" }],
-};
-
-const embeddingProviders = [
-  { label: "OpenAI", value: "openai" },
-  { label: "Anthropic", value: "anthropic" },
-  { label: "Google", value: "google" },
-  { label: "Cohere", value: "cohere" },
-  { label: "HuggingFace", value: "huggingface" },
-];
-
-const embeddingModelsByProvider: Record<
-  string,
-  { label: string; value: string }[]
-> = {
-  openai: [
-    { label: "text-embedding-3-large", value: "text-embedding-3-large" },
-    { label: "text-embedding-3-small", value: "text-embedding-3-small" },
-    { label: "text-embedding-ada-002", value: "text-embedding-ada-002" },
-  ],
-  anthropic: [{ label: "Voyage AI (via Anthropic)", value: "voyage-2" }],
-  google: [{ label: "embedding-001", value: "embedding-001" }],
-  cohere: [
-    { label: "embed-english-v3.0", value: "embed-english-v3.0" },
-    { label: "embed-multilingual-v3.0", value: "embed-multilingual-v3.0" },
-  ],
-  huggingface: [
-    {
-      label: "sentence-transformers/all-mpnet-base-v2",
-      value: "sentence-transformers/all-mpnet-base-v2",
-    },
+    // Latest Gemini models (2025)
+    { label: "Gemini 3 Pro", value: "gemini-3-pro-preview" },
+    { label: "Gemini 3 Flash", value: "gemini-3-flash-preview" },
+    { label: "Gemini 2.5 Pro", value: "gemini-2-5-pro" },
+    { label: "Gemini 2.5 Flash", value: "gemini-2-5-flash" },
   ],
 };
-
-const vectorStoreProviders = [
-  { label: "Pinecone", value: "pinecone" },
-  { label: "Weaviate", value: "weaviate" },
-  { label: "Milvus", value: "milvus" },
-  { label: "Qdrant", value: "qdrant" },
-];
 
 export default function Settings() {
   const {
@@ -84,7 +63,6 @@ export default function Settings() {
     updateTabsConfig,
     updateLlmConfig,
     updateEmbeddingsConfig,
-    updateVectorStoreConfig,
     updateAIConfig,
   } = useConfig();
 
@@ -97,18 +75,6 @@ export default function Settings() {
   const [selectedLlmName, setSelectedLlmName] = useState("openai");
   const [selectedLlmModel, setSelectedLlmModel] = useState("gpt-4");
   const [llmApiKey, setLlmApiKey] = useState("");
-
-  // Embeddings state
-  const [selectedEmbeddingName, setSelectedEmbeddingName] = useState("openai");
-  const [selectedEmbeddingModel, setSelectedEmbeddingModel] = useState(
-    "text-embedding-3-large",
-  );
-  const [embeddingApiKey, setEmbeddingApiKey] = useState("");
-
-  // Vector store state
-  const [selectedVectorStoreName, setSelectedVectorStoreName] =
-    useState("pinecone");
-  const [vectorStoreApiKey, setVectorStoreApiKey] = useState("");
 
   // Initialize state from config
   useEffect(() => {
@@ -124,27 +90,6 @@ export default function Settings() {
         setSelectedLlmName(firstLlm.name);
         setSelectedLlmModel(firstLlm.value);
         setLlmApiKey(firstLlm.api_key || "");
-      }
-
-      // Embeddings Config - Handle array of providers
-      if (
-        Array.isArray(config.embeddingsConfig) &&
-        config.embeddingsConfig.length > 0
-      ) {
-        const firstEmbedding = config.embeddingsConfig[0];
-        setSelectedEmbeddingName(firstEmbedding.name);
-        setSelectedEmbeddingModel(firstEmbedding.value);
-        setEmbeddingApiKey(firstEmbedding.api_key || "");
-      }
-
-      // Vector Store Config - Handle array of providers
-      if (
-        Array.isArray(config.vectorStoreConfig) &&
-        config.vectorStoreConfig.length > 0
-      ) {
-        const firstVectorStore = config.vectorStoreConfig[0];
-        setSelectedVectorStoreName(firstVectorStore.name);
-        setVectorStoreApiKey(firstVectorStore.api_key || "");
       }
     }
   }, [loading, config]);
@@ -211,109 +156,6 @@ export default function Settings() {
     const updatedAiConfig: AIConfig = {
       ...aiConfig,
       activeLlm: selectedLlmName,
-    };
-
-    // Always pass as array
-    updateAIConfig([updatedAiConfig]);
-  };
-
-  // Save Embeddings Config
-  const handleSaveEmbeddings = async () => {
-    if (!config || !selectedEmbeddingName) return;
-
-    const updatedEmbeddingsConfig = Array.isArray(config.embeddingsConfig)
-      ? config.embeddingsConfig.map((emb) =>
-          emb.name === selectedEmbeddingName
-            ? {
-                ...emb,
-                value: selectedEmbeddingModel,
-                api_key: embeddingApiKey,
-              }
-            : emb,
-        )
-      : [
-          {
-            name: selectedEmbeddingName,
-            label: selectedEmbeddingName,
-            value: selectedEmbeddingModel,
-            api_key: embeddingApiKey,
-          },
-        ];
-
-    // If the provider doesn't exist, add it
-    if (
-      !updatedEmbeddingsConfig.some((emb) => emb.name === selectedEmbeddingName)
-    ) {
-      updatedEmbeddingsConfig.push({
-        name: selectedEmbeddingName,
-        label: selectedEmbeddingName,
-        value: selectedEmbeddingModel,
-        api_key: embeddingApiKey,
-      });
-    }
-
-    updateEmbeddingsConfig(updatedEmbeddingsConfig);
-
-    // Update aiConfig with selected embeddings
-    const aiConfig = Array.isArray(config.aiConfig)
-      ? config.aiConfig[0]
-      : (config.aiConfig as AIConfig);
-
-    const updatedAiConfig: AIConfig = {
-      ...aiConfig,
-      activeEmbeddings: selectedEmbeddingName,
-    };
-
-    // Always pass as array
-    updateAIConfig([updatedAiConfig]);
-  };
-
-  // Save Vector Store Config
-  const handleSaveVectorStore = async () => {
-    if (!config || !selectedVectorStoreName) return;
-
-    const updatedVectorStoreConfig = Array.isArray(config.vectorStoreConfig)
-      ? config.vectorStoreConfig.map((store) =>
-          store.name === selectedVectorStoreName
-            ? {
-                ...store,
-                api_key: vectorStoreApiKey,
-              }
-            : store,
-        )
-      : [
-          {
-            name: selectedVectorStoreName,
-            label: selectedVectorStoreName,
-            value: selectedVectorStoreName,
-            api_key: vectorStoreApiKey,
-          },
-        ];
-
-    // If the store doesn't exist, add it
-    if (
-      !updatedVectorStoreConfig.some(
-        (store) => store.name === selectedVectorStoreName,
-      )
-    ) {
-      updatedVectorStoreConfig.push({
-        name: selectedVectorStoreName,
-        label: selectedVectorStoreName,
-        value: selectedVectorStoreName,
-        api_key: vectorStoreApiKey,
-      });
-    }
-
-    updateVectorStoreConfig(updatedVectorStoreConfig);
-
-    // Update aiConfig with selected vector store
-    const aiConfig = Array.isArray(config.aiConfig)
-      ? config.aiConfig[0]
-      : (config.aiConfig as AIConfig);
-
-    const updatedAiConfig: AIConfig = {
-      ...aiConfig,
-      activeVectorStore: selectedVectorStoreName,
     };
 
     // Always pass as array
@@ -446,123 +288,6 @@ export default function Settings() {
 
               <Button onClick={handleSaveLLM} className="w-full">
                 Save LLM Configuration
-              </Button>
-            </div>
-          )}
-
-          {/* Embeddings Tab */}
-          {activeTab === "embeddings" && (
-            <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Embedding Provider
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {embeddingProviders.map((provider) => (
-                    <Button
-                      key={provider.value}
-                      type="button"
-                      variant={
-                        selectedEmbeddingName === provider.value
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => {
-                        setSelectedEmbeddingName(provider.value);
-                        // Set first model of the new provider
-                        const firstModel =
-                          embeddingModelsByProvider[provider.value]?.[0];
-                        if (firstModel) {
-                          setSelectedEmbeddingModel(firstModel.value);
-                        }
-                      }}
-                    >
-                      {provider.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Embedding Model
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {(embeddingModelsByProvider[selectedEmbeddingName] || []).map(
-                    (model) => (
-                      <Button
-                        key={model.value}
-                        type="button"
-                        variant={
-                          selectedEmbeddingModel === model.value
-                            ? "default"
-                            : "outline"
-                        }
-                        onClick={() => setSelectedEmbeddingModel(model.value)}
-                        size="sm"
-                      >
-                        {model.label}
-                      </Button>
-                    ),
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  API Key
-                </label>
-                <Textarea
-                  placeholder="Enter your Embedding API Key here..."
-                  value={embeddingApiKey}
-                  onChange={(e) => setEmbeddingApiKey(e.target.value)}
-                />
-              </div>
-
-              <Button onClick={handleSaveEmbeddings} className="w-full">
-                Save Embeddings Configuration
-              </Button>
-            </div>
-          )}
-
-          {/* Vector Store Tab */}
-          {activeTab === "vector-store" && (
-            <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Vector Store Provider
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {vectorStoreProviders.map((provider) => (
-                    <Button
-                      key={provider.value}
-                      type="button"
-                      variant={
-                        selectedVectorStoreName === provider.value
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => setSelectedVectorStoreName(provider.value)}
-                    >
-                      {provider.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  API Key
-                </label>
-                <Textarea
-                  placeholder="Enter your Vector Store API Key here..."
-                  value={vectorStoreApiKey}
-                  onChange={(e) => setVectorStoreApiKey(e.target.value)}
-                />
-              </div>
-
-              <Button onClick={handleSaveVectorStore} className="w-full">
-                Save Vector Store Configuration
               </Button>
             </div>
           )}
