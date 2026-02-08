@@ -1,68 +1,245 @@
 import hashlib
+import os
 from typing import List, Optional, Dict, Tuple
+from pathlib import Path
 
+from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
+from langchain_anthropic import ChatAnthropic
 from langchain_community.vectorstores import FAISS
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
-from langchain_anthropic import ChatAnthropic, AnthropicEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 from manager import ConfigManager
 
 
 class Model:
-    """Optimized LLM and RAG model with caching and lazy loading."""
-    
     # Class-level cache for model instances to avoid recreating them
     _model_cache: Dict[str, any] = {}
     _embedding_cache: Dict[str, any] = {}
-    
-    def __init__(self, config_manager: ConfigManager):
+
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        use_cached_store: bool = True,
+        verbose: bool = False,
+    ):
+        """Initialize Model with knowledge store PDFs.
+
+        Args:
+            config_manager: ConfigManager instance for configuration
+            use_cached_store: Whether to use previously saved vector store if available
+            verbose: Enable detailed logging
+        """
         self.config_manager = config_manager
+        self.verbose = verbose
+
+        # Get configurations
         self.ai_config = self.config_manager.get_ai_config()
-        self.active_llm = self.ai_config.get("active_llm")
+        self.basic_config = self.config_manager.get_basic_config()
+        self.active_llm = self.ai_config.get("activeLlm")
         self.llm_config = self.config_manager.get_llm_config(model_name=self.active_llm)
-        self.persist_directory = self.ai_config.get("persist_directory", "./faiss_index")
-        self.chat_prompt = self.config_manager.get_chat_prompt()
-        self.api_key = self.llm_config.get("api_key")
-        
-        # Lazy initialization - only create when needed
+
+        # Setup paths - use first project's path from basicConfig
+        basic_configs = (
+            self.basic_config
+            if isinstance(self.basic_config, list)
+            else [self.basic_config]
+        )
+        project_config = basic_configs[0] if basic_configs else {}
+        project_path = project_config.get("projectPath", "./")
+
+        self.project_path = project_path
+        self.persist_directory = os.path.join(project_path, "vector_store")
+
+        # Get knowledge store files from config
+        self.knowledge_store_files = self.config_manager.get_knowledge_store_files()
+        self.pdf_paths = self._extract_pdf_paths()
+
+        # Initialize API key
+        raw_api_key = self.llm_config.get("apiKey", "")
+        self.api_key = raw_api_key.strip() if raw_api_key else None
+
+        # Get chat prompt
+        self.chat_prompt = self.ai_config.get(
+            "chatPrompt", "You are a helpful assistant."
+        )
+
+        # Initialize models (lazy loading)
         self._llm = None
         self._embedding = None
         self._store = None
-        
-        # Message cache to avoid rebuilding the same prompt
+
+        # Message cache
         self._message_cache: Dict[str, List[BaseMessage]] = {}
-        
+
+        # Track if PDFs have been loaded
+        self._pdfs_loaded = False
+        self._loaded_files = set()
+
+        # Log initialization
+        self._log(
+            f"Initializing Model with {len(self.pdf_paths)} PDF(s) from knowledge store"
+        )
+
+        # Initialize vector store with knowledge store PDFs
+        self._initialize_vector_store(use_cached_store=use_cached_store)
+
+    def _log(self, message: str):
+        """Log message if verbose mode enabled."""
+        if self.verbose:
+            print(f"[Model] {message}")
+
+    def _extract_pdf_paths(self) -> List[str]:
+        """Extract PDF file paths from knowledge store config.
+
+        Returns:
+            List of absolute paths to PDF files marked as feedLlm=true
+        """
+        pdf_paths = []
+
+        for file_info in self.knowledge_store_files:
+            # Only include files that should be fed to LLM
+            if not file_info.get("feedLlm", False):
+                self._log(f"Skipping {file_info.get('fileName')} (feedLlm=False)")
+                continue
+
+            # Only include PDF files
+            file_type = file_info.get("fileType", "").lower()
+            if file_type != "pdf":
+                self._log(
+                    f"Skipping {file_info.get('fileName')} (not PDF, type: {file_type})"
+                )
+                continue
+
+            file_path = file_info.get("filePath")
+            if file_path and os.path.exists(file_path):
+                pdf_paths.append(file_path)
+                self._log(f"Found PDF: {file_info.get('fileName')} at {file_path}")
+            else:
+                self._log(f"Warning: PDF not found at {file_path}")
+
+        return pdf_paths
+
+    def _initialize_vector_store(self, use_cached_store: bool = True):
+        """Initialize vector store from knowledge store PDFs or cached store.
+
+        Args:
+            use_cached_store: If True, try to load cached store first
+        """
+        # Try loading cached store first if requested
+        if use_cached_store and self._load_cached_store():
+            self._log(f"Loaded vector store from cache: {self.persist_directory}")
+            self._pdfs_loaded = True
+            return
+
+        # Load PDFs and build vector store
+        if self.pdf_paths:
+            self._log(f"Loading {len(self.pdf_paths)} PDF(s) from knowledge store...")
+            documents = self._load_pdfs()
+
+            if documents:
+                self._log(f"Building vector store from {len(documents)} documents...")
+                self._build_vector_store_from_documents(documents)
+                self._pdfs_loaded = True
+                self._log("Vector store initialized successfully")
+            else:
+                self._log("Warning: No documents extracted from PDFs")
+                self._store = None
+        else:
+            self._log("No PDFs in knowledge store. Vector store will be created empty.")
+            self._store = None
+
+    def _load_pdfs(self) -> List[Document]:
+        """Load and parse PDF files from knowledge store.
+
+        Returns:
+            List of Document objects extracted from PDFs
+        """
+        all_documents = []
+
+        for pdf_path in self.pdf_paths:
+            if not os.path.exists(pdf_path):
+                self._log(f"Warning: PDF file not found: {pdf_path}")
+                continue
+
+            try:
+                file_name = os.path.basename(pdf_path)
+                self._log(f"  Loading: {file_name}")
+
+                loader = PyPDFLoader(pdf_path)
+                documents = loader.load()
+
+                # Add metadata to track source
+                for doc in documents:
+                    doc.metadata["source_pdf"] = file_name
+                    doc.metadata["source_path"] = pdf_path
+
+                all_documents.extend(documents)
+                self._loaded_files.add(file_name)
+                self._log(f"    → Extracted {len(documents)} pages from {file_name}")
+
+            except Exception as e:
+                self._log(f"Error loading PDF {pdf_path}: {e}")
+                continue
+
+        return all_documents
+
+    def _build_vector_store_from_documents(self, documents: List[Document]):
+        """Build FAISS vector store from documents.
+
+        Args:
+            documents: List of Document objects to index
+        """
+        try:
+            self._store = FAISS.from_documents(documents, self.embedding)
+            # Save for future use
+            self.save()
+        except Exception as e:
+            self._log(f"Error building vector store: {e}")
+            self._store = None
+
+    def _load_cached_store(self) -> bool:
+        """Try to load vector store from disk.
+
+        Returns:
+            True if successfully loaded, False otherwise
+        """
+        if not os.path.exists(self.persist_directory):
+            return False
+
+        try:
+            self._store = FAISS.load_local(
+                self.persist_directory,
+                self.embedding,
+                allow_dangerous_deserialization=True,
+            )
+            return True
+        except Exception as e:
+            self._log(f"Could not load cached vector store: {e}")
+            return False
+
     @property
     def llm(self):
         """Lazy load LLM on first access."""
         if self._llm is None:
             self._llm = self._initialize_llm()
         return self._llm
-    
+
     @property
     def embedding(self):
         """Lazy load embedding model on first access."""
         if self._embedding is None:
             self._embedding = self._initialize_embedding()
         return self._embedding
-    
+
     @property
     def store(self):
-        """Lazy load vector store on first access."""
-        if self._store is None:
-            load_path = self.persist_directory
-            try:
-                self._store = FAISS.load_local(
-                    load_path, self.embedding, allow_dangerous_deserialization=True
-                )
-            except Exception:
-                # Store doesn't exist yet, will be created on first add_documents
-                self._store = None
+        """Get vector store (initialized on construction)."""
         return self._store
-    
+
     @store.setter
     def store(self, value):
         """Allow setting store directly."""
@@ -70,7 +247,14 @@ class Model:
 
     def check(self) -> dict:
         """Check if model is properly initialized."""
-        return {"status": self._llm is not None, "model": self.active_llm}
+        return {
+            "status": self._llm is not None,
+            "model": self.active_llm,
+            "vector_store_ready": self._store is not None,
+            "pdfs_loaded": self._pdfs_loaded,
+            "pdf_count": len(self.pdf_paths),
+            "loaded_files": list(self._loaded_files),
+        }
 
     def _get_model_key(self, model_type: str) -> str:
         """Generate a cache key for models."""
@@ -79,32 +263,33 @@ class Model:
     def _initialize_llm(self):
         """Initialize LLM with caching to avoid recreating the same model."""
         if not self.api_key:
-            raise ValueError(f"No API key found for {self.active_llm}")
+            raise ValueError(
+                f"No API key configured for {self.active_llm}. "
+                f"Please add your API key to config.json in llmConfig.{self.active_llm}.apiKey"
+            )
 
         cache_key = self._get_model_key("llm")
         if cache_key in self._model_cache:
             return self._model_cache[cache_key]
 
         model_config = {
-            "temperature": self.llm_config.get("temperature", 0.7),
-            "max_tokens": self.llm_config.get("max_tokens", 2000),
+            "temperature": self.ai_config.get("temperature", 0.7),
+            "max_tokens": self.ai_config.get("maxTokens", 2000),
             "api_key": self.api_key,
         }
 
         if self.active_llm == "google":
             llm = ChatGoogleGenerativeAI(
-                model=self.llm_config.get("model_name", "gemini-pro"),
-                **model_config
+                model=self.llm_config.get("modelName", "gemini-pro"), **model_config
             )
         elif self.active_llm == "openai":
             llm = ChatOpenAI(
-                model=self.llm_config.get("model_name", "gpt-4"),
-                **model_config
+                model=self.llm_config.get("modelName", "gpt-4"), **model_config
             )
         elif self.active_llm == "anthropic":
             llm = ChatAnthropic(
-                model=self.llm_config.get("model_name", "claude-3-5-sonnet-20241022"),
-                **model_config
+                model=self.llm_config.get("modelName", "claude-3-5-sonnet-20241022"),
+                **model_config,
             )
         else:
             raise ValueError(f"Unknown model: {self.active_llm}")
@@ -118,25 +303,9 @@ class Model:
         if cache_key in self._embedding_cache:
             return self._embedding_cache[cache_key]
 
-        embedding_config = {"api_key": self.api_key}
-
-        if self.active_llm == "openai":
-            embedding = OpenAIEmbeddings(
-                model='text-embedding-3-small',
-                **embedding_config
-            )
-        elif self.active_llm == "google":
-            embedding = GoogleGenerativeAIEmbeddings(
-                model='models/embedding-001',
-                **embedding_config
-            )
-        elif self.active_llm == "anthropic":
-            embedding = AnthropicEmbeddings(
-                model='claude-3-5-sonnet-20241022',
-                **embedding_config
-            )
-        else:
-            raise ValueError(f"Unknown embedding model: {self.active_llm}")
+        embedding = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
 
         self._embedding_cache[cache_key] = embedding
         return embedding
@@ -145,19 +314,22 @@ class Model:
         """Switch to a different LLM provider efficiently."""
         if model_name == self.active_llm:
             return  # No-op if same model
-        
-        self.ai_config["active_llm"] = model_name
+
+        self.ai_config["activeLlm"] = model_name
         self.config_manager.update_ai_config(self.ai_config)
         self.active_llm = model_name
         self.llm_config = self.config_manager.get_llm_config(model_name=self.active_llm)
-        self.api_key = self.llm_config.get("api_key")
-        
+
+        raw_api_key = self.llm_config.get("apiKey", "")
+        self.api_key = raw_api_key.strip() if raw_api_key else None
+
         # Reset lazy-loaded properties
         self._llm = None
         self._embedding = None
-        
+
         # Clear message cache when switching models
         self._message_cache.clear()
+        self._log(f"Switched LLM to {model_name}")
 
     def get_chat_prompt(self) -> str:
         """Get the current chat prompt."""
@@ -166,59 +338,77 @@ class Model:
     def update_chat_prompt(self, new_prompt: str):
         """Update the chat prompt and clear cache."""
         self.chat_prompt = new_prompt
-        self._message_cache.clear()  # Invalidate cached messages
+        self._message_cache.clear()
 
         if self.config_manager:
             config = self.config_manager.get()
-            config["chatPrompt"] = new_prompt
+            config["aiConfig"]["chatPrompt"] = new_prompt
             self.config_manager.save()
+            self._log(f"Updated chat prompt")
 
     def _build_messages(self, query: str, context: str = "") -> List[BaseMessage]:
         """Build messages with caching to avoid rebuilding identical prompts."""
-        # Create a cache key from query and context
-        cache_key = hashlib.md5(f"{self.chat_prompt}_{query}_{context}".encode()).hexdigest()
-        
+        cache_key = hashlib.md5(
+            f"{self.chat_prompt}_{query}_{context}".encode()
+        ).hexdigest()
+
         if cache_key in self._message_cache:
             return self._message_cache[cache_key]
-        
+
         messages = [SystemMessage(content=self.chat_prompt)]
-        
+
         if context:
             user_content = f"Context:\n{context}\n\nQuery: {query}"
         else:
             user_content = query
-        
+
         messages.append(HumanMessage(content=user_content))
-        
-        # Cache the messages
+
         self._message_cache[cache_key] = messages
         return messages
 
-    def process(self, query: str, context: str = "") -> str:
-        """Send query (and optional context) to the LLM with caching.
+    def process(self, query: str, context: str = "", use_context: bool = True) -> str:
+        """Process a query with optional context.
 
         Args:
-            query: The user's query
-            context: Optional context from RAG or other sources
+            query: User query
+            context: Optional explicit context (overrides auto-retrieval)
+            use_context: Whether to auto-retrieve context from vector store
+
+        Returns:
+            LLM response
         """
         if not self.api_key:
-            raise ValueError("No API key configured. Call switch_llm() first.")
+            raise ValueError(
+                f"No API key configured. Please set API key for {self.active_llm} in config.json"
+            )
+
+        # Auto-retrieve context from vector store if not provided
+        if not context and use_context and self._store is not None:
+            retrieved_docs = self.retrieve(query, k=3)
+            if retrieved_docs:
+                context = "\n\n".join(retrieved_docs)
+                self._log(f"Retrieved {len(retrieved_docs)} documents for context")
 
         messages = self._build_messages(query, context)
         response = self.llm.invoke(messages)
         return response.content
 
     def embed(self, text: str) -> List[float]:
-        """Generate embeddings for the given text."""
+        """Generate embedding for a single text."""
+        if not text or not text.strip():
+            raise ValueError("Cannot embed empty text")
         return self.embedding.embed_query(text)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple documents efficiently.
-        
-        Batches texts to reduce API calls.
+
+        Args:
+            texts: List of texts to embed
+
+        Returns:
+            List of embedding vectors
         """
-        # LangChain's embed_documents already batches internally,
-        # but we can optimize by filtering empty texts
         texts = [t for t in texts if t and t.strip()]
         if not texts:
             return []
@@ -226,21 +416,22 @@ class Model:
 
     def add_documents(self, docs: List[str], metadatas: Optional[List[dict]] = None):
         """Add documents to the vector store efficiently.
-        
-        Filters empty documents and batches operations.
+
+        Args:
+            docs: List of document texts
+            metadatas: Optional list of metadata dicts for each document
         """
-        # Filter out empty documents to avoid wasting embeddings
         filtered_docs = []
         filtered_metas = []
-        
+
         for doc, meta in zip(docs, metadatas or [{}] * len(docs)):
-            if doc and doc.strip():  # Skip empty documents
+            if doc and doc.strip():
                 filtered_docs.append(doc)
                 filtered_metas.append(meta or {})
-        
+
         if not filtered_docs:
             return
-        
+
         documents = [
             Document(page_content=doc, metadata=meta)
             for doc, meta in zip(filtered_docs, filtered_metas)
@@ -251,8 +442,20 @@ class Model:
         else:
             self.store.add_documents(documents)
 
+        # Save updated store
+        self.save()
+        self._log(f"Added {len(filtered_docs)} documents to vector store")
+
     def retrieve(self, query: str, k: int = 4) -> List[str]:
-        """Retrieve relevant documents for a query."""
+        """Retrieve relevant documents for a query.
+
+        Args:
+            query: Search query
+            k: Number of documents to retrieve
+
+        Returns:
+            List of relevant document texts
+        """
         if not self.store:
             return []
 
@@ -260,46 +463,149 @@ class Model:
         return [doc.page_content for doc in docs]
 
     def retrieve_with_scores(self, query: str, k: int = 4) -> List[Tuple[str, float]]:
-        """Retrieve documents with similarity scores."""
+        """Retrieve documents with similarity scores.
+
+        Args:
+            query: Search query
+            k: Number of documents to retrieve
+
+        Returns:
+            List of tuples (document_text, similarity_score)
+        """
         if not self.store:
             return []
 
         results = self.store.similarity_search_with_score(query, k=k)
         return [(doc.page_content, score) for doc, score in results]
 
+    def retrieve_with_metadata(self, query: str, k: int = 4) -> List[Dict]:
+        """Retrieve documents with metadata and scores.
+
+        Args:
+            query: Search query
+            k: Number of documents to retrieve
+
+        Returns:
+            List of dicts with 'content', 'score', and 'metadata'
+        """
+        if not self.store:
+            return []
+
+        results = self.store.similarity_search_with_score(query, k=k)
+        return [
+            {
+                "content": doc.page_content,
+                "score": score,
+                "metadata": doc.metadata,
+            }
+            for doc, score in results
+        ]
+
     def batch_retrieve(self, queries: List[str], k: int = 4) -> List[List[str]]:
         """Retrieve documents for multiple queries efficiently.
-        
-        More efficient than calling retrieve() multiple times.
+
+        Args:
+            queries: List of search queries
+            k: Number of documents to retrieve per query
+
+        Returns:
+            List of lists containing relevant documents for each query
         """
         if not self.store:
             return [[] for _ in queries]
-        
+
         return [self.retrieve(q, k) for q in queries]
 
     def save(self):
-        """Save the vector store to disk (FAISS only)."""
-        if self._store is not None:  # Only save if store exists
-            save_path = self.persist_directory
-            self._store.save_local(save_path)
+        """Save the vector store to disk."""
+        if self._store is not None:
+            try:
+                os.makedirs(self.persist_directory, exist_ok=True)
+                self._store.save_local(self.persist_directory)
+                self._log(f"Vector store saved to {self.persist_directory}")
+            except Exception as e:
+                self._log(f"Error saving vector store: {e}")
 
     def load(self):
-        """Load the vector store from disk (FAISS only)."""
+        """Load the vector store from disk."""
         load_path = self.persist_directory
         try:
             self._store = FAISS.load_local(
                 load_path, self.embedding, allow_dangerous_deserialization=True
             )
+            self._log(f"Vector store loaded from {load_path}")
         except Exception as e:
-            print(f"Could not load vector store: {e}")
+            self._log(f"Could not load vector store: {e}")
             self._store = None
+
+    def reload_knowledge_store(self, use_cached_store: bool = False):
+        """Reload knowledge store PDFs and rebuild vector store.
+
+        Args:
+            use_cached_store: Whether to use cached store if available
+        """
+        self._log("Reloading knowledge store PDFs...")
+        self.knowledge_store_files = self.config_manager.get_knowledge_store_files()
+        self.pdf_paths = self._extract_pdf_paths()
+        self._loaded_files.clear()
+        self._initialize_vector_store(use_cached_store=use_cached_store)
+
+    def get_knowledge_store_info(self) -> Dict:
+        """Get information about knowledge store files.
+
+        Returns:
+            Dictionary with knowledge store information
+        """
+        return {
+            "total_files": len(self.knowledge_store_files),
+            "pdfs_to_feed": len(
+                [f for f in self.knowledge_store_files if f.get("feedLlm")]
+            ),
+            "loaded_files": list(self._loaded_files),
+            "loaded_count": len(self._loaded_files),
+            "pdf_paths": self.pdf_paths,
+        }
+
+    def get_vector_store_info(self) -> Dict:
+        """Get information about the current vector store.
+
+        Returns:
+            Dictionary with vector store statistics
+        """
+        if not self._store:
+            return {
+                "status": "not_initialized",
+                "indexed_documents": 0,
+                "pdfs_loaded": False,
+            }
+
+        try:
+            doc_count = len(self._store.docstore._dict)
+            return {
+                "status": "ready",
+                "indexed_documents": doc_count,
+                "pdfs_loaded": self._pdfs_loaded,
+                "pdf_count": len(self.pdf_paths),
+                "loaded_files": list(self._loaded_files),
+                "persist_path": self.persist_directory,
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+            }
 
     def clear_cache(self):
         """Clear all internal caches."""
         self._message_cache.clear()
+        self._log("Cleared message cache")
 
     def get_cache_stats(self) -> Dict[str, int]:
-        """Get cache statistics for monitoring."""
+        """Get cache statistics for monitoring.
+
+        Returns:
+            Dictionary with cache sizes
+        """
         return {
             "message_cache_size": len(self._message_cache),
             "model_cache_size": len(self._model_cache),
@@ -311,12 +617,32 @@ if __name__ == "__main__":
     from manager import ConfigManager
 
     config_manager = ConfigManager()
-    llm = Model(config_manager)
-    llm.switch_llm("openai")
-    
-    # Example usage
-    response = llm.process("Hello, how are you?")
-    print(response)
-    
-    # Check cache stats
-    print(llm.get_cache_stats())
+
+    try:
+        # Initialize with knowledge store PDFs
+        llm = Model(config_manager, verbose=True)
+
+        print("\n=== Model Initialized ===")
+        print(f"Status: {llm.check()}")
+        print(f"Knowledge Store Info: {llm.get_knowledge_store_info()}")
+        print(f"Vector Store Info: {llm.get_vector_store_info()}")
+
+        # Example usage with RAG
+        if llm.store is not None:
+            queries = [
+                "What is the main topic of the papers?",
+                "What are the key findings?",
+            ]
+
+            print("\n=== Processing Queries ===")
+            for query in queries:
+                print(f"\nQuery: {query}")
+                response = llm.process(query)  # Auto-retrieves context from PDFs
+                print(f"Response: {response}")
+
+        print("\n=== Cache Statistics ===")
+        print(llm.get_cache_stats())
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        print("Please configure your API keys in config.json")

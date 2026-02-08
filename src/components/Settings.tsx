@@ -33,10 +33,7 @@ const modelsByProvider: Record<string, { label: string; value: string }[]> = {
     { label: "GPT-4o mini", value: "gpt-4o-mini" },
     { label: "GPT-4 Turbo", value: "gpt-4-turbo" },
     { label: "GPT-4", value: "gpt-4" },
-
-    // Image generation
-    { label: "GPT-4o (with vision)", value: "gpt-4-vision" },
-    { label: "gpt-image-1 (Image Generation)", value: "gpt-image-1" },
+    { label: "GPT-3.5 Turbo", value: "gpt-3.5-turbo" },
   ],
   anthropic: [
     // Latest Claude models
@@ -57,14 +54,8 @@ const modelsByProvider: Record<string, { label: string; value: string }[]> = {
 };
 
 export default function Settings() {
-  const {
-    config,
-    loading,
-    updateTabsConfig,
-    updateLlmConfig,
-    updateEmbeddingsConfig,
-    updateAIConfig,
-  } = useConfig();
+  const { config, loading, updateTabsConfig, updateLlmConfig, updateAIConfig } =
+    useConfig();
 
   const [activeTab, setActiveTab] = useState("file-viewer");
 

@@ -23,9 +23,9 @@ class ConfigManager:
         with open(self.config_path, "w") as f:
             json.dump(self.config, f, indent=4)
 
-    def get_llm_config(self, llm_name: str) -> Optional[dict]:
+    def get_llm_config(self, model_name: str) -> Optional[dict]:
         """Get LLM configuration by name."""
-        return self.config.get("llmConfig", {}).get(llm_name)
+        return self.config.get("llmConfig", {}).get(model_name)
 
 
     def get_knowledge_store_files(self) -> List[dict]:
@@ -48,7 +48,7 @@ class ConfigManager:
 
     def get_basic_config(self) -> List[dict]:
         """Get basic project configuration."""
-        return self.config.get("basicConfig", [])
+        return self.config.get("basicConfig", [])[0]
 
     def get_ai_config(self) -> dict:
         """Get AI configuration."""

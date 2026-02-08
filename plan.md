@@ -4,14 +4,16 @@
 
 [ Frame 1 ]
 
-- [ ] Library: Create Complete Report, out of The Tabs, in PDF Format and save to Documents.
+- [ ] Refresh Automatically, on any changes in filesystem
 
 [ Frame 2 ]
 
-- [ ] 
+- [ ] PDF Controls
+- [ ] Arxiv
 
 [ Frame 3 ]
 
+- [ ] Model Testing
 - [ ] 
 
 [ Bugs ]
