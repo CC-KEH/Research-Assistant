@@ -6,7 +6,6 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { error, info } from "@/lib/logger";
 import { BugType, Project, TreeNode } from "@/lib/types";
 
-// Python API Configuration
 const PYTHON_API_BASE = "http://localhost:8000";
 
 //*********************** */
@@ -18,7 +17,7 @@ export const startPythonServer = async (): Promise<string> => {
     const result = await invoke<string>("start_python_server");
     info(`Python server started with result: ${result}`);
     // Wait for server to be ready
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 15000));
 
     // Verify server is responding
     let retries = 5;
@@ -88,14 +87,13 @@ export interface InitializeResponse {
   status: string;
   config_path: string;
   chats_path: string;
-  vector_store_path: string;
   vector_store_loaded: boolean;
   components: any;
 }
 
 export const initializePythonBackend = async (
   config_path: string,
-  chatsPath: string,
+  chats_path: string,
 ): Promise<InitializeResponse> => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/initialize`, {
@@ -103,7 +101,7 @@ export const initializePythonBackend = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         config_path: config_path,
-        chats_path: chatsPath,
+        chats_path: chats_path,
       }),
     });
 
@@ -117,18 +115,7 @@ export const initializePythonBackend = async (
     return data;
   } catch (err) {
     error(`Failed to initialize Python backend: ${err}`);
-    throw error;
-  }
-};
-
-export const getInitializationStatus = async () => {
-  try {
-    const response = await fetch(`${PYTHON_API_BASE}/initialize/status`);
-    if (!response.ok) throw new Error("Failed to get initialization status");
-    return await response.json();
-  } catch (err) {
-    error(`Failed to get initialization status: ${err}`);
-    return { initialized: false };
+    throw err;
   }
 };
 
@@ -139,7 +126,7 @@ export const getPythonBackendStatus = async () => {
     return await response.json();
   } catch (err) {
     error(`Failed to get Python backend status: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -165,7 +152,7 @@ export const switchLLM = async (modelName: string) => {
     return data;
   } catch (err) {
     error(`Failed to switch LLM: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -176,7 +163,7 @@ export const getLLMStatus = async () => {
     return await response.json();
   } catch (err) {
     error(`Failed to get LLM status: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -186,7 +173,12 @@ export const getLLMStatus = async () => {
 
 export interface Session {
   name: string;
-  history: any[];
+  history: Array<{
+    index: string;
+    timestamp: string;
+    message: string;
+    is_ai: boolean;
+  }>;
   metadata: {
     created_at: string;
     last_updated: string;
@@ -211,7 +203,11 @@ export const createSession = async (
     const response = await fetch(`${PYTHON_API_BASE}/sessions/create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, tags: tags || [], context: context || "" }),
+      body: JSON.stringify({
+        name,
+        tags: tags || [],
+        context: context || "",
+      }),
     });
 
     if (!response.ok) {
@@ -220,11 +216,11 @@ export const createSession = async (
     }
 
     const data = await response.json();
-    info(`✅ [createSession] : Session created : ${data}`);
+    info(`✅ [createSession] : Session created : ${name}`);
     return data;
   } catch (err) {
     error(`Failed to create session: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -232,10 +228,11 @@ export const getAllSessions = async () => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/sessions`);
     if (!response.ok) throw new Error("Failed to get sessions");
-    return await response.json();
+    const data = await response.json();
+    return data.sessions;
   } catch (err) {
     error(`Failed to get sessions: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -248,7 +245,7 @@ export const getActiveSession = async () => {
     }
     return await response.json();
   } catch (err) {
-    error(`Failed to get active session: ${err}`);
+    // 404 is expected when no active session
     return null;
   }
 };
@@ -259,8 +256,8 @@ export const getSession = async (sessionIndex: number) => {
     if (!response.ok) throw new Error("Failed to get session");
     return await response.json();
   } catch (err) {
-    error(`Failed to get session: ${err}`);
-    throw error;
+    error(`Failed to get session ${sessionIndex}: ${err}`);
+    throw err;
   }
 };
 
@@ -270,10 +267,51 @@ export const getSessionHistory = async (sessionIndex: number) => {
       `${PYTHON_API_BASE}/sessions/${sessionIndex}/history`,
     );
     if (!response.ok) throw new Error("Failed to get session history");
-    return await response.json();
+    const data = await response.json();
+    return data.history;
   } catch (err) {
     error(`Failed to get session history: ${err}`);
-    throw error;
+    throw err;
+  }
+};
+
+export const getSessionStats = async (sessionIndex: number) => {
+  try {
+    const response = await fetch(
+      `${PYTHON_API_BASE}/sessions/${sessionIndex}/stats`,
+    );
+    if (!response.ok) throw new Error("Failed to get session stats");
+    return await response.json();
+  } catch (err) {
+    error(`Failed to get session stats: ${err}`);
+    throw err;
+  }
+};
+
+export const updateSession = async (
+  sessionIndex: number,
+  updates: {
+    name?: string;
+    context?: string;
+    tags?: string[];
+  },
+) => {
+  try {
+    const response = await fetch(
+      `${PYTHON_API_BASE}/sessions/${sessionIndex}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      },
+    );
+    if (!response.ok) throw new Error("Failed to update session");
+    const data = await response.json();
+    info(`✅ [updateSession] : Session updated : ${sessionIndex}`);
+    return data;
+  } catch (err) {
+    error(`Failed to update session: ${err}`);
+    throw err;
   }
 };
 
@@ -285,11 +323,11 @@ export const switchSession = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to switch session");
     const data = await response.json();
-    info(`✅ [switchSession] : Switched to session : ${sessionIndex}`);
+    info(`✅ [switchSession] : Switched to session ${sessionIndex}`);
     return data;
   } catch (err) {
     error(`Failed to switch session: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -300,10 +338,12 @@ export const deleteSession = async (sessionIndex: number) => {
       { method: "DELETE" },
     );
     if (!response.ok) throw new Error("Failed to delete session");
-    return await response.json();
+    const data = await response.json();
+    info(`✅ [deleteSession] : Session deleted : ${sessionIndex}`);
+    return data;
   } catch (err) {
     error(`Failed to delete session: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -315,17 +355,13 @@ export const resetSession = async (sessionIndex: number) => {
     );
     if (!response.ok) throw new Error("Failed to reset session");
     const data = await response.json();
-    info(`✅ [resetSession] : Session reset : ${sessionIndex}`);
+    info(`✅ [resetSession] : Session history cleared : ${sessionIndex}`);
     return data;
   } catch (err) {
     error(`Failed to reset session: ${err}`);
-    throw error;
+    throw err;
   }
 };
-
-//*********************** */
-//* Python API - Chat
-//*********************** */
 
 export interface ChatResponse {
   response: string;
@@ -346,7 +382,7 @@ export const sendChatMessage = async (
       body: JSON.stringify({
         message,
         use_rag: useRAG,
-        session_index: sessionIndex,
+        session_index: sessionIndex || null,
         k,
       }),
     });
@@ -356,10 +392,12 @@ export const sendChatMessage = async (
       throw new Error(error.detail || "Failed to send message");
     }
 
-    return await response.json();
+    const data = await response.json();
+    info(`✅ [sendChatMessage] : Message sent and saved`);
+    return data;
   } catch (err) {
     error(`Failed to send chat message: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -372,6 +410,8 @@ export const setupVectorStore = async (
   metadatas?: Record<string, any>[],
 ) => {
   try {
+    // The Assistant.setup_rag method handles this
+    // This endpoint may not exist - consider using addDocumentsToVectorStore instead
     const response = await fetch(`${PYTHON_API_BASE}/vectorstore/setup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -384,11 +424,13 @@ export const setupVectorStore = async (
     }
 
     const data = await response.json();
-    info(`✅ [setupVectorStore] : Vector store setup: ${data}`);
+    info(
+      `✅ [setupVectorStore] : Vector store setup with ${documents.length} documents`,
+    );
     return data;
   } catch (err) {
     error(`Failed to setup vector store: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -409,11 +451,13 @@ export const addDocumentsToVectorStore = async (
     }
 
     const data = await response.json();
-    info(`✅ [addDocumentsToVectorStore] : Documents added: ${data}`);
+    info(
+      `✅ [addDocumentsToVectorStore] : Added ${documents.length} documents`,
+    );
     return data;
   } catch (err) {
     error(`Failed to add documents to vector store: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -424,13 +468,9 @@ export const getVectorStoreStatus = async () => {
     return await response.json();
   } catch (err) {
     error(`Failed to get vector store status: ${err}`);
-    throw error;
+    throw err;
   }
 };
-
-//*********************** */
-//* Python API - Tab Processing
-//*********************** */
 
 export const processWithTab = async (tabId: string, text: string) => {
   try {
@@ -445,47 +485,12 @@ export const processWithTab = async (tabId: string, text: string) => {
       throw new Error(error.detail || "Failed to process with tab");
     }
 
-    return await response.json();
+    const data = await response.json();
+    info(`✅ [processWithTab] : Processed with tab ${tabId}`);
+    return data;
   } catch (err) {
     error(`Failed to process with tab: ${err}`);
-    throw error;
-  }
-};
-
-//*********************** */
-//* Python API - Config
-//*********************** */
-
-export const getPythonConfig = async () => {
-  try {
-    const response = await fetch(`${PYTHON_API_BASE}/config`);
-    if (!response.ok) throw new Error("Failed to get config");
-    return await response.json();
-  } catch (err) {
-    error(`Failed to get Python config: ${err}`);
-    throw error;
-  }
-};
-
-export const getAIConfig = async () => {
-  try {
-    const response = await fetch(`${PYTHON_API_BASE}/config/ai`);
-    if (!response.ok) throw new Error("Failed to get AI config");
-    return await response.json();
-  } catch (err) {
-    error(`Failed to get AI config: ${err}`);
-    throw error;
-  }
-};
-
-export const getTabs = async () => {
-  try {
-    const response = await fetch(`${PYTHON_API_BASE}/config/tabs`);
-    if (!response.ok) throw new Error("Failed to get tabs");
-    return await response.json();
-  } catch (err) {
-    error(`Failed to get tabs: ${err}`);
-    throw error;
+    throw err;
   }
 };
 
@@ -666,16 +671,6 @@ export const modelSettings = () => {
 
 export const reportBug = (bugType: BugType) => {
   info("reportBug not implemented");
-};
-
-export const loadConfig = async (config: Config) => {
-  try {
-    // TODO: update project config based on config
-    info("Config loaded successfully");
-  } catch (err) {
-    error(`Failed to load config: ${err}`);
-    return null;
-  }
 };
 
 export const getContent = (tab_id: string) => {

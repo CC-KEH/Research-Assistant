@@ -1,5 +1,6 @@
 import hashlib
 import os
+import json
 from typing import List, Optional, Dict, Tuple
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 
-from manager import ConfigManager
+from manager import *
 
 
 class Model:
@@ -23,18 +24,24 @@ class Model:
     def __init__(
         self,
         config_manager: ConfigManager,
+        session_manager: SessionManager,
         use_cached_store: bool = True,
         verbose: bool = False,
+        save_chats: bool = False,
     ):
         """Initialize Model with knowledge store PDFs.
 
         Args:
             config_manager: ConfigManager instance for configuration
+            session_manager: SessionManager instance for chat persistence
             use_cached_store: Whether to use previously saved vector store if available
             verbose: Enable detailed logging
+            save_chats: Enable automatic chat saving to file
         """
         self.config_manager = config_manager
+        self.session_manager = session_manager
         self.verbose = verbose
+        self.save_chats_enabled = save_chats
 
         # Get configurations
         self.ai_config = self.config_manager.get_ai_config()
@@ -538,6 +545,118 @@ class Model:
             self._log(f"Could not load vector store: {e}")
             self._store = None
 
+    # ========================= CHAT PERSISTENCE METHODS =========================
+
+    def create_chat_session(self, name: str, tags: List[str] = None, context: str = "") -> int:
+        """Create a new chat session.
+
+        Args:
+            name: Session name
+            tags: Optional list of tags
+            context: Optional context for the session
+
+        Returns:
+            Index of the created session
+        """
+        try:
+            session_index = self.session_manager.create_session(name, tags=tags, context=context)
+            self._log(f"Created chat session: {name}")
+            return session_index
+        except Exception as e:
+            self._log(f"Error creating chat session: {e}")
+            return -1
+
+    def switch_chat_session(self, session_index: int):
+        """Switch to a different chat session.
+
+        Args:
+            session_index: Index of the session to switch to
+        """
+        try:
+            self.session_manager.switch_session(session_index)
+            self._log(f"Switched to session {session_index}")
+        except Exception as e:
+            self._log(f"Error switching session: {e}")
+
+    def get_all_sessions(self) -> List[Dict]:
+        """Get all chat sessions.
+
+        Returns:
+            List of session dictionaries
+        """
+        try:
+            return self.session_manager.get_sessions()
+        except Exception as e:
+            self._log(f"Error getting sessions: {e}")
+            return []
+
+    def get_chat_history(self) -> List[Dict]:
+        """Get the current chat history from session manager.
+
+        Returns:
+            List of chat messages
+        """
+        try:
+            if self.session_manager.active_session_index is None:
+                return []
+            
+            return self.session_manager.get_formatted_history()
+        except Exception as e:
+            self._log(f"Error getting chat history: {e}")
+            return []
+
+    def add_to_chat_history(self, role: str, content: str):
+        """Add a message to the current chat history.
+
+        Args:
+            role: "user" or "assistant"
+            content: The message content
+        """
+        try:
+            if self.session_manager.active_session_index is None:
+                self._log("Error: No active session. Create or switch to a session first.")
+                return
+            
+            is_ai = (role == "assistant")
+            self.session_manager.add_to_history(content, is_ai=is_ai)
+            self._log(f"Added {role} message to chat history")
+            
+            # Auto-save is automatic through SessionManager.add_to_history
+        except Exception as e:
+            self._log(f"Error adding to chat history: {e}")
+
+    def clear_chat_history(self):
+        """Clear the current chat history."""
+        try:
+            if self.session_manager.active_session_index is not None:
+                self.session_manager.reset_session(self.session_manager.active_session_index)
+                self._log(f"Cleared chat history")
+        except Exception as e:
+            self._log(f"Error clearing chat history: {e}")
+
+    def get_session_stats(self, session_index: int = None) -> Optional[Dict]:
+        """Get statistics for a session.
+
+        Args:
+            session_index: Index of the session (uses active session if not provided)
+
+        Returns:
+            Dictionary with session statistics
+        """
+        try:
+            if session_index is None:
+                session_index = self.session_manager.active_session_index
+            
+            if session_index is None:
+                return None
+            
+            return self.session_manager.get_session_stats(session_index)
+        except Exception as e:
+            self._log(f"Error getting session stats: {e}")
+            return None
+
+    # ========================= KNOWLEDGE STORE METHODS =========================
+
     def reload_knowledge_store(self, use_cached_store: bool = False):
         """Reload knowledge store PDFs and rebuild vector store.
 
@@ -614,18 +733,25 @@ class Model:
 
 
 if __name__ == "__main__":
-    from manager import ConfigManager
+    from manager import ConfigManager, SessionManager
 
+    chats_path = "./chats.json"
     config_manager = ConfigManager()
+    session_manager = SessionManager(chats_path)
 
     try:
-        # Initialize with knowledge store PDFs
-        llm = Model(config_manager, verbose=True)
+        # Initialize with knowledge store PDFs and auto-save enabled
+        llm = Model(config_manager, session_manager, verbose=True, save_chats=True)
 
         print("\n=== Model Initialized ===")
         print(f"Status: {llm.check()}")
         print(f"Knowledge Store Info: {llm.get_knowledge_store_info()}")
         print(f"Vector Store Info: {llm.get_vector_store_info()}")
+
+        # Create a new chat session
+        print("\n=== Creating Chat Session ===")
+        session_index = llm.create_chat_session("Research Q&A", tags=["research", "papers"])
+        print(f"Created session at index: {session_index}")
 
         # Example usage with RAG
         if llm.store is not None:
@@ -634,14 +760,39 @@ if __name__ == "__main__":
                 "What are the key findings?",
             ]
 
-            print("\n=== Processing Queries ===")
+            print("\n=== Processing Queries and Saving to Chat ===")
             for query in queries:
                 print(f"\nQuery: {query}")
+                
+                # Add user query to chat history
+                llm.add_to_chat_history("user", query)
+                
+                # Get LLM response
                 response = llm.process(query)  # Auto-retrieves context from PDFs
                 print(f"Response: {response}")
+                
+                # Add assistant response to chat history
+                llm.add_to_chat_history("assistant", response)
+
+        # Display chat history
+        print("\n=== Chat History ===")
+        history = llm.get_chat_history()
+        for msg in history:
+            role = "User" if not msg.get("is_ai") else "Assistant"
+            print(f"[{msg.get('timestamp')}] {role}: {msg.get('message')}")
+
+        # Show session stats
+        print("\n=== Session Statistics ===")
+        stats = llm.get_session_stats()
+        if stats:
+            print(f"Total messages: {stats['total_messages']}")
+            print(f"User messages: {stats['user_messages']}")
+            print(f"AI messages: {stats['ai_messages']}")
 
         print("\n=== Cache Statistics ===")
         print(llm.get_cache_stats())
+
+        print("\n✓ Chats saved to chats.json")
 
     except ValueError as e:
         print(f"Error: {e}")

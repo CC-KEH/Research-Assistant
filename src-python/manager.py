@@ -1,3 +1,4 @@
+import os
 import json
 import datetime
 from typing import List, Optional
@@ -107,16 +108,37 @@ class SessionManager:
         self.active_session_index = None
 
     def load_chats(self) -> dict:
-        """Load chats from JSON file."""
+        """Load chats from JSON file. Handles empty and invalid JSON gracefully."""
         try:
             if not os.path.exists(self.chats_file):
+                # File doesn't exist - create it with default structure
                 with open(self.chats_file, "w") as f:
                     json.dump({"sessions": {"sessions": []}}, f)
-                    return {"sessions": {"sessions": []}}
+                return {"sessions": {"sessions": []}}
             else:
+                # File exists - try to read and parse
                 with open(self.chats_file, "r") as f:
-                    return json.load(f)
+                    content = f.read().strip()
+                    
+                    # Check if file is empty
+                    if not content:
+                        print(f"Warning: {self.chats_file} is empty. Initializing with default structure.")
+                        return {"sessions": {"sessions": []}}
+                    
+                    # Try to parse JSON
+                    return json.loads(content)
+        except json.JSONDecodeError as e:
+            # File contains invalid JSON
+            print(f"Warning: {self.chats_file} contains invalid JSON: {e}. Resetting file.")
+            with open(self.chats_file, "w") as f:
+                json.dump({"sessions": {"sessions": []}}, f)
+            return {"sessions": {"sessions": []}}
         except FileNotFoundError:
+            # Fallback for race condition
+            return {"sessions": {"sessions": []}}
+        except Exception as e:
+            # Catch any other unexpected errors
+            print(f"Error loading chats: {e}")
             return {"sessions": {"sessions": []}}
 
     def save_chats(self):
