@@ -136,9 +136,12 @@ export default function Assistant({ fileInfo }: AssistantProps) {
         const initResult = await initializePythonBackend(configPath, chatPath);
         info(`Backend initialized: ${initResult}`);
 
+        const llmInitResult = await switchLLM(aiConfig?.activeLlm);
+        info(`LLM initialized: ${llmInitResult}`);
+
         // Step 3: Configure LLM providers
-        if (aiConfig?.[0]?.activeLlm) {
-          setCurrentProvider(aiConfig[0].activeLlm);
+        if (aiConfig?.activeLlm) {
+          setCurrentProvider(aiConfig.activeLlm);
 
           const providers: string[] = [];
           if (llmConfig) {

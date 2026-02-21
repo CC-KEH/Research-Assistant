@@ -28,6 +28,8 @@ export interface LlmProvider {
 
 export interface AIConfig {
   activeLlm: string;
+  temperature: number;
+  maxTokens: number;
   chatPrompt: string;
 }
 
@@ -77,7 +79,7 @@ export interface Config {
     customTabs: Tab[];
   };
   llmConfig: LlmProvider[];
-  aiConfig: AIConfig[];
+  aiConfig: AIConfig;
   todos: Todo[];
 }
 

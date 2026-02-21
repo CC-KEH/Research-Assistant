@@ -107,6 +107,8 @@ pub struct LLMConfig {
 #[serde(rename_all = "camelCase")]
 pub struct AIConfig {
     pub active_llm: String,
+    pub temperature: f32,
+    pub max_tokens: u32,
     pub chat_prompt: String,
 }
 

@@ -150,7 +150,7 @@ export default function Settings() {
     };
 
     // Always pass as array
-    updateAIConfig([updatedAiConfig]);
+    updateAIConfig(updatedAiConfig);
   };
 
   if (loading) {
