@@ -14,13 +14,13 @@ pub async fn start_python_server(
     let mut child_guard = state.child.lock().unwrap();
 
     if child_guard.is_some() {
-        log::warn!("⚠️  Server already running");
+        log::warn!("Server already running");
         return Ok("Server already running".to_string());
     }
 
     #[cfg(debug_assertions)]
     {
-        log::info!("🔵 Debug mode: Starting Python server");
+        log::info!("Debug mode: Starting Python server");
 
         let project_root = std::env::current_dir()
             .map_err(|e| format!("Failed to get current dir: {}", e))?
@@ -57,7 +57,7 @@ pub async fn start_python_server(
                 "-m",
                 "uvicorn",
                 "app:app",
-                "--reload",
+                // "--reload",
                 "--host",
                 "127.0.0.1",
                 "--port",
@@ -74,9 +74,9 @@ pub async fn start_python_server(
             })?;
 
         let pid = child.id();
-        log::info!("🟢 FastAPI server started successfully (PID: {})", pid);
-        log::info!("📍 Server URL: http://127.0.0.1:8000");
-        log::info!("📍 Auto-reload: enabled (watches for file changes)");
+        log::info!("FastAPI server started successfully (PID: {})", pid);
+        log::info!("Server URL: http://127.0.0.1:8000");
+        log::info!("Auto-reload: enabled (watches for file changes)");
 
         *child_guard = Some(child);
 
@@ -88,7 +88,7 @@ pub async fn start_python_server(
 
     #[cfg(not(debug_assertions))]
     {
-        log::info!("🔵 Production mode: Starting Python server");
+        log::info!("Production mode: Starting Python server");
 
         let project_path = app
             .path()
@@ -140,8 +140,8 @@ pub async fn start_python_server(
             })?;
 
         let pid = child.id();
-        log::info!("🟢 FastAPI server started successfully (PID: {})", pid);
-        log::info!("📍 Server URL: http://127.0.0.1:8000");
+        log::info!("FastAPI server started successfully (PID: {})", pid);
+        log::info!("Server URL: http://127.0.0.1:8000");
 
         *child_guard = Some(child);
 
@@ -170,21 +170,29 @@ pub async fn stop_python_server(state: State<'_, PythonServer>) -> Result<String
             }
         }
     } else {
-        log::warn!("⚠️  Tried to stop server, but none was running");
+        log::warn!("Tried to stop server, but none was running");
         Ok("Server not running".to_string())
     }
 }
 
 #[tauri::command]
 pub async fn check_python_server(state: State<'_, PythonServer>) -> Result<bool, String> {
-    let child_guard = state.child.lock().unwrap();
-    let is_running = child_guard.is_some();
+    let is_running = {
+        let child_guard = state.child.lock().unwrap();
+        child_guard.is_some()
+    };
 
-    if is_running {
-        log::debug!("✅ Python server is running");
-    } else {
-        log::debug!("⚠️  Python server is not running");
+    if !is_running {
+        return Ok(false);
     }
 
-    Ok(is_running)
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(500)) // fail fast
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    match client.get("http://127.0.0.1:8000/health").send().await {
+        Ok(resp) if resp.status().is_success() => Ok(true),
+        _ => Ok(false),
+    }
 }

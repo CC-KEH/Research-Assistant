@@ -15,29 +15,7 @@ const PYTHON_API_BASE = "http://localhost:8000";
 export const startPythonServer = async (): Promise<string> => {
   try {
     const result = await invoke<string>("start_python_server");
-    info(`Python server started with result: ${result}`);
-    // Wait for server to be ready
-    await new Promise((resolve) => setTimeout(resolve, 15000));
-
-    // Verify server is responding
-    let retries = 5;
-    while (retries > 0) {
-      const isHealthy = await checkPythonServerHealth();
-      if (isHealthy) {
-        info("✅ Python server is healthy");
-        return result;
-      }
-      info(`Health check failed, retries remaining: ${retries}`);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      retries--;
-    }
-
-    // Server started but never became healthy
-    const error = new Error(
-      "Python server either failed to start or did not respond to health checks in time.",
-    );
-    (error as any).code = "SERVER_HEALTH_CHECK_FAILED";
-    throw error;
+    return result;
   } catch (err) {
     error(`Failed to start Python server: ${err}`);
     throw err;
@@ -56,20 +34,25 @@ export const stopPythonServer = async (): Promise<string> => {
 
 export const checkPythonServer = async (): Promise<boolean> => {
   try {
-    return await invoke<boolean>("check_python_server");
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    let retries = 10;
+    while (retries > 0) {
+      const isHealthy = await invoke<boolean>("check_python_server");
+      if (isHealthy) {
+        info("Python server is healthy");
+        return isHealthy;
+      }
+      info(`Health check failed, retries remaining: ${retries}`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      retries--;
+    }
+    const error = new Error(
+      "Server failed to become healthy after multiple retries.",
+    );
+    (error as any).code = "SERVER_HEALTH_CHECK_FAILED";
+    throw error;
   } catch (err) {
     error(`Failed to check Python server: ${err}`);
-    return false;
-  }
-};
-
-export const checkPythonServerHealth = async (): Promise<boolean> => {
-  try {
-    const response = await fetch(`${PYTHON_API_BASE}/health`, {
-      method: "GET",
-    });
-    return response.ok;
-  } catch (err) {
     return false;
   }
 };
@@ -111,7 +94,7 @@ export const initializePythonBackend = async (
     }
 
     const data = await response.json();
-    info("✅ Python backend initialized:", data);
+    info(`Python backend initialized: ${JSON.stringify(data)}`);
     return data;
   } catch (err) {
     error(`Failed to initialize Python backend: ${err}`);

@@ -108,6 +108,7 @@ pub struct LLMConfig {
 pub struct AIConfig {
     pub active_llm: String,
     pub temperature: f32,
+    pub api_key: String,
     pub max_tokens: u32,
     pub chat_prompt: String,
 }

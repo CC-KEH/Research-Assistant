@@ -4,14 +4,15 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Card, CardContent } from "./ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import type { AIConfig, Tab } from "@/lib/types";
+import type { AIConfig, LlmProvider, Tab } from "@/lib/types";
 import { useConfig } from "@/components/providers/ConfigProvider";
+import { info } from "@/lib/logger";
+import { Input } from "./ui/input";
 
 const tabs = [
   { id: "file-viewer", label: "File Viewer" },
   { id: "llm", label: "LLM" },
-  { id: "embeddings", label: "Embeddings" },
-  { id: "vector-store", label: "Vector Store" },
+  { id: "Advanced", label: "Advanced" },
 ];
 
 const llmProviders = [
@@ -22,16 +23,9 @@ const llmProviders = [
 
 const modelsByProvider: Record<string, { label: string; value: string }[]> = {
   openai: [
-    // Latest reasoning models
-    { label: "o4-mini (Reasoning)", value: "o4-mini" },
-    { label: "o4-mini-high (Reasoning)", value: "o4-mini-high" },
-    { label: "o3-pro (Reasoning)", value: "o3-pro" },
-    { label: "o3-mini (Reasoning)", value: "o3-mini" },
-
-    // Latest GPT models
+    { label: "GPT-5 Nano", value: "gpt-5-nano" },
     { label: "GPT-4o", value: "gpt-4o" },
     { label: "GPT-4o mini", value: "gpt-4o-mini" },
-    { label: "GPT-4 Turbo", value: "gpt-4-turbo" },
     { label: "GPT-4", value: "gpt-4" },
     { label: "GPT-3.5 Turbo", value: "gpt-3.5-turbo" },
   ],
@@ -54,7 +48,7 @@ const modelsByProvider: Record<string, { label: string; value: string }[]> = {
 };
 
 export default function Settings() {
-  const { config, loading, updateTabsConfig, updateLlmConfig, updateAIConfig } =
+  const { config, loading, updateTabsConfig, updateConfig, updateAIConfig } =
     useConfig();
 
   const [activeTab, setActiveTab] = useState("file-viewer");
@@ -67,6 +61,10 @@ export default function Settings() {
   const [selectedLlmModel, setSelectedLlmModel] = useState("gpt-4");
   const [llmApiKey, setLlmApiKey] = useState("");
 
+  // Advanced state
+  const [temperature, setTemperature] = useState(0.7);
+  const [maxTokens, setMaxTokens] = useState(2048);
+
   // Initialize state from config
   useEffect(() => {
     if (!loading && config) {
@@ -75,13 +73,22 @@ export default function Settings() {
         setFileViewerTabs(config.tabsConfig.tabs);
       }
 
-      // LLM Config - Handle array of providers
-      if (Array.isArray(config.llmConfig) && config.llmConfig.length > 0) {
-        const firstLlm = config.llmConfig[0];
-        setSelectedLlmName(firstLlm.name);
-        setSelectedLlmModel(firstLlm.value);
-        setLlmApiKey(firstLlm.api_key || "");
+      // LLM Config - read from object keyed by provider name
+      const aiConfig = config.aiConfig;
+
+      const activeLlmName = aiConfig?.activeLlm || "openai";
+      setSelectedLlmName(activeLlmName);
+
+      const matchedLlm = config.llmConfig?.[activeLlmName];
+      if (matchedLlm) {
+        setSelectedLlmModel(matchedLlm.modelName);
+        setLlmApiKey(matchedLlm.apiKey || "");
       }
+
+      // Advanced config
+      if (aiConfig?.temperature !== undefined)
+        setTemperature(aiConfig.temperature);
+      if (aiConfig?.maxTokens !== undefined) setMaxTokens(aiConfig.maxTokens);
     }
   }, [loading, config]);
 
@@ -107,49 +114,62 @@ export default function Settings() {
   const handleSaveLLM = async () => {
     if (!config || !selectedLlmName) return;
 
-    // Update or create LLM provider in the array
-    const updatedLlmConfig = Array.isArray(config.llmConfig)
-      ? config.llmConfig.map((llm) =>
-          llm.name === selectedLlmName
-            ? {
-                ...llm,
-                value: selectedLlmModel,
-                api_key: llmApiKey,
-              }
-            : llm,
-        )
-      : [
-          {
-            name: selectedLlmName,
-            label: selectedLlmName,
-            value: selectedLlmModel,
-            api_key: llmApiKey,
-          },
-        ];
+    const updatedLlmConfig: Record<string, LlmProvider> = {
+      ...config.llmConfig,
+      [selectedLlmName]: {
+        ...config.llmConfig[selectedLlmName],
+        modelName: selectedLlmModel,
+        apiKey: llmApiKey,
+      },
+    };
 
-    // If the provider doesn't exist, add it
-    if (!updatedLlmConfig.some((llm) => llm.name === selectedLlmName)) {
-      updatedLlmConfig.push({
-        name: selectedLlmName,
-        label: selectedLlmName,
-        value: selectedLlmModel,
-        api_key: llmApiKey,
-      });
+    const existingAiConfig = config.aiConfig as AIConfig;
+    const effectiveApiKey = llmApiKey.trim();
+
+    let updatedAiConfig: AIConfig = existingAiConfig;
+
+    if (effectiveApiKey) {
+      updatedAiConfig = {
+        ...existingAiConfig,
+        activeLlm: selectedLlmName,
+        apiKey: effectiveApiKey,
+      };
+    } else {
+      const fallbackEntry = Object.entries(updatedLlmConfig).find(
+        ([, provider]) => provider.apiKey?.trim(),
+      );
+
+      if (fallbackEntry) {
+        const [fallbackName, fallbackProvider] = fallbackEntry;
+        updatedAiConfig = {
+          ...existingAiConfig,
+          activeLlm: fallbackName,
+          apiKey: fallbackProvider.apiKey,
+        };
+      }
     }
 
-    updateLlmConfig(updatedLlmConfig);
+    // Single atomic update — prevents second setConfig from overwriting first
+    updateConfig({
+      ...config,
+      llmConfig: updatedLlmConfig,
+      aiConfig: updatedAiConfig,
+    });
+  };
 
-    // Update aiConfig with selected LLM
-    const aiConfig = Array.isArray(config.aiConfig)
+  const handleSaveAdvanced = async () => {
+    if (!config) return;
+
+    const existingAiConfig = Array.isArray(config.aiConfig)
       ? config.aiConfig[0]
       : (config.aiConfig as AIConfig);
 
     const updatedAiConfig: AIConfig = {
-      ...aiConfig,
-      activeLlm: selectedLlmName,
+      ...existingAiConfig,
+      temperature,
+      maxTokens,
     };
 
-    // Always pass as array
     updateAIConfig(updatedAiConfig);
   };
 
@@ -270,7 +290,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   API Key
                 </label>
-                <Textarea
+                <Input
                   placeholder="Enter your LLM API Key here..."
                   value={llmApiKey}
                   onChange={(e) => setLlmApiKey(e.target.value)}
@@ -279,6 +299,71 @@ export default function Settings() {
 
               <Button onClick={handleSaveLLM} className="w-full">
                 Save LLM Configuration
+              </Button>
+            </div>
+          )}
+          {/* Advanced Tab */}
+          {activeTab === "Advanced" && (
+            <div className="w-full h-fit space-y-6 px-4 py-6 overflow-y-auto scrollbar-thin">
+              {/* Temperature */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Temperature
+                  </label>
+                  <span className="text-sm font-semibold text-primary w-10 text-right">
+                    {temperature}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Controls randomness. Lower = more focused, higher = more
+                  creative.
+                </p>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  className="w-full accent-primary cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0 — Precise</span>
+                  <span>1 — Creative</span>
+                </div>
+              </div>
+
+              {/* Max Tokens */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Max Tokens
+                  </label>
+                  <span className="text-sm font-semibold text-primary w-16 text-right">
+                    {maxTokens}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Maximum number of tokens the model can generate in a response.
+                </p>
+                <input
+                  type="range"
+                  min={256}
+                  max={8192}
+                  step={256}
+                  value={maxTokens}
+                  onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+                  className="w-full accent-primary cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>256</span>
+                  <span>8192</span>
+                </div>
+              </div>
+
+              <Button onClick={handleSaveAdvanced} className="w-full">
+                Save Advanced Configuration
               </Button>
             </div>
           )}

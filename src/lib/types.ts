@@ -20,15 +20,15 @@ export interface Tab {
 }
 
 export interface LlmProvider {
-  name: string;
   label: string;
-  value: string;
-  api_key: string;
+  modelName: string;
+  apiKey: string;
 }
 
 export interface AIConfig {
   activeLlm: string;
   temperature: number;
+  apiKey: string;
   maxTokens: number;
   chatPrompt: string;
 }
@@ -78,7 +78,7 @@ export interface Config {
     tabs: Tab[];
     customTabs: Tab[];
   };
-  llmConfig: LlmProvider[];
+  llmConfig: Record<string, LlmProvider>;
   aiConfig: AIConfig;
   todos: Todo[];
 }

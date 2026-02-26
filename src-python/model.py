@@ -74,11 +74,6 @@ class Model:
             "chatPrompt", "You are a helpful assistant."
         )
 
-        # Initialize models (lazy loading)
-        self._llm = None
-        self._embedding = None
-        self._store = None
-
         # Message cache
         self._message_cache: Dict[str, List[BaseMessage]] = {}
 
@@ -90,6 +85,11 @@ class Model:
         self._log(
             f"Initializing Model with {len(self.pdf_paths)} PDF(s) from knowledge store"
         )
+
+        # Eagerly initialize embedding and LLM on construction
+        self._embedding = self._initialize_embedding()
+        self._llm = self._initialize_llm()
+        self._store = None
 
         # Initialize vector store with knowledge store PDFs
         self._initialize_vector_store(use_cached_store=use_cached_store)
@@ -201,7 +201,7 @@ class Model:
             documents: List of Document objects to index
         """
         try:
-            self._store = FAISS.from_documents(documents, self.embedding)
+            self._store = FAISS.from_documents(documents, self._embedding)
             # Save for future use
             self.save()
         except Exception as e:
@@ -220,7 +220,7 @@ class Model:
         try:
             self._store = FAISS.load_local(
                 self.persist_directory,
-                self.embedding,
+                self._embedding,
                 allow_dangerous_deserialization=True,
             )
             return True
@@ -230,16 +230,10 @@ class Model:
 
     @property
     def llm(self):
-        """Lazy load LLM on first access."""
-        if self._llm is None:
-            self._llm = self._initialize_llm()
         return self._llm
 
     @property
     def embedding(self):
-        """Lazy load embedding model on first access."""
-        if self._embedding is None:
-            self._embedding = self._initialize_embedding()
         return self._embedding
 
     @property
@@ -285,21 +279,31 @@ class Model:
             "api_key": self.api_key,
         }
 
-        if self.active_llm == "google":
-            llm = ChatGoogleGenerativeAI(
-                model=self.llm_config.get("modelName", "gemini-pro"), **model_config
-            )
-        elif self.active_llm == "openai":
-            llm = ChatOpenAI(
-                model=self.llm_config.get("modelName", "gpt-4"), **model_config
-            )
-        elif self.active_llm == "anthropic":
-            llm = ChatAnthropic(
-                model=self.llm_config.get("modelName", "claude-3-5-sonnet-20241022"),
-                **model_config,
-            )
-        else:
-            raise ValueError(f"Unknown model: {self.active_llm}")
+        try:
+            if self.active_llm == "google":
+                llm = ChatGoogleGenerativeAI(
+                    model=self.llm_config.get("modelName", "gemini-pro"), **model_config
+                )
+            elif self.active_llm == "openai":
+                llm = ChatOpenAI(
+                    model=self.llm_config.get("modelName", "gpt-4"), **model_config
+                )
+            elif self.active_llm == "anthropic":
+                llm = ChatAnthropic(
+                    model=self.llm_config.get("modelName", "claude-3-5-sonnet-20241022"),
+                    **model_config,
+                )
+            else:
+                raise ValueError(f"Unknown LLM provider: '{self.active_llm}'. "
+                                 f"Supported providers are: 'google', 'openai', 'anthropic'.")
+        except ValueError:
+            raise  # Re-raise unknown provider errors as-is
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to initialize '{self.active_llm}' LLM. "
+                f"Check your API key and model name in config.json.\n"
+                f"Details: {e}"
+            ) from e
 
         self._model_cache[cache_key] = llm
         return llm
@@ -311,7 +315,7 @@ class Model:
             return self._embedding_cache[cache_key]
 
         embedding = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
         )
 
         self._embedding_cache[cache_key] = embedding
@@ -330,9 +334,9 @@ class Model:
         raw_api_key = self.llm_config.get("apiKey", "")
         self.api_key = raw_api_key.strip() if raw_api_key else None
 
-        # Reset lazy-loaded properties
-        self._llm = None
-        self._embedding = None
+        # Reinitialize models immediately after switch
+        self._embedding = self._initialize_embedding()
+        self._llm = self._initialize_llm()
 
         # Clear message cache when switching models
         self._message_cache.clear()
@@ -398,14 +402,14 @@ class Model:
                 self._log(f"Retrieved {len(retrieved_docs)} documents for context")
 
         messages = self._build_messages(query, context)
-        response = self.llm.invoke(messages)
+        response = self._llm.invoke(messages)
         return response.content
 
     def embed(self, text: str) -> List[float]:
         """Generate embedding for a single text."""
         if not text or not text.strip():
             raise ValueError("Cannot embed empty text")
-        return self.embedding.embed_query(text)
+        return self._embedding.embed_query(text)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple documents efficiently.
@@ -419,7 +423,7 @@ class Model:
         texts = [t for t in texts if t and t.strip()]
         if not texts:
             return []
-        return self.embedding.embed_documents(texts)
+        return self._embedding.embed_documents(texts)
 
     def add_documents(self, docs: List[str], metadatas: Optional[List[dict]] = None):
         """Add documents to the vector store efficiently.
@@ -444,10 +448,10 @@ class Model:
             for doc, meta in zip(filtered_docs, filtered_metas)
         ]
 
-        if self.store is None:
-            self._store = FAISS.from_documents(documents, self.embedding)
+        if self._store is None:
+            self._store = FAISS.from_documents(documents, self._embedding)
         else:
-            self.store.add_documents(documents)
+            self._store.add_documents(documents)
 
         # Save updated store
         self.save()
@@ -463,10 +467,10 @@ class Model:
         Returns:
             List of relevant document texts
         """
-        if not self.store:
+        if not self._store:
             return []
 
-        docs = self.store.similarity_search(query, k=k)
+        docs = self._store.similarity_search(query, k=k)
         return [doc.page_content for doc in docs]
 
     def retrieve_with_scores(self, query: str, k: int = 4) -> List[Tuple[str, float]]:
@@ -479,10 +483,10 @@ class Model:
         Returns:
             List of tuples (document_text, similarity_score)
         """
-        if not self.store:
+        if not self._store:
             return []
 
-        results = self.store.similarity_search_with_score(query, k=k)
+        results = self._store.similarity_search_with_score(query, k=k)
         return [(doc.page_content, score) for doc, score in results]
 
     def retrieve_with_metadata(self, query: str, k: int = 4) -> List[Dict]:
@@ -495,10 +499,10 @@ class Model:
         Returns:
             List of dicts with 'content', 'score', and 'metadata'
         """
-        if not self.store:
+        if not self._store:
             return []
 
-        results = self.store.similarity_search_with_score(query, k=k)
+        results = self._store.similarity_search_with_score(query, k=k)
         return [
             {
                 "content": doc.page_content,
@@ -518,7 +522,7 @@ class Model:
         Returns:
             List of lists containing relevant documents for each query
         """
-        if not self.store:
+        if not self._store:
             return [[] for _ in queries]
 
         return [self.retrieve(q, k) for q in queries]
@@ -538,7 +542,7 @@ class Model:
         load_path = self.persist_directory
         try:
             self._store = FAISS.load_local(
-                load_path, self.embedding, allow_dangerous_deserialization=True
+                load_path, self._embedding, allow_dangerous_deserialization=True
             )
             self._log(f"Vector store loaded from {load_path}")
         except Exception as e:

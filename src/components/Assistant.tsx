@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
-import { Mic, CornerDownLeft, ChevronDown } from "lucide-react";
+import { Mic, CornerDownLeft, ChevronDown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
 import { ChatMessageList } from "@/components/ui/chat-message-list";
@@ -16,6 +16,7 @@ import {
   sendChatMessage,
   switchLLM,
   stopPythonServer,
+  checkPythonServer,
 } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
 import { useConfig } from "./providers/ConfigProvider";
@@ -37,6 +38,7 @@ type InitializationPhase =
   | "initializing-backend"
   | "loading-session"
   | "complete"
+  | "no-llm-configured"
   | "error";
 
 interface InitializationState {
@@ -80,10 +82,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   );
 
   const isInitialized = initState.phase === "complete";
-  const isInitializing =
-    initState.phase !== "idle" &&
-    initState.phase !== "complete" &&
-    initState.phase !== "error";
+  const isLlmNotConfigured = initState.phase === "no-llm-configured";
 
   // Helper: Update initialization state
   const updateInitState = useCallback(
@@ -116,11 +115,17 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     initializationAttempted.current = true;
 
     const initializeBackend = async () => {
+      // Guard: check LLM config before doing anything
+      if (!aiConfig?.activeLlm || !aiConfig.apiKey?.trim()) {
+        updateInitState("no-llm-configured", "LLM not configured");
+        return;
+      }
+
       try {
-        // Step 1: Start Python server
+        // Step 1: Start & Check Python server
         updateInitState("starting-server", "Starting server...");
         await startPythonServer();
-        info("✅ Python server started");
+        await checkPythonServer();
 
         // Step 2: Initialize backend with config paths
         updateInitState("initializing-backend", "Initializing backend...");
@@ -146,7 +151,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
           const providers: string[] = [];
           if (llmConfig) {
             Object.entries(llmConfig).forEach(([key, provider]) => {
-              if (provider.api_key?.trim()) {
+              if (provider.apiKey?.trim()) {
                 providers.push(key);
               }
             });
@@ -210,13 +215,6 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     };
 
     initializeBackend();
-
-    // Cleanup on unmount
-    return () => {
-      stopPythonServer().catch((err) =>
-        error(`Failed to stop server on unmount: ${err}`),
-      );
-    };
   }, [basicConfig, aiConfig, llmConfig, updateInitState]);
 
   // Handle file selection
@@ -224,7 +222,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     if (fileInfo && isInitialized) {
       const systemMessage: Message = {
         id: Date.now(),
-        content: `📁 Selected file: ${fileInfo.name} (${fileInfo.type})`,
+        content: `Selected file: ${fileInfo.name} (${fileInfo.type})`,
         sender: "system",
       };
       setMessages((prev) => [...prev, systemMessage]);
@@ -315,13 +313,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
       setCurrentProvider(nextProvider);
 
       const providerName = getProviderDisplay(nextProvider).name;
-      const systemMessage: Message = {
-        id: Date.now(),
-        content: `🤖 Switched to ${providerName}`,
-        sender: "system",
-      };
 
-      setMessages((prev) => [...prev, systemMessage]);
       info(`Switched LLM to ${providerName}`);
     } catch (err) {
       const errorMsg =
@@ -346,16 +338,43 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
   const providerDisplay = getProviderDisplay();
 
-  // Render initialization state
+  // Render: LLM not configured
+  if (isLlmNotConfigured) {
+    return (
+      <div className="h-full border bg-background rounded-lg flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-muted">
+          <AlertCircle className="w-7 h-7 text-muted-foreground" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg mb-1">LLM Not Configured</h3>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            No API key found. Please add your API key in{" "}
+            <span className="font-medium text-foreground">Settings</span> to
+            start chatting.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render: Initialization error (bad API key, wrong model name, etc.)
   if (initState.phase === "error") {
     return (
-      <div className="h-full border bg-background rounded-lg flex flex-col items-center justify-center p-8">
-        <div className="text-center max-w-md">
-          <h2 className="text-xl font-semibold mb-2">Initialization Failed</h2>
-          <p className="text-sm text-destructive mb-4">{initState.error}</p>
-          <Button onClick={() => window.location.reload()} className="w-full">
-            Reload Application
-          </Button>
+      <div className="h-full border bg-background rounded-lg flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-destructive/10">
+          <AlertCircle className="w-7 h-7 text-destructive" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg mb-1">Initialization Failed</h3>
+          <p className="text-sm text-muted-foreground max-w-xs mb-3">
+            {initState.error ||
+              "Something went wrong while starting the assistant."}
+          </p>
+          <p className="text-xs text-muted-foreground max-w-xs">
+            Double-check your API key and model name in{" "}
+            <span className="font-medium text-foreground">Settings</span>, then
+            restart the app.
+          </p>
         </div>
       </div>
     );
@@ -363,14 +382,6 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
   return (
     <div className="h-full border bg-background rounded-lg flex flex-col relative">
-      {/* Initialization Status Bar */}
-      {isInitializing && (
-        <div className="p-3 bg-blue-50 border-b border-blue-200 text-blue-700 text-sm flex items-center gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent" />
-          {initState.message}
-        </div>
-      )}
-
       {/* Messages Container */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
         {!isInitialized ? (

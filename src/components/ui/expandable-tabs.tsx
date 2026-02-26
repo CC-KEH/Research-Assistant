@@ -7,7 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import Todos from "@/pages/Todos";
 import Settings from "@/components/Settings";
 import About from "@/pages/About";
-import Help from "@/pages/Help";
+import News from "@/pages/News";
 import { useTheme } from "../providers/ThemeProvider";
 
 interface Tab {
@@ -66,7 +66,7 @@ export function ExpandableTabs({
   const theme = useTheme();
   const [selected, setSelected] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<
-    null | "Todos" | "News" | "Settings" | "Help"
+    null | "Todos" | "News" | "Settings" | "About"
   >(null);
 
   const outsideClickRef = React.useRef(null);
@@ -100,8 +100,8 @@ export function ExpandableTabs({
           case "/Settings":
             setModal("Settings");
             break;
-          case "/Help":
-            setModal("Help");
+          case "/About":
+            setModal("About");
             break;
           default:
             break;
@@ -119,7 +119,7 @@ export function ExpandableTabs({
       ref={outsideClickRef}
       className={cn(
         "flex flex-wrap items-center gap-2 rounded-2xl border bg-background p-1 shadow-sm",
-        className
+        className,
       )}
     >
       {tabs.map((tab, index) => {
@@ -139,7 +139,7 @@ export function ExpandableTabs({
                 "relative flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-300",
                 isSelected
                   ? cn("bg-muted", activeColor)
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               <AnimatePresence mode="wait" initial={false}>
@@ -174,7 +174,7 @@ export function ExpandableTabs({
               duration: 0.4,
             }}
             className={cn(
-              "relative flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300 text-muted-foreground hover:bg-muted hover:text-foreground"
+              "relative flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300 text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             <Icon size={20} />
@@ -187,9 +187,9 @@ export function ExpandableTabs({
       <Dialog open={modal !== null} onOpenChange={() => setModal(null)}>
         <DialogContent className="min-w-2xl h-3/4 overflow-y-hidden scrollbar-thin">
           {modal === "Todos" && <Todos />}
-          {modal === "News" && <About />}
+          {modal === "News" && <News />}
           {modal === "Settings" && <Settings />}
-          {modal === "Help" && <Help />}
+          {modal === "About" && <About />}
         </DialogContent>
       </Dialog>
     </div>

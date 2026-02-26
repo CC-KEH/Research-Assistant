@@ -11,7 +11,7 @@ export default function ControlBar() {
           { type: "separator" },
           { type: "tab", title: "Config", icon: Settings, route: "/Settings" },
           { type: "toggle", icon: Sun, toggledIcon: Moon },
-          { type: "tab", title: "Help", icon: HelpCircle, route: "/Help" },
+          { type: "tab", title: "About", icon: HelpCircle, route: "/About" },
         ]}
       />
     </div>
