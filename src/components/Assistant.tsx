@@ -7,7 +7,6 @@ import { ChatInput } from "@/components/ui/chat-input";
 import { useAnimatedText } from "@/components/ui/animated-text";
 import type { FileInfo } from "@/lib/types";
 import {
-  startPythonServer,
   initializePythonBackend,
   createSession,
   getAllSessions,
@@ -15,7 +14,6 @@ import {
   switchSession,
   sendChatMessage,
   switchLLM,
-  stopPythonServer,
   checkPythonServer,
 } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
@@ -34,7 +32,7 @@ interface AssistantProps {
 
 type InitializationPhase =
   | "idle"
-  | "starting-server"
+  | "checking-server"
   | "initializing-backend"
   | "loading-session"
   | "complete"
@@ -123,10 +121,8 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
       try {
         // Step 1: Start & Check Python server
-        updateInitState("starting-server", "Starting server...");
-        await startPythonServer();
+        updateInitState("checking-server", "Checking server...");
         await checkPythonServer();
-
         // Step 2: Initialize backend with config paths
         updateInitState("initializing-backend", "Initializing backend...");
         const projectPath = basicConfig?.[0]?.projectPath;

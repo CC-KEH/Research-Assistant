@@ -12,15 +12,15 @@ const PYTHON_API_BASE = "http://localhost:8000";
 //* Server Management
 //*********************** */
 
-export const startPythonServer = async (): Promise<string> => {
-  try {
-    const result = await invoke<string>("start_python_server");
-    return result;
-  } catch (err) {
-    error(`Failed to start Python server: ${err}`);
-    throw err;
-  }
-};
+// export const startPythonServer = async (): Promise<string> => {
+//   try {
+//     const result = await invoke<string>("start_python_server");
+//     return result;
+//   } catch (err) {
+//     error(`Failed to start Python server: ${err}`);
+//     throw err;
+//   }
+// };
 
 export const stopPythonServer = async (): Promise<string> => {
   try {
@@ -35,7 +35,7 @@ export const stopPythonServer = async (): Promise<string> => {
 export const checkPythonServer = async (): Promise<boolean> => {
   try {
     await new Promise((resolve) => setTimeout(resolve, 5000));
-    let retries = 10;
+    let retries = 5;
     while (retries > 0) {
       const isHealthy = await invoke<boolean>("check_python_server");
       if (isHealthy) {
@@ -58,7 +58,7 @@ export const checkPythonServer = async (): Promise<boolean> => {
 };
 
 // Aliases for compatibility with old code
-export const startServer = startPythonServer;
+// export const startServer = startPythonServer;
 export const stopServer = stopPythonServer;
 export const checkServer = checkPythonServer;
 

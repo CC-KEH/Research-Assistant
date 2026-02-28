@@ -51,7 +51,12 @@ export default function Library({ onFileSelect }: LibraryProps) {
       info("Project path not found");
       return;
     }
+
     reloadTreeData();
+
+    // Retry once after 1s in case backend isn't ready yet
+    const timer = setTimeout(() => reloadTreeData(), 1000);
+    return () => clearTimeout(timer);
   }, [projectPath]);
 
   const findNodeById = (

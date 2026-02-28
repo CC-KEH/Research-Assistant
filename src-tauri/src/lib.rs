@@ -7,8 +7,7 @@ use server_controller::{
     check_python_server, start_python_server, stop_python_server, PythonServer,
 };
 use std::sync::Mutex;
-
-use tauri_plugin_log::{Target, TargetKind};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,7 +22,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init()) // Newly added
+        .plugin(tauri_plugin_fs::init())
         .manage(PythonServer {
             child: Mutex::new(None),
         })
@@ -47,13 +46,28 @@ pub fn run() {
             read_pdf_file
         ])
         .setup(|app| {
-            // Optional: Auto-start Python server on app launch
-            let _handle = app.handle().clone();
+            // Start Python server automatically on app launch
+            let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                println!("App ready. Python server can be started via frontend.");
+                let state = handle.state::<PythonServer>();
+                match start_python_server(handle.clone(), state).await {
+                    Ok(msg) => log::info!("🟢 {}", msg),
+                    Err(e) => log::error!("❌ Failed to auto-start server: {}", e),
+                }
             });
             Ok(())
+        })
+        // Stop server cleanly when window is destroyed
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                let state = window.state::<PythonServer>();
+                let mut child_guard = state.child.lock().unwrap();
+                if let Some(mut child) = child_guard.take() {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    log::info!("🔴 Server stopped on window close");
+                }
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
