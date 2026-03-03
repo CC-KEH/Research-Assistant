@@ -1,7 +1,13 @@
-import { Config } from "@/lib/types";
+import { Config, Tab } from "@/lib/types";
 import { getConfig, saveConfig } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
-import React, { createContext, useEffect, useState, useContext } from "react";
+import React, {
+  createContext,
+  useEffect,
+  useState,
+  useContext,
+  useRef,
+} from "react";
 
 interface ConfigContextType {
   config: Config | null;
@@ -15,8 +21,8 @@ interface ConfigContextType {
   getBookmarks: () => Config["bookmarks"] | null;
   getKnowledgeStoreConfig: () => Config["knowledgeStoreConfig"] | null;
   getTabsConfig: () => Config["tabsConfig"] | null;
+  getActiveTabsConfig: () => Tab[] | null;
   getLlmConfig: () => Config["llmConfig"] | null;
-  getAIConfig: () => Config["aiConfig"] | null;
   getTodos: () => Config["todos"] | null;
 
   updateConfig: (newConfig: Config) => void;
@@ -42,6 +48,10 @@ export const ConfigProvider = ({
 }) => {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(false);
+  // Tracks whether the current config state was just loaded from disk.
+  // If true, the save effect will skip saving (and reloading) to prevent
+  // an infinite load → save → reload loop.
+  const isLoadingRef = useRef(false);
 
   const reloadConfig = async () => {
     if (!config_path) {
@@ -50,6 +60,7 @@ export const ConfigProvider = ({
     }
 
     setLoading(true);
+    isLoadingRef.current = true; // Mark: next config change comes from a load
     try {
       const result = await getConfig(config_path);
       setConfig(result);
@@ -59,6 +70,7 @@ export const ConfigProvider = ({
       setConfig(null);
     } finally {
       setLoading(false);
+      // isLoadingRef is cleared inside the save effect after it skips once
     }
   };
 
@@ -84,12 +96,12 @@ export const ConfigProvider = ({
     return config?.tabsConfig || null;
   };
 
-  const getLlmConfig = (): Config["llmConfig"] | null => {
-    return config?.llmConfig || null;
+  const getActiveTabsConfig = (): Tab[] | null => {
+    return config?.tabsConfig?.tabs.filter((tab) => tab.enabled) || null;
   };
 
-  const getAIConfig = (): Config["aiConfig"] | null => {
-    return config?.aiConfig || null;
+  const getLlmConfig = (): Config["llmConfig"] | null => {
+    return config?.llmConfig || null;
   };
 
   const getTodos = (): Config["todos"] | null => {
@@ -132,19 +144,13 @@ export const ConfigProvider = ({
     }
   };
 
-  const updateAIConfig = (aiConfig: Config["aiConfig"]) => {
-    if (config) {
-      setConfig({ ...config, aiConfig });
-    }
-  };
-
   const updateTodos = (todos: Config["todos"]) => {
     if (config) {
       setConfig({ ...config, todos });
     }
   };
 
-  // Load config when config_path changes
+  // Reload config when config_path changes
   useEffect(() => {
     if (config_path) {
       reloadConfig();
@@ -153,10 +159,25 @@ export const ConfigProvider = ({
     }
   }, [config_path]);
 
+  // Save config to disk whenever it changes, then reload to stay in sync.
+  // Skip the save+reload cycle when the change itself came from a load
+  // (isLoadingRef=true), which would otherwise cause an infinite loop.
   useEffect(() => {
-    if (config_path && config) {
-      saveConfig(config_path, config);
+    if (!config_path || !config) return;
+
+    if (isLoadingRef.current) {
+      // This state update was triggered by reloadConfig — skip saving
+      isLoadingRef.current = false;
+      return;
     }
+
+    // User-driven change: save, then reload to confirm persisted state
+    const saveAndReload = async () => {
+      await saveConfig(config_path, config);
+      await reloadConfig();
+    };
+
+    saveAndReload();
   }, [config, config_path]);
 
   return (
@@ -171,8 +192,8 @@ export const ConfigProvider = ({
         getBookmarks,
         getKnowledgeStoreConfig,
         getTabsConfig,
+        getActiveTabsConfig,
         getLlmConfig,
-        getAIConfig,
         getTodos,
         updateConfig,
         updateBasicConfig,
@@ -180,7 +201,6 @@ export const ConfigProvider = ({
         updateKnowledgeStoreConfig,
         updateTabsConfig,
         updateLlmConfig,
-        updateAIConfig,
         updateTodos,
       }}
     >

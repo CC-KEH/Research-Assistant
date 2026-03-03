@@ -4,23 +4,13 @@ import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { error, info } from "@/lib/logger";
-import { BugType, Project, TreeNode } from "@/lib/types";
+import { Project, TreeNode } from "@/lib/types";
 
 const PYTHON_API_BASE = "http://localhost:8000";
 
 //*********************** */
 //* Server Management
 //*********************** */
-
-// export const startPythonServer = async (): Promise<string> => {
-//   try {
-//     const result = await invoke<string>("start_python_server");
-//     return result;
-//   } catch (err) {
-//     error(`Failed to start Python server: ${err}`);
-//     throw err;
-//   }
-// };
 
 export const stopPythonServer = async (): Promise<string> => {
   try {
@@ -631,6 +621,7 @@ export const createProject = async (
       project: {
         projectName: project_name,
         projectPath: project_path,
+        activeLLM: "Google",
       },
     });
     return result;
@@ -643,18 +634,6 @@ export const createProject = async (
 //*********************** */
 //* Placeholder Functions
 //*********************** */
-
-export const tabsSettings = () => {
-  info("tabsSettings not implemented");
-};
-
-export const modelSettings = () => {
-  info("modelSettings not implemented");
-};
-
-export const reportBug = (bugType: BugType) => {
-  info("reportBug not implemented");
-};
 
 export const getContent = (tab_id: string) => {
   switch (tab_id) {

@@ -12,8 +12,8 @@ export default function FrameTabs({
   activeTabGroup,
   onTabChange,
 }: FrameTabsProps) {
-  const { getTabsConfig } = useConfig();
-  const paperViewerTabs = getTabsConfig()?.tabs;
+  const { getActiveTabsConfig } = useConfig();
+  const paperViewerTabs = getActiveTabsConfig()?.tabs;
 
   let tabsData: any = [];
 

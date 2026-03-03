@@ -125,7 +125,6 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
       await createProject(values.projectname, values.projectpath);
       info("✅ Project created");
       onProjectPathSet(values.projectpath);
-      // Give ConfigProvider time to load config before navigating
       setTimeout(() => navigate("/Workspace"), 500);
     } catch (err) {
       error(`Failed to create project: ${err}`);

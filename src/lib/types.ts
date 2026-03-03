@@ -23,12 +23,7 @@ export interface LlmProvider {
   label: string;
   modelName: string;
   apiKey: string;
-}
-
-export interface AIConfig {
-  activeLlm: string;
   temperature: number;
-  apiKey: string;
   maxTokens: number;
   chatPrompt: string;
 }
@@ -36,6 +31,7 @@ export interface AIConfig {
 export interface BasicConfig {
   projectName: string;
   projectPath: string;
+  activeLlm: string;
 }
 
 export interface Bookmark {
@@ -79,7 +75,6 @@ export interface Config {
     customTabs: Tab[];
   };
   llmConfig: Record<string, LlmProvider>;
-  aiConfig: AIConfig;
   todos: Todo[];
 }
 

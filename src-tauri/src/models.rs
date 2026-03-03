@@ -17,7 +17,6 @@ pub struct Config {
     pub knowledge_store_config: KnowledgeStoreConfig,
     pub tabs_config: TabsConfig,
     pub llm_config: HashMap<String, LLMConfig>,
-    pub ai_config: AIConfig,
     pub todos: Vec<Todo>,
 }
 
@@ -26,6 +25,7 @@ pub struct Config {
 pub struct BasicConfig {
     pub project_name: String,
     pub project_path: String,
+    pub active_llm: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,14 +101,7 @@ pub struct LLMConfig {
     pub label: String,
     pub model_name: String,
     pub api_key: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AIConfig {
-    pub active_llm: String,
     pub temperature: f32,
-    pub api_key: String,
     pub max_tokens: u32,
     pub chat_prompt: String,
 }

@@ -2,16 +2,16 @@
     {
         "projectName": "Project 1",
         "projectPath": "path here",
-        "resourcesPath": "resources path here"
+        "activeLLM": "Google"
     },
     {
         "projectName": "Project 1",
         "projectPath": "path here",
-        "resourcesPath": "resources path here"
+        "activeLLM": "Google"
     },
     {
         "projectName": "Project 1",
         "projectPath": "path here",
-        "resourcesPath": "resources path here"
+        "activeLLM": "Google"
     }
 ]

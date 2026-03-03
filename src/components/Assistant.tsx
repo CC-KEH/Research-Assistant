@@ -51,10 +51,8 @@ const INITIAL_STATE: InitializationState = {
 };
 
 export default function Assistant({ fileInfo }: AssistantProps) {
-  const { getBasicConfig, getAIConfig, getLlmConfig } = useConfig();
-
+  const { getBasicConfig, getLlmConfig } = useConfig();
   const basicConfig = getBasicConfig();
-  const aiConfig = getAIConfig();
   const llmConfig = getLlmConfig();
 
   // State
@@ -95,7 +93,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     (provider?: string) => {
       const p = provider || currentProvider;
       const providers: Record<string, { icon: string; name: string }> = {
-        openai: { icon: "/openai.svg", name: "GPT-4" },
+        openai: { icon: "/openai.svg", name: "ChatGPT" },
         anthropic: { icon: "/anthropic.svg", name: "Claude" },
         google: { icon: "/google.svg", name: "Gemini" },
         xai: { icon: "/xai.svg", name: "Grok" },
@@ -108,13 +106,26 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   // Initialize backend on mount
   useEffect(() => {
     if (initializationAttempted.current) return;
-    if (!basicConfig || !aiConfig || !llmConfig) return;
+
+    if (!basicConfig || !llmConfig) return;
 
     initializationAttempted.current = true;
 
+    const activeLLM = basicConfig?.[0]?.activeLlm;
+    const modelConfig = llmConfig?.[activeLLM || ""];
+
+    const aiConfig = {
+      activeLLM: activeLLM || "",
+      modelName: modelConfig?.modelName || "",
+      apiKey: modelConfig?.apiKey || "",
+      temperature: modelConfig?.temperature || 0.7,
+      maxTokens: modelConfig?.maxTokens || 2048,
+      chatPrompt: modelConfig?.chatPrompt || "",
+    };
+
     const initializeBackend = async () => {
       // Guard: check LLM config before doing anything
-      if (!aiConfig?.activeLlm || !aiConfig.apiKey?.trim()) {
+      if (!aiConfig?.activeLLM || !aiConfig.apiKey?.trim()) {
         updateInitState("no-llm-configured", "LLM not configured");
         return;
       }
@@ -137,12 +148,12 @@ export default function Assistant({ fileInfo }: AssistantProps) {
         const initResult = await initializePythonBackend(configPath, chatPath);
         info(`Backend initialized: ${initResult}`);
 
-        const llmInitResult = await switchLLM(aiConfig?.activeLlm);
+        const llmInitResult = await switchLLM(aiConfig?.activeLLM);
         info(`LLM initialized: ${llmInitResult}`);
 
         // Step 3: Configure LLM providers
-        if (aiConfig?.activeLlm) {
-          setCurrentProvider(aiConfig.activeLlm);
+        if (aiConfig?.activeLLM) {
+          setCurrentProvider(aiConfig.activeLLM);
 
           const providers: string[] = [];
           if (llmConfig) {
@@ -211,7 +222,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     };
 
     initializeBackend();
-  }, [basicConfig, aiConfig, llmConfig, updateInitState]);
+  }, [basicConfig, llmConfig, updateInitState]);
 
   // Handle file selection
   useEffect(() => {

@@ -121,6 +121,10 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             label: "Claude 2".to_string(),
             model_name: "claude-2".to_string(),
             api_key: String::new(),
+            temperature: 0.7,
+            max_tokens: 1000,
+            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
+        
         },
     );
     llm_config.insert(
@@ -129,6 +133,10 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             label: "Gemini Pro".to_string(),
             model_name: "gemini-pro".to_string(),
             api_key: String::new(),
+            temperature: 0.7,
+            max_tokens: 1000,
+            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
+        
         },
     );
     llm_config.insert(
@@ -137,6 +145,10 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             label: "GPT-3.5".to_string(),
             model_name: "gpt-3.5".to_string(),
             api_key: String::new(),
+            temperature: 0.7,
+            max_tokens: 1000,
+            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
+        
         },
     );
 
@@ -150,13 +162,6 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             custom_tabs: Vec::new(),
         },
         llm_config,
-        ai_config: AIConfig {
-            active_llm: "".to_string(),
-            temperature: 0.7,
-            api_key: "".to_string(),
-            max_tokens: 1000,
-            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
-        },
         todos: Vec::new(),
     };
 
