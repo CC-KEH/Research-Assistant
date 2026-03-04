@@ -58,7 +58,7 @@ pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
     Ok(projects)
 }
 
-/// Create a new project with a default config.json
+// Create a new project with a default config.json
 #[tauri::command]
 pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     let project_path = PathBuf::from(&project.project_path);
@@ -118,7 +118,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     llm_config.insert(
         "anthropic".to_string(),
         LLMConfig {
-            label: "Claude 2".to_string(),
+            label: "Claude".to_string(),
             model_name: "claude-2".to_string(),
             api_key: String::new(),
             temperature: 0.7,
@@ -130,7 +130,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     llm_config.insert(
         "google".to_string(),
         LLMConfig {
-            label: "Gemini Pro".to_string(),
+            label: "Gemini".to_string(),
             model_name: "gemini-pro".to_string(),
             api_key: String::new(),
             temperature: 0.7,
@@ -142,7 +142,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     llm_config.insert(
         "openai".to_string(),
         LLMConfig {
-            label: "GPT-3.5".to_string(),
+            label: "ChatGPT".to_string(),
             model_name: "gpt-3.5".to_string(),
             api_key: String::new(),
             temperature: 0.7,
@@ -154,7 +154,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
 
     // Create a default config
     let default_config = Config {
-        basic_config: vec![project.clone()],
+        basic_config: project.clone(),
         bookmarks: Vec::new(),
         knowledge_store_config: KnowledgeStoreConfig { files: Vec::new() },
         tabs_config: TabsConfig {
@@ -183,8 +183,47 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     fs::create_dir_all(project_path.join("Papers"))
         .map_err(|e| format!("Failed to create Papers directory: {}", e))?;
 
-    // TODO: Add Project BasicConfig to projects.json
+    // Save Project BasicConfig to projects.json
+    save_project_to_registry(&project)?;
     Ok(project)
+
+}
+
+fn save_project_to_registry(project: &BasicConfig) -> Result<(), String> {
+    let registry_path = get_projects_file_path()?;  // note the ? since it returns Result
+
+    // Load existing list, or start fresh if the file doesn't exist / is corrupt
+    let mut projects: Vec<BasicConfig> = if registry_path.exists() {
+        let raw = fs::read_to_string(&registry_path)
+            .map_err(|e| format!("Failed to read projects.json: {}", e))?;
+        serde_json::from_str(&raw).unwrap_or_else(|_| Vec::new())
+    } else {
+        Vec::new()
+    };
+
+    // Avoid duplicate entries (same project_path = same project)
+    if projects.iter().any(|p| p.project_path == project.project_path) {
+        log::info!(
+            "📋 [save_project_to_registry] Project '{}' already in registry, skipping.",
+            project.project_path
+        );
+        return Ok(());
+    }
+
+    projects.push(project.clone());
+
+    let json = serde_json::to_string_pretty(&projects)
+        .map_err(|e| format!("Failed to serialize projects.json: {}", e))?;
+
+    fs::write(&registry_path, json)
+        .map_err(|e| format!("Failed to write projects.json: {}", e))?;
+
+    log::info!(
+        "📋 [save_project_to_registry] Project '{}' added to registry.",
+        project.project_path
+    );
+
+    Ok(())
 }
 
 #[tauri::command]

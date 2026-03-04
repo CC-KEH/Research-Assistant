@@ -20,10 +20,10 @@ interface LibraryProps {
 
 export default function Library({ onFileSelect }: LibraryProps) {
   const navigate = useNavigate();
-  const { getBasicConfig } = useConfig();
+  const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
   const basicConfig = getBasicConfig();
-  const projectPath =
-    basicConfig?.find((p) => p.projectPath)?.projectPath ?? "";
+  const knowledgeStoreConfig = getKnowledgeStoreConfig();
+  const projectPath = basicConfig?.projectPath ?? "";
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +57,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
     // Retry once after 1s in case backend isn't ready yet
     const timer = setTimeout(() => reloadTreeData(), 1000);
     return () => clearTimeout(timer);
-  }, [projectPath]);
+  }, [projectPath, knowledgeStoreConfig]);
 
   const findNodeById = (
     nodes: TreeNode[],

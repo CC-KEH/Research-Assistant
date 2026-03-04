@@ -22,7 +22,7 @@ export default function KnowledgeStore() {
   } = useConfig();
   const basicConfig = getBasicConfig();
   const knowledgeStoreConfig = getKnowledgeStoreConfig();
-  const projectPath = basicConfig?.find((p) => p.projectPath)?.projectPath;
+  const projectPath = basicConfig?.projectPath;
   const [papers, setPapers] = useState<FileInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 

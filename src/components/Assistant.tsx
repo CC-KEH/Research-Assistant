@@ -111,7 +111,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
     initializationAttempted.current = true;
 
-    const activeLLM = basicConfig?.[0]?.activeLlm;
+    const activeLLM = basicConfig?.activeLlm;
     const modelConfig = llmConfig?.[activeLLM || ""];
 
     const aiConfig = {
@@ -136,7 +136,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
         await checkPythonServer();
         // Step 2: Initialize backend with config paths
         updateInitState("initializing-backend", "Initializing backend...");
-        const projectPath = basicConfig?.[0]?.projectPath;
+        const projectPath = basicConfig?.projectPath;
         if (!projectPath) {
           throw new Error("Project path not found in config");
         }
@@ -356,8 +356,10 @@ export default function Assistant({ fileInfo }: AssistantProps) {
           <h3 className="font-semibold text-lg mb-1">LLM Not Configured</h3>
           <p className="text-sm text-muted-foreground max-w-xs">
             No API key found. Please add your API key in{" "}
-            <span className="font-medium text-foreground">Settings</span> to
-            start chatting.
+            <a href="/Settings" className="font-medium text-foreground">
+              Settings
+            </a>{" "}
+            to start chatting.
           </p>
         </div>
       </div>

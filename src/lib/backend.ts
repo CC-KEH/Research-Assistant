@@ -621,7 +621,7 @@ export const createProject = async (
       project: {
         projectName: project_name,
         projectPath: project_path,
-        activeLLM: "Google",
+        activeLlm: "google",
       },
     });
     return result;

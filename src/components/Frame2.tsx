@@ -3,43 +3,66 @@ import { ViewerContextMenu } from "@/components/small/context-menus/ViewerContex
 import FrameTabs from "@/components/small/FrameTabs";
 import { useState, useEffect } from "react";
 import { useConfig } from "./providers/ConfigProvider";
-import type { FileInfo } from "@/lib/types";
-import { markdownViewerTabs, pdfViewerTabs } from "@/lib/tabs";
+import type { FileInfo, KnowledgeFile } from "@/lib/types";
+
+type TabGroup = "paper" | "markdown" | "pdf"; // ← string discriminator
 
 interface Frame2Props {
   fileInfo: FileInfo | null;
 }
+import { markdownViewerTabs, pdfViewerTabs } from "@/lib/tabs";
 
+function getFirstTabId(
+  group: TabGroup,
+  getTabsConfig: () => any,
+): string | null {
+  switch (group) {
+    case "markdown":
+      return markdownViewerTabs[0]?.id ?? null;
+    case "pdf":
+      return pdfViewerTabs[0]?.id ?? null;
+    case "paper":
+      return getTabsConfig()?.tabs.find((t: any) => t.enabled)?.id ?? null;
+    default:
+      return null;
+  }
+}
 export default function Frame2({ fileInfo }: Frame2Props) {
   const { getKnowledgeStoreConfig, getTabsConfig } = useConfig();
-  const paperViewerTabs = getTabsConfig()?.tabs;
-  const [activeTabGroup, setActiveTabGroup] = useState<any>(null);
+  const [activeTabGroup, setActiveTabGroup] = useState<TabGroup | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [filePath, setFilePath] = useState<string>("");
 
   useEffect(() => {
-    if (fileInfo?.path) {
-      setFilePath(fileInfo.path);
-      switch (fileInfo.type) {
-        case "md":
-          setActiveTabGroup(markdownViewerTabs);
-          break;
-        case "pdf":
-          const knowledgeStoreConfig = getKnowledgeStoreConfig();
-          if (
-            knowledgeStoreConfig?.files.find(
-              (file: any) => file.filePath === fileInfo.path,
-            )
-          ) {
-            setActiveTabGroup(paperViewerTabs);
-          } else {
-            setActiveTabGroup(pdfViewerTabs);
-          }
-          break;
-        default:
-          break;
+    if (!fileInfo?.path) return;
+
+    setFilePath(fileInfo.path);
+
+    let group: TabGroup | null = null;
+
+    switch (fileInfo.type) {
+      case "md":
+        group = "markdown";
+        break;
+
+      case "pdf": {
+        const knowledgeStoreConfig = getKnowledgeStoreConfig();
+        const isFeedLLM = knowledgeStoreConfig?.files.find(
+          (file: KnowledgeFile) =>
+            file.filePath === fileInfo.path && file.feedLlm === true,
+        );
+        group = isFeedLLM ? "paper" : "pdf";
+        break;
       }
-      setActiveTab(activeTabGroup?.[0]?.id);
+
+      default:
+        break;
+    }
+
+    if (group) {
+      setActiveTabGroup(group);
+      const firstTabId = getFirstTabId(group, getTabsConfig);
+      setActiveTab(firstTabId);
     }
   }, [fileInfo]);
 

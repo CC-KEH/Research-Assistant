@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import PDFView from "@/components/small/PDFView";
-import { Tab } from "@/lib/types";
 import { pdfViewerTabs, markdownViewerTabs } from "@/lib/tabs";
 import Suggestions from "./Suggestions";
 import MarkdownRenderer from "./small/MarkdownRenderer";
 import { getContent, readFile, writeFile } from "@/lib/backend";
-import { error, info } from "@/lib/logger";
+import { error } from "@/lib/logger";
 import MarkdownEditor from "./small/MarkdownEditor";
 import { useConfig } from "./providers/ConfigProvider";
 
+type TabGroup = "paper" | "markdown" | "pdf"; // ← matches Frame2 and FrameTabs
+
 interface ViewerProps {
-  activeTabGroup: Tab[];
+  activeTabGroup: TabGroup; // ← was Tab[]
   activeTab: string;
   filePath: string;
   fileName?: string;
@@ -27,43 +28,54 @@ export default function Viewer({
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const { getTabsConfig } = useConfig();
-  const paperViewerTabs = getTabsConfig()?.tabs;
 
   useEffect(() => {
     if (!filePath) return;
+    if (fileType !== "md") return;
+
     const loadMarkdownContent = async () => {
-      if (fileType === "md") {
-        try {
-          setIsLoadingContent(true);
-          const content = await readFile(filePath);
-          setMarkdownContent(content);
-        } catch (err) {
-          error(`Failed to load markdown: ${err}`);
-          setMarkdownContent("");
-        } finally {
-          setIsLoadingContent(false);
-        }
+      try {
+        setIsLoadingContent(true);
+        const content = await readFile(filePath);
+        setMarkdownContent(content);
+      } catch (err) {
+        error(`Failed to load markdown: ${err}`);
+        setMarkdownContent("");
+      } finally {
+        setIsLoadingContent(false);
       }
     };
 
     loadMarkdownContent();
-  }, [filePath]);
+  }, [filePath, fileType]);
 
-  // Reset innerActiveTab when group changes
+  // Reset innerActiveTab when group changes — derive first tab from string key
   useEffect(() => {
-    if (activeTabGroup && activeTabGroup.length > 0) {
-      setInnerActiveTab(activeTabGroup[0].id);
+    switch (activeTabGroup) {
+      case "paper":
+        setInnerActiveTab(
+          getTabsConfig()?.tabs.find((t: any) => t.enabled)?.id ?? "view",
+        );
+        break;
+      case "markdown":
+        setInnerActiveTab(markdownViewerTabs[0].id);
+        break;
+      case "pdf":
+        setInnerActiveTab(pdfViewerTabs[0].id);
+        break;
     }
   }, [activeTabGroup]);
 
-  // Sync with parent activeTab when changed
+  // Sync with parent activeTab
   useEffect(() => {
     setInnerActiveTab(activeTab);
   }, [activeTab]);
 
   const renderInnerContent = () => {
-    switch (activeTabGroup) {
-      case paperViewerTabs:
+    switch (
+      activeTabGroup // ← now comparing strings, always works
+    ) {
+      case "paper":
         switch (innerActiveTab) {
           case "view":
             return <PDFView file={filePath} />;
@@ -83,16 +95,14 @@ export default function Viewer({
             return <MarkdownRenderer content={getContent("customTab")} />;
         }
 
-      case markdownViewerTabs:
+      case "markdown":
         switch (innerActiveTab) {
           case "view":
             return isLoadingContent ? (
               <div>Loading...</div>
             ) : (
               <MarkdownRenderer
-                content={
-                  markdownContent ? markdownContent : "Go to Edit tab to edit."
-                }
+                content={markdownContent || "Go to Edit tab to edit."}
               />
             );
           case "edit":
@@ -109,10 +119,9 @@ export default function Viewer({
             return null;
         }
 
-      case pdfViewerTabs:
+      case "pdf":
         switch (innerActiveTab) {
           case "view":
-            info(filePath);
             return <PDFView file={filePath} />;
           default:
             return null;

@@ -1,17 +1,7 @@
 [
-    {
-        "projectName": "Project 1",
-        "projectPath": "path here",
-        "activeLLM": "Google"
-    },
-    {
-        "projectName": "Project 1",
-        "projectPath": "path here",
-        "activeLLM": "Google"
-    },
-    {
-        "projectName": "Project 1",
-        "projectPath": "path here",
-        "activeLLM": "Google"
-    }
+  {
+    "projectName": "My Project",
+    "projectPath": "C:\\Users\\arbas\\Documents\\Projects\\research_assistant\\tests",
+    "activeLlm": "google"
+  }
 ]

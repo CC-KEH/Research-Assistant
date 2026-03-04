@@ -65,7 +65,7 @@ export interface Todo {
 }
 
 export interface Config {
-  basicConfig: BasicConfig[];
+  basicConfig: BasicConfig;
   bookmarks: Bookmark[];
   knowledgeStoreConfig: {
     files: KnowledgeFile[];

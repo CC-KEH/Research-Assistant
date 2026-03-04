@@ -3,7 +3,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Card, CardContent } from "./ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import type { AIConfig, LlmProvider, Tab } from "@/lib/types";
+import type { BasicConfig, LlmProvider, Tab } from "@/lib/types";
 import { useConfig } from "@/components/providers/ConfigProvider";
 import { Input } from "./ui/input";
 
@@ -62,7 +62,7 @@ export default function Settings() {
       if (config.tabsConfig?.tabs && Array.isArray(config.tabsConfig.tabs)) {
         setFileViewerTabs(config.tabsConfig.tabs);
       }
-      const activeLlmName = config.aiConfig?.activeLlm || "openai";
+      const activeLlmName = config.basicConfig?.activeLlm || "openai";
       setSelectedLlmName(activeLlmName);
       loadProviderFields(activeLlmName);
     }
@@ -119,7 +119,7 @@ export default function Settings() {
     };
 
     const effectiveApiKey = llmApiKey.trim();
-    let activeLlm = config.aiConfig?.activeLlm;
+    let activeLlm = config.basicConfig?.activeLlm;
 
     if (effectiveApiKey) {
       activeLlm = selectedLlmName;
@@ -130,15 +130,15 @@ export default function Settings() {
       if (fallback) activeLlm = fallback[0];
     }
 
-    const updatedAiConfig: AIConfig = {
-      ...config.aiConfig,
+    const updatedModelProvider: BasicConfig = {
+      ...config.basicConfig,
       activeLlm: activeLlm ?? selectedLlmName,
     };
 
     updateConfig({
       ...config,
       llmConfig: updatedLlmConfig,
-      aiConfig: updatedAiConfig,
+      basicConfig: updatedModelProvider,
     });
   };
 

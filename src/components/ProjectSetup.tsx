@@ -125,7 +125,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
       await createProject(values.projectname, values.projectpath);
       info("✅ Project created");
       onProjectPathSet(values.projectpath);
-      setTimeout(() => navigate("/Workspace"), 500);
+      setTimeout(() => navigate("/Workspace"));
     } catch (err) {
       error(`Failed to create project: ${err}`);
     }

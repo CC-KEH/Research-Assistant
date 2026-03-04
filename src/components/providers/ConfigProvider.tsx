@@ -33,7 +33,6 @@ interface ConfigContextType {
   ) => void;
   updateTabsConfig: (tabsConfig: Config["tabsConfig"]) => void;
   updateLlmConfig: (llmConfig: Config["llmConfig"]) => void;
-  updateAIConfig: (aiConfig: Config["aiConfig"]) => void;
   updateTodos: (todos: Config["todos"]) => void;
 }
 

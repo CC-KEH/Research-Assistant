@@ -12,7 +12,7 @@ pub struct Paper {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub basic_config: Vec<BasicConfig>,
+    pub basic_config: BasicConfig,
     pub bookmarks: Vec<Bookmark>,
     pub knowledge_store_config: KnowledgeStoreConfig,
     pub tabs_config: TabsConfig,
