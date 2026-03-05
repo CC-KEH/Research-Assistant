@@ -76,6 +76,8 @@ export interface Config {
   };
   llmConfig: Record<string, LlmProvider>;
   todos: Todo[];
+  /** Canvas annotations per PDF file, keyed by absolute file path. */
+  annotations?: Record<string, FileAnnotations>;
 }
 
 export enum Item {
@@ -94,4 +96,22 @@ export interface FileInfo {
   name: string;
   path: string;
   type: string;
+}
+
+export interface AnnotationPoint {
+  x: number;
+  y: number;
+}
+
+export interface AnnotationPath {
+  points: AnnotationPoint[];
+  tool: "pen" | "highlight";
+}
+
+/** All canvas paths for a single PDF file, keyed by page number. */
+export type PagePathsMap = Record<number, AnnotationPath[]>;
+
+/** Stored under config.annotations[filePath] */
+export interface FileAnnotations {
+  pagePathsMap: PagePathsMap;
 }

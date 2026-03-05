@@ -18,6 +18,8 @@ pub struct Config {
     pub tabs_config: TabsConfig,
     pub llm_config: HashMap<String, LLMConfig>,
     pub todos: Vec<Todo>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub annotations: Option<HashMap<String, FileAnnotations>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,4 +136,32 @@ pub struct FileInfo {
     pub file_type: String,
     pub file_path: String,
     pub file_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnnotationPoint {
+    pub x: f64,
+    pub y: f64,
+}
+
+/// One continuous stroke drawn with a pen or highlighter.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnnotationPath {
+    pub points: Vec<AnnotationPoint>,
+    pub tool: AnnotationTool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AnnotationTool {
+    Pen,
+    Highlight,
+}
+
+/// All strokes for a single PDF file, keyed by page number (as a string in JSON).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnnotations {
+    /// Keys are page numbers serialised as strings (JSON object keys are always strings).
+    pub page_paths_map: HashMap<String, Vec<AnnotationPath>>,
 }

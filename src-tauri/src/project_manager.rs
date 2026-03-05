@@ -58,7 +58,6 @@ pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
     Ok(projects)
 }
 
-// Create a new project with a default config.json
 #[tauri::command]
 pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     let project_path = PathBuf::from(&project.project_path);
@@ -124,7 +123,6 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             temperature: 0.7,
             max_tokens: 1000,
             chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
-        
         },
     );
     llm_config.insert(
@@ -136,7 +134,6 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             temperature: 0.7,
             max_tokens: 1000,
             chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
-        
         },
     );
     llm_config.insert(
@@ -148,7 +145,6 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             temperature: 0.7,
             max_tokens: 1000,
             chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
-        
         },
     );
 
@@ -163,6 +159,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
         },
         llm_config,
         todos: Vec::new(),
+        annotations: None, // No annotations for a new project
     };
 
     // Write config to file
@@ -186,11 +183,10 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     // Save Project BasicConfig to projects.json
     save_project_to_registry(&project)?;
     Ok(project)
-
 }
 
 fn save_project_to_registry(project: &BasicConfig) -> Result<(), String> {
-    let registry_path = get_projects_file_path()?;  // note the ? since it returns Result
+    let registry_path = get_projects_file_path()?; // note the ? since it returns Result
 
     // Load existing list, or start fresh if the file doesn't exist / is corrupt
     let mut projects: Vec<BasicConfig> = if registry_path.exists() {
@@ -202,7 +198,10 @@ fn save_project_to_registry(project: &BasicConfig) -> Result<(), String> {
     };
 
     // Avoid duplicate entries (same project_path = same project)
-    if projects.iter().any(|p| p.project_path == project.project_path) {
+    if projects
+        .iter()
+        .any(|p| p.project_path == project.project_path)
+    {
         log::info!(
             "📋 [save_project_to_registry] Project '{}' already in registry, skipping.",
             project.project_path
@@ -215,8 +214,7 @@ fn save_project_to_registry(project: &BasicConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&projects)
         .map_err(|e| format!("Failed to serialize projects.json: {}", e))?;
 
-    fs::write(&registry_path, json)
-        .map_err(|e| format!("Failed to write projects.json: {}", e))?;
+    fs::write(&registry_path, json).map_err(|e| format!("Failed to write projects.json: {}", e))?;
 
     log::info!(
         "📋 [save_project_to_registry] Project '{}' added to registry.",

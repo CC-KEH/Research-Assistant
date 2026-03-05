@@ -724,7 +724,7 @@ The architecture supports horizontal scaling across multiple server instances wi
 };
 
 export const saveContentToPDF = async (
-  basicConfig: BasicConfig[] | null,
+  basicConfig: BasicConfig | null,
   knowledgeStoreConfig: { files: KnowledgeFile[] } | null,
   file: string,
 ) => {
@@ -750,7 +750,7 @@ export const saveContentToPDF = async (
     arxiv: file.fileData?.arxiv || [],
   }));
 
-  const projectPath = basicConfig?.[0]?.projectPath || "";
+  const projectPath = basicConfig?.projectPath || "";
   const fileName =
     knowledgeStoreConfig?.files.find((p) => p.filePath === file)?.fileName ||
     "Summary";

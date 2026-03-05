@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { pdfjs, Document, Page } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,155 +24,300 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import { saveContentToPDF } from "@/lib/backend";
 import { error } from "@/lib/logger";
 import { useConfig } from "../providers/ConfigProvider";
-
-// TODO: Add Search in File Functionality: ctrl + f
-
-interface Point {
-  x: number;
-  y: number;
-}
+import {
+  Bookmark,
+  AnnotationPath,
+  PagePathsMap,
+  FileAnnotations,
+} from "@/lib/types";
 
 interface PDFViewerProps {
-  file: string; // This can now be a full file path like "C:/Users/..."
-}
-
-interface Path {
-  points: Point[];
-  tool: "pen" | "highlight";
+  file: string;
 }
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const [isDocumentCreated, setIsDocumentCreated] = useState<boolean>(false);
-  const [tool, setTool] = useState<
-    "pen" | "highlight" | "eraser" | "bookmark" | null
-  >(null);
+  const [tool, setTool] = useState<"pen" | "highlight" | "eraser" | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pageContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Not used for drawing math — just informational.
+  // All coordinates are stored in CSS-pixel space (what getBoundingClientRect gives us).
+  const scaleRef = useRef<{ x: number; y: number }>({ x: 1, y: 1 });
+
   const [drawing, setDrawing] = useState(false);
-  const [paths, setPaths] = useState<Path[]>([]);
-  const [currentPath, setCurrentPath] = useState<Path | null>(null);
-  const [history, setHistory] = useState<Path[][]>([]);
-  const [bookmarks, setBookmarks] = useState<number[]>([]);
+  const [pagePathsMap, setPagePathsMap] = useState<PagePathsMap>({});
+  const [currentPath, setCurrentPath] = useState<AnnotationPath | null>(null);
+  const [historyMap, setHistoryMap] = useState<
+    Record<number, AnnotationPath[][]>
+  >({});
+
   const [showSearchBox, setShowSearchBox] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [pdfSource, setPdfSource] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(false);
-  const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
+  const [pageRendered, setPageRendered] = useState<boolean>(false);
+
+  const {
+    getBasicConfig,
+    getKnowledgeStoreConfig,
+    getFullConfig,
+    getBookmarks,
+    updateBookmarks,
+    updateConfig,
+  } = useConfig();
+
   const basicConfig = getBasicConfig();
   const knowledgeStoreConfig = getKnowledgeStoreConfig();
+  const fileName = file.split(/[\\/]/).pop() ?? file;
 
-  // Load PDF from file path using Tauri
+  // ─── Current page paths ───────────────────────────────────────────────────────
+
+  const currentPaths: AnnotationPath[] = pagePathsMap[pageNumber] ?? [];
+
+  // ─── Bookmarks ────────────────────────────────────────────────────────────────
+
+  const fileBookmarks: Bookmark[] = (getBookmarks() ?? []).filter(
+    (b) => b.filePath === file,
+  );
+
+  const isCurrentPageBookmarked = fileBookmarks.some(
+    (b) => b.pageNo === String(pageNumber),
+  );
+
+  const toggleBookmark = () => {
+    const allBookmarks = getBookmarks() ?? [];
+    const updated: Bookmark[] = isCurrentPageBookmarked
+      ? allBookmarks.filter(
+          (b) => !(b.filePath === file && b.pageNo === String(pageNumber)),
+        )
+      : [
+          ...allBookmarks,
+          { fileName, filePath: file, pageNo: String(pageNumber) },
+        ];
+    updateBookmarks(updated);
+  };
+
+  // ─── Annotations ──────────────────────────────────────────────────────────────
+
+  const readAnnotationsFromConfig = useCallback((): PagePathsMap => {
+    const fullConfig = getFullConfig();
+    const fileAnnotations: FileAnnotations | undefined =
+      fullConfig?.annotations?.[file];
+    if (!fileAnnotations) return {};
+
+    const normalised: PagePathsMap = {};
+    for (const [k, v] of Object.entries(fileAnnotations.pagePathsMap)) {
+      normalised[Number(k)] = v;
+    }
+    return normalised;
+  }, [file, getFullConfig]);
+
+  const persistAnnotations = useCallback(
+    (updatedPagePathsMap: PagePathsMap) => {
+      const fullConfig = getFullConfig();
+      if (!fullConfig) return;
+      updateConfig({
+        ...fullConfig,
+        annotations: {
+          ...(fullConfig.annotations ?? {}),
+          [file]: {
+            pagePathsMap: updatedPagePathsMap,
+          } satisfies FileAnnotations,
+        },
+      });
+    },
+    [file, getFullConfig, updateConfig],
+  );
+
+  const updatePagePaths = useCallback(
+    (page: number, updater: (prev: AnnotationPath[]) => AnnotationPath[]) => {
+      setPagePathsMap((prev) => {
+        const updated: PagePathsMap = {
+          ...prev,
+          [page]: updater(prev[page] ?? []),
+        };
+        persistAnnotations(updated);
+        return updated;
+      });
+    },
+    [persistAnnotations],
+  );
+
+  // ─── Load PDF on file change ──────────────────────────────────────────────────
+
   useEffect(() => {
-    const loadPdfFromPath = async () => {
-      if (!file) return;
+    if (!file) return;
+    setPageNumber(1);
+    setPagePathsMap({});
+    setHistoryMap({});
+    setCurrentPath(null);
+    setDrawing(false);
+    setPageRendered(false);
+    setPdfSource(null);
 
+    const loadPdf = async () => {
       setIsLoadingPdf(true);
       try {
-        // Call Tauri command to read PDF as base64
         const base64String = await invoke<string>("read_pdf_file", {
           filePath: file,
         });
-
-        // Convert to data URL
-        const dataUrl = `data:application/pdf;base64,${base64String}`;
-        setPdfSource(dataUrl);
+        setPdfSource(`data:application/pdf;base64,${base64String}`);
       } catch (err) {
         error(`Failed to load PDF from ${file}: ${err}`);
       } finally {
         setIsLoadingPdf(false);
       }
     };
-
-    loadPdfFromPath();
+    loadPdf();
   }, [file]);
+
+  // ─── Load annotations separately so config is always fresh ───────────────────
+
+  useEffect(() => {
+    if (!file) return;
+    const saved = readAnnotationsFromConfig();
+    if (Object.keys(saved).length > 0) {
+      setPagePathsMap(saved);
+    }
+  }, [file, readAnnotationsFromConfig]);
+
+  // ─── Document load ────────────────────────────────────────────────────────────
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
 
-  const handlePrevPage = () => {
-    if (pageNumber > 1) setPageNumber(pageNumber - 1);
-  };
+  // ─── Page render: size annotation canvas to CSS pixels ────────────────────────
+  //
+  // THE FIX FOR "marks in wrong position":
+  //   react-pdf renders its internal canvas at device-pixel resolution (e.g. 2x
+  //   on retina screens). pdfCanvas.width may be 1684 while CSS display is 842px.
+  //   We must set our annotation canvas to the CSS size — because mouse events
+  //   (clientX/Y via getBoundingClientRect) are in CSS pixels. If we set
+  //   canvas.width = pdfCanvas.width (1684), our canvas would be 2x larger than
+  //   what the user sees, making every stroke appear at half the intended position.
 
-  const handleNextPage = () => {
-    if (pageNumber < numPages) setPageNumber(pageNumber + 1);
-  };
+  const onPageRenderSuccess = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = pageContainerRef.current;
+    if (!canvas || !container) return;
 
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+    const pdfCanvas = container.querySelector(
+      ".react-pdf__Page__canvas",
+    ) as HTMLCanvasElement | null;
 
-  const toggleBookmark = () => {
-    setBookmarks((prev) =>
-      prev.includes(pageNumber)
-        ? prev.filter((page) => page !== pageNumber)
-        : [...prev, pageNumber],
-    );
-  };
+    if (pdfCanvas) {
+      // CSS display size — mouse coordinates live in this space
+      const cssW = parseFloat(pdfCanvas.style.width) || pdfCanvas.offsetWidth;
+      const cssH = parseFloat(pdfCanvas.style.height) || pdfCanvas.offsetHeight;
 
-  const createDocument = async () => {
-    try {
-      saveContentToPDF(basicConfig, knowledgeStoreConfig, file);
-    } catch (err) {
-      error(`Failed to create document: ${err}`);
+      // Set annotation canvas to match CSS display size exactly (1:1 with mouse)
+      canvas.width = cssW;
+      canvas.height = cssH;
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+
+      scaleRef.current = {
+        x: pdfCanvas.width / cssW,
+        y: pdfCanvas.height / cssH,
+      };
     }
-  };
 
-  const redrawCanvas = () => {
+    setPageRendered(true);
+  }, []);
+
+  // Reset pageRendered when navigating so we wait for new page to finish rendering
+  useEffect(() => {
+    setPageRendered(false);
+  }, [pageNumber]);
+
+  // ─── Redraw canvas ─────────────────────────────────────────────────────────────
+
+  const redrawCanvas = useCallback((paths: AnnotationPath[]) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     paths.forEach((path) => {
+      if (path.points.length === 0) return;
       ctx.beginPath();
       path.points.forEach((pt, idx) => {
         if (idx === 0) ctx.moveTo(pt.x, pt.y);
         else ctx.lineTo(pt.x, pt.y);
       });
-      ctx.strokeStyle = path.tool === "pen" ? "red" : "rgba(255,255,0,0.3)";
+      ctx.strokeStyle = path.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
       ctx.lineWidth = path.tool === "pen" ? 2 : 20;
       ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       ctx.stroke();
     });
+  }, []);
+
+  useEffect(() => {
+    if (!pageRendered) return;
+    redrawCanvas(pagePathsMap[pageNumber] ?? []);
+  }, [pagePathsMap, pageNumber, pageRendered, redrawCanvas]);
+
+  // ─── Coordinate helper ────────────────────────────────────────────────────────
+  //
+  // Always derive position from getBoundingClientRect so scroll offsets and any
+  // parent CSS transforms don't shift coordinates. This is more reliable than
+  // e.nativeEvent.offsetX which is relative to the target element (and can jump
+  // if the event target is a child element rather than the canvas itself).
+
+  const getCanvasPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+  // ─── Canvas drawing ───────────────────────────────────────────────────────────
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = getCanvasPos(e);
     if (tool === "pen" || tool === "highlight") {
       setDrawing(true);
       setCurrentPath({ points: [pos], tool });
     } else if (tool === "eraser") {
       setDrawing(true);
-      eraseAt(pos); // erase immediately on mouse down
+      eraseAt(pos);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
-
     if (!drawing) return;
+    const pos = getCanvasPos(e);
 
     if (tool === "pen" || tool === "highlight") {
       setCurrentPath((prev) => {
         if (!prev) return null;
-        const updated = { ...prev, points: [...prev.points, pos] };
-
+        const updated: AnnotationPath = {
+          ...prev,
+          points: [...prev.points, pos],
+        };
+        // Incremental draw for smooth real-time strokes
         const ctx = canvasRef.current?.getContext("2d");
         if (ctx && prev.points.length > 0) {
           const last = prev.points[prev.points.length - 1];
           ctx.beginPath();
           ctx.moveTo(last.x, last.y);
           ctx.lineTo(pos.x, pos.y);
-          ctx.strokeStyle = prev.tool === "pen" ? "red" : "rgba(255,255,0,0.3)";
+          ctx.strokeStyle = prev.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
           ctx.lineWidth = prev.tool === "pen" ? 2 : 20;
           ctx.lineCap = "round";
+          ctx.lineJoin = "round";
           ctx.stroke();
         }
-
         return updated;
       });
     } else if (tool === "eraser") {
@@ -181,70 +326,99 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   };
 
   const handleMouseUp = () => {
-    if (currentPath) {
-      setPaths((prev) => [...prev, currentPath]);
+    if (currentPath && currentPath.points.length > 0) {
+      setHistoryMap((prev) => ({
+        ...prev,
+        [pageNumber]: [...(prev[pageNumber] ?? []), [...currentPaths]],
+      }));
+      updatePagePaths(pageNumber, (prev) => [...prev, currentPath]);
       setCurrentPath(null);
     }
     setDrawing(false);
   };
 
-  const eraseAt = (pos: Point) => {
-    if (!paths.length) return;
+  // ─── Eraser ───────────────────────────────────────────────────────────────────
+  //
+  // THE FIX FOR "can't erase all lines":
+  //   1. Previous eraseAt read `currentPaths` from closure — stale after the first
+  //      erase since state hadn't updated yet. Now we read directly from
+  //      setPagePathsMap's functional updater so we always have the latest paths.
+  //   2. Radius increased to 20px so it reliably hits thin pen strokes.
+  //   3. History snapshot taken inside the updater (only when something is erased).
 
-    const radius = 15; // size of eraser
+  const eraseAt = useCallback(
+    (pos: { x: number; y: number }) => {
+      const ERASER_RADIUS = 20;
 
-    // Save snapshot for undo
-    setHistory((prev) => [...prev, [...paths]]);
+      setPagePathsMap((prevMap) => {
+        const paths = prevMap[pageNumber] ?? [];
+        if (paths.length === 0) return prevMap;
 
-    // Filter out paths that have points near the cursor
-    const updatedPaths = paths.filter(
-      (path) =>
-        !path.points.some(
-          (pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < radius,
-        ),
-    );
+        const remaining = paths.filter(
+          (path) =>
+            !path.points.some(
+              (pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < ERASER_RADIUS,
+            ),
+        );
 
-    setPaths(updatedPaths); // update paths
-    redrawCanvas(); // redraw canvas
-  };
+        if (remaining.length === paths.length) return prevMap; // nothing changed
 
-  const handleUndo = () => {
-    setHistory((prevHistory) => {
-      if (prevHistory.length === 0) return prevHistory;
+        // Record history before the erase
+        setHistoryMap((h) => ({
+          ...h,
+          [pageNumber]: [...(h[pageNumber] ?? []), paths],
+        }));
 
-      // Get the last snapshot
-      const lastPaths = prevHistory[prevHistory.length - 1];
+        const updated: PagePathsMap = { ...prevMap, [pageNumber]: remaining };
+        persistAnnotations(updated);
+        redrawCanvas(remaining);
+        return updated;
+      });
+    },
+    [pageNumber, persistAnnotations, redrawCanvas],
+  );
 
-      // Restore paths
-      setPaths(lastPaths);
+  // ─── Undo ─────────────────────────────────────────────────────────────────────
 
-      // Remove the last snapshot from history
-      return prevHistory.slice(0, -1);
+  const handleUndo = useCallback(() => {
+    setHistoryMap((prevHistoryMap) => {
+      const pageHistory = prevHistoryMap[pageNumber] ?? [];
+      if (pageHistory.length === 0) return prevHistoryMap;
+
+      const lastPaths = pageHistory[pageHistory.length - 1];
+      setPagePathsMap((prev) => {
+        const updated: PagePathsMap = { ...prev, [pageNumber]: lastPaths };
+        persistAnnotations(updated);
+        return updated;
+      });
+
+      return { ...prevHistoryMap, [pageNumber]: pageHistory.slice(0, -1) };
     });
-  };
+  }, [pageNumber, persistAnnotations]);
 
-  const highlightMatches = () => {
-    const textLayers = document.querySelectorAll(
-      ".react-pdf__Page__textContent span",
-    );
-    textLayers.forEach((span) => {
-      const el = span as HTMLElement;
-      const originalText = el.textContent || "";
-      if (
-        searchTerm &&
-        originalText.toLowerCase().includes(searchTerm.toLowerCase())
-      ) {
-        el.style.backgroundColor = isDarkMode ? "orange" : "yellow";
-      } else {
-        el.style.backgroundColor = "";
-      }
-    });
-  };
+  // ─── Search highlighting ──────────────────────────────────────────────────────
+
+  const highlightMatches = useCallback(() => {
+    document
+      .querySelectorAll(".react-pdf__Page__textContent span")
+      .forEach((span) => {
+        const el = span as HTMLElement;
+        const text = el.textContent || "";
+        el.style.backgroundColor =
+          searchTerm && text.toLowerCase().includes(searchTerm.toLowerCase())
+            ? isDarkMode
+              ? "orange"
+              : "yellow"
+            : "";
+      });
+  }, [searchTerm, isDarkMode]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => highlightMatches());
     return () => cancelAnimationFrame(id);
-  }, [searchTerm, pageNumber]);
+  }, [highlightMatches, pageNumber]);
+
+  // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -262,15 +436,44 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [handleUndo]);
 
-  useEffect(() => {
-    redrawCanvas();
-  }, [paths, pageNumber]);
+  // ─── Navigation ──────────────────────────────────────────────────────────────
+
+  const handlePrevPage = () => {
+    if (pageNumber > 1) setPageNumber((p) => p - 1);
+  };
+  const handleNextPage = () => {
+    if (pageNumber < numPages) setPageNumber((p) => p + 1);
+  };
+
+  // ─── Download ─────────────────────────────────────────────────────────────────
+
+  const createDocument = async () => {
+    try {
+      saveContentToPDF(basicConfig, knowledgeStoreConfig, file);
+    } catch (err) {
+      error(`Failed to create document: ${err}`);
+    }
+  };
+
+  // ─── Toolbar styles ───────────────────────────────────────────────────────────
+
+  const toolbarBase = isDarkMode
+    ? "bg-white/[0.08] border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.06)_inset] backdrop-blur-2xl backdrop-saturate-200"
+    : "bg-black/75 border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.35)]";
+  const toolbarBtn = isDarkMode
+    ? "text-white/40 hover:text-white/80 hover:bg-white/[0.08]"
+    : "text-white/50 hover:text-white hover:bg-white/10";
+  const toolbarBtnActive =
+    "bg-white/20 text-white shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";
+  const toolbarDivider = isDarkMode ? "bg-white/10" : "bg-white/15";
+
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div
-      className={`mt-3 h-[690px] rounded-md overflow-hidden ${
+      className={`mt-3 h-[690px] rounded-md flex flex-col ${
         isDarkMode ? "bg-black text-white" : "bg-white text-black"
       }`}
     >
@@ -286,75 +489,143 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         </Card>
       )}
 
-      <div className="relative w-fit overflow-y-auto flex justify-center">
-        <div className="flex flex-row gap-2 mb-4 justify-center rounded-md z-10 fixed w-[30%] bottom-4 bg-clip-padding backdrop-filter backdrop-blur-md bg-opacity-70 bg-gray-100 dark:bg-gray-800">
-          <Button onClick={handlePrevPage} variant="outline">
-            <ChevronLeft />
-          </Button>
-          <Button onClick={handleNextPage} variant="outline">
-            <ChevronRight />
+      <div className="relative flex-1 min-h-0 overflow-y-auto flex justify-center">
+        {/* Toolbar */}
+        <div
+          className={`fixed bottom-6 z-50 flex flex-row items-center gap-0.5 p-1.5 rounded-2xl border ${toolbarBase}`}
+        >
+          <Button
+            onClick={handlePrevPage}
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarBtn}`}
+          >
+            <ChevronLeft className="h-[15px] w-[15px]" />
           </Button>
           <Button
-            variant={tool === "pen" ? "default" : "outline"}
-            onClick={() => setTool("pen")}
+            onClick={handleNextPage}
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarBtn}`}
           >
-            <PenIcon />
+            <ChevronRight className="h-[15px] w-[15px]" />
+          </Button>
+
+          <div className={`mx-1 h-4 w-px rounded-full ${toolbarDivider}`} />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTool(tool === "pen" ? null : "pen")}
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${
+              tool === "pen" ? toolbarBtnActive : toolbarBtn
+            }`}
+          >
+            <PenIcon className="h-[15px] w-[15px]" />
           </Button>
           <Button
-            variant={tool === "highlight" ? "default" : "outline"}
-            onClick={() => setTool("highlight")}
+            variant="ghost"
+            size="icon"
+            onClick={() => setTool(tool === "highlight" ? null : "highlight")}
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${
+              tool === "highlight" ? toolbarBtnActive : toolbarBtn
+            }`}
           >
-            <HighlighterIcon />
+            <HighlighterIcon className="h-[15px] w-[15px]" />
           </Button>
-          <Button variant="outline" onClick={() => setTool("eraser")}>
-            <EraserIcon />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTool(tool === "eraser" ? null : "eraser")}
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${
+              tool === "eraser" ? toolbarBtnActive : toolbarBtn
+            }`}
+          >
+            <EraserIcon className="h-[15px] w-[15px]" />
           </Button>
+
+          <div className={`mx-1 h-4 w-px rounded-full ${toolbarDivider}`} />
+
           <Button
             onClick={toggleBookmark}
-            variant={bookmarks.includes(pageNumber) ? "destructive" : "outline"}
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${
+              isCurrentPageBookmarked
+                ? "text-rose-400 bg-rose-400/15"
+                : toolbarBtn
+            }`}
           >
-            {bookmarks.includes(pageNumber) ? (
-              <BookmarkCheck />
+            {isCurrentPageBookmarked ? (
+              <BookmarkCheck className="h-[15px] w-[15px]" />
             ) : (
-              <BookmarkIcon />
+              <BookmarkIcon className="h-[15px] w-[15px]" />
             )}
           </Button>
-          <Button onClick={toggleTheme} variant="outline">
-            {isDarkMode ? <SunIcon /> : <MoonIcon />}
+
+          <Button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarBtn}`}
+          >
+            {isDarkMode ? (
+              <SunIcon className="h-[15px] w-[15px]" />
+            ) : (
+              <MoonIcon className="h-[15px] w-[15px]" />
+            )}
           </Button>
-          <Button onClick={createDocument} variant="outline">
-            {isDocumentCreated ? <DownloadIcon /> : <DownloadIcon />}
+
+          <Button
+            onClick={createDocument}
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarBtn}`}
+          >
+            <DownloadIcon className="h-[15px] w-[15px]" />
           </Button>
         </div>
 
+        {/* PDF + canvas overlay */}
         {isLoadingPdf ? (
           <div className="flex items-center justify-center h-full">
             <p>Loading PDF...</p>
           </div>
         ) : pdfSource ? (
           <div
+            ref={pageContainerRef}
             style={{
+              position: "relative",
+              display: "inline-block",
               filter: isDarkMode ? "invert(1) hue-rotate(180deg)" : "none",
             }}
           >
             <Document file={pdfSource} onLoadSuccess={onDocumentLoadSuccess}>
               <Page
                 pageNumber={pageNumber}
-                renderAnnotationLayer={true}
-                renderTextLayer={true}
+                renderAnnotationLayer
+                renderTextLayer
+                onRenderSuccess={onPageRenderSuccess}
               />
             </Document>
             <canvas
               ref={canvasRef}
-              width={800}
-              height={1000}
-              className={`absolute top-0 left-0 z-10 bg-transparent ${
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                zIndex: 10,
+                backgroundColor: "transparent",
+                // width/height set dynamically by onPageRenderSuccess
+              }}
+              className={
                 tool === "pen" || tool === "highlight" || tool === "eraser"
-                  ? "pointer-events-auto"
+                  ? "pointer-events-auto cursor-crosshair"
                   : "pointer-events-none"
-              }`}
+              }
               onMouseDown={handleMouseDown}
               onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
               onMouseMove={handleMouseMove}
             />
           </div>
@@ -370,7 +641,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
           isDarkMode ? "bg-black text-white" : "bg-white text-black"
         }`}
       >
-        Page {pageNumber} of {numPages} {bookmarks.includes(pageNumber) && "🔖"}
+        Page {pageNumber} of {numPages} {isCurrentPageBookmarked && "🔖"}
       </p>
     </div>
   );

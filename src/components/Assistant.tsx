@@ -18,6 +18,7 @@ import {
 } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
 import { useConfig } from "./providers/ConfigProvider";
+import Settings from "./Settings";
 
 interface Message {
   id: number;
@@ -67,6 +68,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   const [currentSessionIndex, setCurrentSessionIndex] = useState<number | null>(
     null,
   );
+  const [showSettings, setShowSettings] = useState(false);
 
   // Refs
   const initializationAttempted = useRef(false);
@@ -337,13 +339,27 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     }
   };
 
-  // Handle microphone (placeholder)
-  const handleMicrophoneClick = () => {
-    info("Microphone clicked - TODO: implement voice input");
-    // TODO: Implement voice input with speech recognition
-  };
-
   const providerDisplay = getProviderDisplay();
+
+  // Render: Settings modal overlay
+  if (showSettings) {
+    return (
+      <div className="h-full border bg-background rounded-lg flex flex-col relative">
+        <div className="flex items-end self-end  border-b border-l p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSettings(false)}
+          >
+            ✕
+          </Button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <Settings />
+        </div>
+      </div>
+    );
+  }
 
   // Render: LLM not configured
   if (isLlmNotConfigured) {
@@ -356,9 +372,12 @@ export default function Assistant({ fileInfo }: AssistantProps) {
           <h3 className="font-semibold text-lg mb-1">LLM Not Configured</h3>
           <p className="text-sm text-muted-foreground max-w-xs">
             No API key found. Please add your API key in{" "}
-            <a href="/Settings" className="font-medium text-foreground">
+            <span
+              onClick={() => setShowSettings(true)}
+              className="cursor-pointer font-medium text-foreground underline underline-offset-2"
+            >
               Settings
-            </a>{" "}
+            </span>{" "}
             to start chatting.
           </p>
         </div>
@@ -381,8 +400,13 @@ export default function Assistant({ fileInfo }: AssistantProps) {
           </p>
           <p className="text-xs text-muted-foreground max-w-xs">
             Double-check your API key and model name in{" "}
-            <span className="font-medium text-foreground">Settings</span>, then
-            restart the app.
+            <span
+              onClick={() => setShowSettings(true)}
+              className="cursor-pointer font-medium text-foreground underline underline-offset-2"
+            >
+              Settings
+            </span>
+            , then restart the app.
           </p>
         </div>
       </div>
@@ -483,17 +507,6 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                   />
                   {providerDisplay.name}
                   <ChevronDown className="ml-1 h-4 w-4" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  onClick={handleMicrophoneClick}
-                  disabled={isLoading}
-                  title="Voice input (coming soon)"
-                >
-                  <Mic className="size-4" />
                 </Button>
               </div>
 
