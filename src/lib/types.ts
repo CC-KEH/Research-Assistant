@@ -1,3 +1,21 @@
+// ---------------- Types related to config and settings ------------------ //
+
+export interface Config {
+  basicConfig: BasicConfig;
+  bookmarks: Bookmark[];
+  knowledgeStoreConfig: {
+    files: KnowledgeFile[];
+  };
+  tabsConfig: {
+    tabs: Tab[];
+    customTabs: Tab[];
+  };
+  llmConfig: Record<string, LlmProvider>;
+  todos: Todo[];
+  /** Canvas annotations per PDF file, keyed by absolute file path. */
+  annotations?: Record<string, FileAnnotations>;
+}
+
 export type Project = {
   projectName: string;
   projectPath: string;
@@ -64,22 +82,6 @@ export interface Todo {
   completed: boolean;
 }
 
-export interface Config {
-  basicConfig: BasicConfig;
-  bookmarks: Bookmark[];
-  knowledgeStoreConfig: {
-    files: KnowledgeFile[];
-  };
-  tabsConfig: {
-    tabs: Tab[];
-    customTabs: Tab[];
-  };
-  llmConfig: Record<string, LlmProvider>;
-  todos: Todo[];
-  /** Canvas annotations per PDF file, keyed by absolute file path. */
-  annotations?: Record<string, FileAnnotations>;
-}
-
 export enum Item {
   directory,
   file,
@@ -114,4 +116,80 @@ export type PagePathsMap = Record<number, AnnotationPath[]>;
 /** Stored under config.annotations[filePath] */
 export interface FileAnnotations {
   pagePathsMap: PagePathsMap;
+}
+
+// ─── Chat Types ───────────────────────────────────────────────────────────────
+
+export interface Chats {
+  sessions: {
+    sessions: ChatSession[];
+  };
+}
+
+export interface SessionCreateResponse {
+  message: string;
+  session_index: number;
+  session: ChatSession;
+}
+
+export interface ChatResponse {
+  response: string;
+  session_index: number;
+  timestamp: string;
+}
+
+export interface ChatMessage {
+  index: string;
+  timestamp: string;
+  message: string;
+  is_ai: boolean;
+}
+
+export interface ChatSessionMetadata {
+  created_at: string;
+  last_updated: string;
+  total_messages: number;
+  tags: string[];
+  context: string;
+}
+
+export interface ChatSession {
+  name: string;
+  history: ChatMessage[];
+  metadata: ChatSessionMetadata;
+}
+
+// Assistant related types
+
+export interface Message {
+  id: number;
+  content: string;
+  sender: "user" | "ai" | "system";
+  timestamp?: string;
+}
+
+export interface SessionInfo {
+  index: number;
+  name: string;
+  total_messages?: number;
+  last_updated?: string;
+}
+
+export interface AssistantProps {
+  fileInfo: FileInfo | null;
+}
+
+export type InitializationPhase =
+  | "idle"
+  | "checking-server"
+  | "initializing-backend"
+  | "loading-session"
+  | "complete"
+  | "no-llm-configured"
+  | "error";
+
+export interface InitializationState {
+  phase: InitializationPhase;
+  message: string;
+  error?: string;
 }

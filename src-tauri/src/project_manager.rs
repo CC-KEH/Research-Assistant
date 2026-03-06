@@ -159,24 +159,33 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
         },
         llm_config,
         todos: Vec::new(),
-        annotations: None, // No annotations for a new project
+        annotations: None,
     };
 
-    // Write config to file
+    // Write config.json
     let config_path = project_path.join("config.json");
     let json_content = serde_json::to_string_pretty(&default_config)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
-
     fs::write(&config_path, json_content)
         .map_err(|e| format!("Failed to write config file: {}", e))?;
 
-    // Create 3 directories: Documents, Notes, Papers
+    // Write chats.json with empty sessions
+    let chats_path = project_path.join("chats.json");
+    let default_chats = serde_json::json!({
+        "sessions": {
+            "sessions": []
+        }
+    });
+    let chats_content = serde_json::to_string_pretty(&default_chats)
+        .map_err(|e| format!("Failed to serialize chats: {}", e))?;
+    fs::write(&chats_path, chats_content)
+        .map_err(|e| format!("Failed to write chats file: {}", e))?;
+
+    // Create subdirectories
     fs::create_dir_all(project_path.join("Documents"))
         .map_err(|e| format!("Failed to create Documents directory: {}", e))?;
-
     fs::create_dir_all(project_path.join("Notes"))
         .map_err(|e| format!("Failed to create Notes directory: {}", e))?;
-
     fs::create_dir_all(project_path.join("Papers"))
         .map_err(|e| format!("Failed to create Papers directory: {}", e))?;
 

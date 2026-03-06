@@ -1,11 +1,15 @@
 import { jsPDF } from "jspdf";
 import { BasicConfig, Config, KnowledgeFile } from "@/lib/types";
-import { FileInfo } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { error, info } from "@/lib/logger";
-import { Project, TreeNode } from "@/lib/types";
-
+import {
+  Project,
+  TreeNode,
+  SessionCreateResponse,
+  ChatResponse,
+  FileInfo,
+} from "@/lib/types";
 const PYTHON_API_BASE = "http://localhost:8000";
 
 //*********************** */
@@ -143,29 +147,6 @@ export const getLLMStatus = async () => {
 //*********************** */
 //* Python API - Sessions
 //*********************** */
-
-export interface Session {
-  name: string;
-  history: Array<{
-    index: string;
-    timestamp: string;
-    message: string;
-    is_ai: boolean;
-  }>;
-  metadata: {
-    created_at: string;
-    last_updated: string;
-    total_messages: number;
-    tags: string[];
-    context: string;
-  };
-}
-
-export interface SessionCreateResponse {
-  message: string;
-  session_index: number;
-  session: Session;
-}
 
 export const createSession = async (
   name: string,
@@ -335,12 +316,6 @@ export const resetSession = async (sessionIndex: number) => {
     throw err;
   }
 };
-
-export interface ChatResponse {
-  response: string;
-  session_index: number;
-  timestamp: string;
-}
 
 export const sendChatMessage = async (
   message: string,
