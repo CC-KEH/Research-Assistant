@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
+
 import { ChatMessageList } from "@/components/ui/chat-message-list";
 import { ChatInput } from "@/components/ui/chat-input";
 import { useAnimatedText } from "@/components/ui/animated-text";
@@ -1041,7 +1044,10 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-
+              <Field orientation="horizontal">
+                <Switch id="switch-size-sm" />
+                <FieldLabel htmlFor="switch-size-sm">Small</FieldLabel>
+              </Field>
               <Button
                 type="submit"
                 size="sm"
