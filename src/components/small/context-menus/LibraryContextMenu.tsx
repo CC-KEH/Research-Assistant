@@ -10,6 +10,7 @@ import { ReactNode } from "react";
 
 interface LibraryContextMenuProps {
   children: ReactNode;
+  onNewFileUpload?: () => void;
   onNewFile?: () => void;
   onNewFolder?: () => void;
   onDelete?: () => void;
@@ -19,6 +20,7 @@ interface LibraryContextMenuProps {
 
 export const LibraryContextMenu = ({
   children,
+  onNewFileUpload,
   onNewFile,
   onNewFolder,
   onDelete,
@@ -30,6 +32,13 @@ export const LibraryContextMenu = ({
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent>
+        <ContextMenuItem
+          onClick={onNewFileUpload}
+          className="flex flex-row justify-between gap-6"
+        >
+          Upload File
+          <File />
+        </ContextMenuItem>
         <ContextMenuItem
           onClick={onNewFile}
           className="flex flex-row justify-between gap-6"

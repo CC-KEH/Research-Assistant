@@ -38,6 +38,7 @@ pub fn run() {
             write_file,
             delete_item,
             map_extension_to_type,
+            upload_to_library,
             upload_to_knowledge_store,
             start_python_server,
             stop_python_server,

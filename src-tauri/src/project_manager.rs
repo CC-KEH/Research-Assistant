@@ -43,7 +43,6 @@ fn get_projects_file_path() -> Result<PathBuf, String> {
         }
     }
 }
-
 #[tauri::command]
 pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
     let projects_file = get_projects_file_path()?;
@@ -53,14 +52,40 @@ pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
     }
     let content = fs::read_to_string(&projects_file)
         .map_err(|e| format!("Failed to read projects.json: {}", e))?;
+
     let projects: Vec<BasicConfig> = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse projects.json: {}", e))?;
-    Ok(projects)
+
+    let valid_projects: Vec<BasicConfig> = projects
+        .into_iter()
+        .filter(|p| Path::new(&p.project_path).exists())
+        .collect();
+
+    // Only write back if something was actually removed
+    let original_count = serde_json::from_str::<Vec<BasicConfig>>(&content)
+        .map(|p| p.len())
+        .unwrap_or(0);
+
+    if valid_projects.len() != original_count {
+        let updated = serde_json::to_string_pretty(&valid_projects)
+            .map_err(|e| format!("Failed to serialize projects.json: {}", e))?;
+        fs::write(&projects_file, updated)
+            .map_err(|e| format!("Failed to write projects.json: {}", e))?;
+    }
+
+    Ok(valid_projects)
 }
 
 #[tauri::command]
 pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
-    let project_path = PathBuf::from(&project.project_path);
+    let project_path = PathBuf::from(&project.project_path).join(&project.project_name);
+
+    let new_project_config = BasicConfig {
+        project_name: project.project_name.clone(),
+        project_path: project_path.to_string_lossy().to_string(),
+        active_llm: project.active_llm.clone(),
+    };
+
     log::info!(
         "📁 [create_new_project] : Creating project in {}",
         project_path.display()
@@ -150,7 +175,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
 
     // Create a default config
     let default_config = Config {
-        basic_config: project.clone(),
+        basic_config: new_project_config.clone(),
         bookmarks: Vec::new(),
         knowledge_store_config: KnowledgeStoreConfig { files: Vec::new() },
         tabs_config: TabsConfig {
@@ -190,8 +215,8 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
         .map_err(|e| format!("Failed to create Papers directory: {}", e))?;
 
     // Save Project BasicConfig to projects.json
-    save_project_to_registry(&project)?;
-    Ok(project)
+    save_project_to_registry(&new_project_config)?;
+    Ok(new_project_config)
 }
 
 fn save_project_to_registry(project: &BasicConfig) -> Result<(), String> {
@@ -477,9 +502,52 @@ pub fn map_extension_to_type(extension: String) -> String {
 }
 
 #[tauri::command]
+pub fn upload_to_library(
+    source_path: String,
+    destination_path: String,
+) -> Result<FileInfo, String> {
+    let source_file_path = PathBuf::from(&source_path);
+
+    // Verify source file exists
+    if !source_file_path.exists() {
+        return Err(format!("File does not exist: {}", source_path));
+    }
+
+    // Extract file name from path
+
+    let file_name = source_file_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "Invalid file path".to_string())?
+        .to_string();
+
+    // Get file extension
+    let file_extension = source_file_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("unknown")
+        .to_lowercase();
+
+    // Copy file to Papers directory
+    fs::copy(&source_path, &destination_path)
+        .map_err(|e| format!("Failed to copy file to Papers directory: {}", e))?;
+
+    // Create file info to return
+    let file_info = FileInfo {
+        file_name: file_name.clone(),
+        file_type: file_extension.clone(),
+        file_path: destination_path.clone(),
+        file_id: format!("{:?}", destination_path.clone()),
+    };
+
+    Ok(file_info)
+}
+
+#[tauri::command]
 pub fn upload_to_knowledge_store(
     source_path: String,
     project_root: String,
+    for_llm: bool,
 ) -> Result<FileInfo, String> {
     // Construct paths
     let config_path = PathBuf::from(&project_root).join("config.json");
@@ -558,7 +626,7 @@ pub fn upload_to_knowledge_store(
         file_name,
         file_path: dest_path_str,
         file_type: file_extension.clone(),
-        feed_llm: true,
+        feed_llm: for_llm,
         is_processed: false,
         file_data: FileData {
             summary: "".to_string(),

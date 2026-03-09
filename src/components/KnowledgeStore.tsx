@@ -11,7 +11,7 @@ import { info } from "@/lib/logger";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { FileInfo } from "@/lib/types";
-import { uploadFiles } from "@/lib/backend";
+import { uploadFilesToKnowledgeStore } from "@/lib/backend";
 import { useConfig } from "@/components/providers/ConfigProvider";
 
 export default function KnowledgeStore() {
@@ -64,7 +64,7 @@ export default function KnowledgeStore() {
 
   const addPaper = async () => {
     if (!projectPath) return;
-    const newFiles = await uploadFiles(projectPath);
+    const newFiles = await uploadFilesToKnowledgeStore(projectPath);
     if (newFiles.length > 0) {
       setPapers((prev) => [...prev, ...newFiles]);
     }

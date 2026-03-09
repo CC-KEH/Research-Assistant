@@ -511,9 +511,48 @@ export const deleteItem = async (path: string): Promise<void> => {
   }
 };
 
-export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
+export async function uploadFilesToLibrary(
+  destinationPath: string,
+  multiple: boolean = true,
+): Promise<FileInfo[]> {
   const selected = await open({
-    multiple: true,
+    multiple: multiple,
+    filters: [
+      {
+        name: "files",
+        extensions: ["pdf", "md", "txt"],
+      },
+    ],
+  });
+
+  if (!selected || (Array.isArray(selected) && selected.length === 0))
+    return [];
+
+  const files = Array.isArray(selected) ? selected : [selected];
+  const fileInfos: FileInfo[] = [];
+
+  for (const filePath of files) {
+    try {
+      const fileInfo = await invoke<FileInfo>("upload_to_library", {
+        sourcePath: filePath,
+        destinationPath: destinationPath,
+      });
+      fileInfos.push(fileInfo);
+    } catch (err) {
+      error(`Failed to upload ${filePath}: ${err}`);
+    }
+  }
+
+  return fileInfos;
+}
+
+export async function uploadFilesToKnowledgeStore(
+  projectRoot: string,
+  multiple: boolean = true,
+  forLLM: boolean = true,
+): Promise<FileInfo[]> {
+  const selected = await open({
+    multiple: multiple,
     filters: [
       {
         name: "Papers",
@@ -533,6 +572,7 @@ export async function uploadFiles(projectRoot: string): Promise<FileInfo[]> {
       const fileInfo = await invoke<FileInfo>("upload_to_knowledge_store", {
         sourcePath: filePath,
         projectRoot: projectRoot,
+        forLlm: forLLM,
       });
       fileInfos.push(fileInfo);
     } catch (err) {

@@ -10,6 +10,22 @@ import About from "@/pages/About";
 import Settings from "@/components/Settings";
 import KnowledgeStore from "@/components/KnowledgeStore";
 
+// Wrapper that provides config only to routes that need it
+function ConfiguredRoutes({ projectPath }: { projectPath: string }) {
+  return (
+    <ConfigProvider
+      config_path={`${projectPath}\\config.json`}
+      chats_path={`${projectPath}\\chats.json`}
+    >
+      <Routes>
+        <Route path="/Workspace" element={<Workspace />} />
+        <Route path="/Settings" element={<Settings />} />
+        <Route path="/KnowledgeStore" element={<KnowledgeStore />} />
+      </Routes>
+    </ConfigProvider>
+  );
+}
+
 function App() {
   const [projectPath, setProjectPath] = useState<string | null>(
     localStorage.getItem("projectPath"),
@@ -25,23 +41,28 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <ConfigProvider
-        config_path={projectPath ? `${projectPath}\\config.json` : null}
-      >
-        <div className="h-screen w-screen overflow-hidden">
-          <Routes>
-            <Route path="/" element={<Welcome />} />
-            <Route path="/About" element={<About />} />
-            <Route path="/Workspace" element={<Workspace />} />
+      <div className="h-screen w-screen overflow-hidden">
+        <Routes>
+          {/* Routes that don't need config */}
+          <Route path="/" element={<Welcome />} />
+          <Route path="/About" element={<About />} />
+          <Route
+            path="/project-setup"
+            element={<ProjectSetup onProjectPathSet={setProjectPath} />}
+          />
+
+          {/* Routes that need config — only rendered once projectPath exists */}
+          {projectPath ? (
             <Route
-              path="/project-setup"
-              element={<ProjectSetup onProjectPathSet={setProjectPath} />}
+              path="/*"
+              element={<ConfiguredRoutes projectPath={projectPath} />}
             />
-            <Route path="/Settings" element={<Settings />} />
-            <Route path="/KnowledgeStore" element={<KnowledgeStore />} />
-          </Routes>
-        </div>
-      </ConfigProvider>
+          ) : (
+            // Redirect to setup if no project loaded yet
+            <Route path="/*" element={<Welcome />} />
+          )}
+        </Routes>
+      </div>
     </ThemeProvider>
   );
 }

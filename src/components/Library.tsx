@@ -9,6 +9,7 @@ import {
   deleteItem,
   getLibraryData,
   writeFile,
+  uploadFilesToLibrary,
 } from "@/lib/backend";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
 import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
@@ -31,7 +32,9 @@ export default function Library({ onFileSelect }: LibraryProps) {
   // Dialog state
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [dialogName, setDialogName] = useState("");
-  const [dialogType, setDialogType] = useState<"file" | "folder" | null>(null);
+  const [dialogType, setDialogType] = useState<
+    "pdf" | "file" | "folder" | null
+  >(null);
 
   const reloadTreeData = async () => {
     if (!projectPath) return;
@@ -78,6 +81,14 @@ export default function Library({ onFileSelect }: LibraryProps) {
     const node = findNodeById(treeData, selectedNodeId);
     if (!node) return projectPath;
     return node.nodeType === "folder" ? node.path : projectPath;
+  };
+
+  const handleNewFileUpload = () => async () => {
+    const newFiles = await uploadFilesToLibrary(projectPath);
+    if (newFiles) {
+      info("✅ Files uploaded");
+      await reloadTreeData();
+    }
   };
 
   const handleNewFile = () => {
@@ -173,6 +184,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
 
   return (
     <LibraryContextMenu
+      onNewFileUpload={handleNewFileUpload}
       onNewFile={handleNewFile}
       onNewFolder={handleNewFolder}
       onDelete={handleDelete}
