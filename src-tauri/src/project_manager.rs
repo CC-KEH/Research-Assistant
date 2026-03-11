@@ -504,16 +504,13 @@ pub fn map_extension_to_type(extension: String) -> String {
 #[tauri::command]
 pub fn upload_to_library(
     source_path: String,
-    destination_path: String,
+    destination: String, // pass root, not full destination
 ) -> Result<FileInfo, String> {
     let source_file_path = PathBuf::from(&source_path);
 
-    // Verify source file exists
     if !source_file_path.exists() {
         return Err(format!("File does not exist: {}", source_path));
     }
-
-    // Extract file name from path
 
     let file_name = source_file_path
         .file_name()
@@ -521,25 +518,40 @@ pub fn upload_to_library(
         .ok_or_else(|| "Invalid file path".to_string())?
         .to_string();
 
-    // Get file extension
     let file_extension = source_file_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("unknown")
         .to_lowercase();
 
-    // Copy file to Papers directory
-    fs::copy(&source_path, &destination_path)
-        .map_err(|e| format!("Failed to copy file to Papers directory: {}", e))?;
+    // Construct destination internally, just like upload_to_knowledge_store
+    let library_dir = PathBuf::from(&destination);
+    if !library_dir.exists() {
+        fs::create_dir_all(&library_dir)
+            .map_err(|e| format!("Failed to create library directory: {}", e))?;
+    }
 
-    // Create file info to return
+    let dest_path = library_dir.join(&file_name);
+    let destination_path = dest_path
+        .to_str()
+        .ok_or_else(|| "Invalid destination path".to_string())?
+        .to_string();
+
+    fs::copy(&source_path, &dest_path)
+        .map_err(|e| format!("Failed to copy file to library: {}", e))?;
+
     let file_info = FileInfo {
         file_name: file_name.clone(),
-        file_type: file_extension.clone(),
+        file_type: file_extension,
         file_path: destination_path.clone(),
-        file_id: format!("{:?}", destination_path.clone()),
+        file_id: format!("{:?}", dest_path.canonicalize().unwrap_or(dest_path)),
     };
 
+    log::info!(
+        "📁 [upload_to_library] : Uploaded file '{}' to library at '{}'",
+        file_name,
+        destination_path,
+    );
     Ok(file_info)
 }
 

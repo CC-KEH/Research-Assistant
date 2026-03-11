@@ -83,8 +83,9 @@ export default function Library({ onFileSelect }: LibraryProps) {
     return node.nodeType === "folder" ? node.path : projectPath;
   };
 
-  const handleNewFileUpload = () => async () => {
-    const newFiles = await uploadFilesToLibrary(projectPath);
+  const handleNewFileUpload = async () => {
+    const destination = getBasePath();
+    const newFiles = await uploadFilesToLibrary(destination);
     if (newFiles) {
       info("✅ Files uploaded");
       await reloadTreeData();

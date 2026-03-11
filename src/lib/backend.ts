@@ -512,7 +512,7 @@ export const deleteItem = async (path: string): Promise<void> => {
 };
 
 export async function uploadFilesToLibrary(
-  destinationPath: string,
+  destination: string,
   multiple: boolean = true,
 ): Promise<FileInfo[]> {
   const selected = await open({
@@ -535,7 +535,7 @@ export async function uploadFilesToLibrary(
     try {
       const fileInfo = await invoke<FileInfo>("upload_to_library", {
         sourcePath: filePath,
-        destinationPath: destinationPath,
+        destination: destination,
       });
       fileInfos.push(fileInfo);
     } catch (err) {
