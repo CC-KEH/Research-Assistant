@@ -650,92 +650,43 @@ export const createProject = async (
 //* Placeholder Functions
 //*********************** */
 
-export const getContent = (tab_id: string) => {
-  switch (tab_id) {
-    case "summary":
-      return `# Summary
-## Overview
-This project delivers a comprehensive solution for data analysis and visualization. It provides insights into complex datasets through intuitive interfaces and powerful computational tools.
+const fetchContent = async (
+  tab_id: string,
+  file_name: string,
+): Promise<string> => {
+  const content = await fetch(`${PYTHON_API_BASE}/process_tabs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tabId: tab_id, fileName: file_name }),
+  });
+  return content.text();
+};
 
-## Key Features
-- Real-time data processing and analysis
-- Interactive visualization dashboards
-- Automated report generation
-- Scalable architecture supporting millions of records
+export const processTabs = async (file_name: string) => {
+  const contentMap: Record<string, string> = {
+    summary: await fetchContent("summary", file_name),
+    contributions: await fetchContent("contributions", file_name),
+    "critical-analysis": await fetchContent("critical-analysis", file_name),
+    "future-work": await fetchContent("future-work", file_name),
+    customTab: await fetchContent("customTab", file_name),
+  };
+  // Update KnowledgeFile with contentMap data
+  // TODO: Implement the logic to update the KnowledgeFile in the config with the contentMap data
+};
 
-## Technology Stack
-Built with TypeScript, React, and modern web technologies to ensure reliability and performance.
-
-## Results
-The solution has improved data processing efficiency by 40% and reduced analysis time significantly.`;
-
-    case "contributions":
-      return `# Contributions
-## Team Members
-This project was developed through collaborative efforts of dedicated team members across multiple disciplines.
-
-## Major Contributions
-- **Architecture & Design**: Planned scalable system architecture and component design patterns
-- **Backend Development**: Implemented API endpoints and database optimization
-- **Frontend Development**: Created responsive UI components and interactive dashboards
-- **Testing & QA**: Comprehensive test coverage and performance optimization
-- **Documentation**: Detailed technical and user documentation
-
-## Recognition
-Special thanks to all contributors who helped bring this project to completion through their expertise and commitment.`;
-
-    case "critical-analysis":
-      return `# Technical Analysis
-## Performance Metrics
-- Response Time: <100ms for average queries
-- System Uptime: 99.9% availability
-- Data Processing: Handles 10,000+ requests per second
-- Memory Efficiency: 30% reduction compared to previous version
-
-## Code Quality
-- Test Coverage: 87% of codebase
-- Maintainability Index: 78/100
-- Technical Debt: Minimal, well-documented
-- Code Review Process: Implemented for all changes
-
-## Security Assessment
-- All data encrypted in transit and at rest
-- Regular security audits conducted
-- Compliance with industry standards (ISO 27001, GDPR)
-- Vulnerability scanning in CI/CD pipeline
-
-## Scalability Analysis
-The architecture supports horizontal scaling across multiple server instances with load balancing.`;
-
-    case "future-work":
-      return `# Future Work & Roadmap
-## Short Term (Next 3 Months)
-- Implement advanced filtering capabilities
-- Add machine learning model integration
-- Develop mobile application
-- Enhance real-time collaboration features
-
-## Medium Term (3-6 Months)
-- Multi-language support expansion
-- Advanced analytics engine
-- Custom report builder
-- API v2 release with additional endpoints
-
-## Long Term Vision (6+ Months)
-- AI-powered insights and predictions
-- Blockchain integration for data integrity
-- Global CDN deployment for reduced latency
-- Enterprise white-label solution
-
-## Community Initiatives
-- Open-source contribution program
-- Developer API documentation enhancement
-- Community plugin ecosystem
-- Regular webinars and training sessions`;
-
-    default:
-      return "No content available for this tab.";
-  }
+export const getContent = async (
+  tab_id: string,
+  file_name: string,
+  configPath: string,
+): Promise<string> => {
+  const content = await invoke<string>("get_tab_content", {
+    tabId: tab_id,
+    fileName: file_name,
+    configPath: configPath,
+  });
+  return content;
 };
 
 export const saveContentToPDF = async (

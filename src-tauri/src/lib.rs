@@ -40,6 +40,7 @@ pub fn run() {
             map_extension_to_type,
             upload_to_library,
             upload_to_knowledge_store,
+            get_tab_content,
             start_python_server,
             stop_python_server,
             check_python_server,

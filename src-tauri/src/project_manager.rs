@@ -683,6 +683,38 @@ pub async fn read_pdf_file(file_path: String) -> Result<String, String> {
         .map_err(|e| format!("Failed to read PDF: {}", e))
 }
 
+#[tauri::command]
+pub fn get_tab_content(
+    tab_id: String,
+    file_name: String,
+    config_path: String,
+) -> Result<String, String> {
+    // ← change return type if needed
+    let config = get_config(config_path.clone())?;
+
+    let Some(file_info) = config
+        .knowledge_store_config
+        .files
+        .iter()
+        .find(|f| f.file_name == file_name)
+    else {
+        return Ok(String::new()); // or Err("File not found".into())
+    };
+    // TODO: handle custom tabs
+    let content = match tab_id.as_str() {
+        "summary" => file_info.file_data.summary.clone(),
+        "critical-analysis" => file_info.file_data.critical_analysis.clone(),
+        "contributions" => file_info.file_data.contributions.clone(),
+        "future-work" => file_info.file_data.future_work.clone(),
+        "arxiv" => serde_json::to_string(&file_info.file_data.arxiv)
+            .map_err(|e| format!("Serialization failed: {}", e))?,
+        custom if custom.starts_with("customTab_") => "".to_string(),
+        _ => "".to_string(),
+    };
+
+    Ok(content)
+}
+
 fn base64_encode(data: &[u8]) -> String {
     use base64::{engine::general_purpose, Engine as _};
     general_purpose::STANDARD.encode(data)

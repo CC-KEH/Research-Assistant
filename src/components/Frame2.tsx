@@ -80,6 +80,7 @@ export default function Frame2({ fileInfo }: Frame2Props) {
               activeTab={activeTab!}
               filePath={filePath}
               fileType={fileInfo?.type}
+              fileName={fileInfo?.name}
             />
           </ViewerContextMenu>
         </>

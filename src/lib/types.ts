@@ -193,3 +193,12 @@ export interface InitializationState {
   message: string;
   error?: string;
 }
+
+export interface Suggestion {
+  paperName: string;
+  paperPath: string;
+  // Optional future fields (you can add later)
+  publishedDate?: string;
+  author?: string;
+  link?: string; // if backend starts providing direct URLs
+}
