@@ -19,6 +19,7 @@ export interface Config {
 export type Project = {
   projectName: string;
   projectPath: string;
+  activeLlmProvider: string;
 };
 
 export type TreeNode = {
@@ -39,7 +40,7 @@ export interface Tab {
 
 export interface LlmProvider {
   label: string;
-  modelName: string;
+  model: string;
   apiKey: string;
   temperature: number;
   maxTokens: number;
@@ -49,7 +50,7 @@ export interface LlmProvider {
 export interface BasicConfig {
   projectName: string;
   projectPath: string;
-  activeLlm: string;
+  activeLlmProvider: string;
 }
 
 export interface Bookmark {

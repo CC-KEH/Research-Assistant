@@ -27,7 +27,7 @@ pub struct Config {
 pub struct BasicConfig {
     pub project_name: String,
     pub project_path: String,
-    pub active_llm: String,
+    pub active_llm_provider: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,7 +101,7 @@ pub struct Tab {
 #[serde(rename_all = "camelCase")]
 pub struct LLMConfig {
     pub label: String,
-    pub model_name: String,
+    pub model: String,
     pub api_key: String,
     pub temperature: f32,
     pub max_tokens: u32,

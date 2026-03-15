@@ -111,12 +111,12 @@ export const getPythonBackendStatus = async () => {
 //* Python API - LLM Management
 //*********************** */
 
-export const switchLLM = async (modelName: string) => {
+export const switchLLM = async (llmProvider: string) => {
   try {
     const response = await fetch(`${PYTHON_API_BASE}/llm/switch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model_name: modelName }),
+      body: JSON.stringify({ llm_provider: llmProvider }),
     });
 
     if (!response.ok) {
@@ -630,13 +630,14 @@ export const getPreviousProjects = async (): Promise<Project[]> => {
 export const createProject = async (
   project_name: string,
   project_path: string,
+  active_llm_provider: string,
 ) => {
   try {
     const result = await invoke("create_new_project", {
       project: {
         projectName: project_name,
         projectPath: project_path,
-        activeLlm: "google",
+        activeLlmProvider: active_llm_provider,
       },
     });
     return result;

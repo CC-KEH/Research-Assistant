@@ -26,9 +26,9 @@ async def lifespan(app: FastAPI):
     
     # Shutdown - save state if initialized
     try:
-        if assistant and hasattr(assistant, 'llm') and assistant.llm.store:
+        if assistant and hasattr(assistant, 'llm') and assistant.model.store:
             try:
-                assistant.llm.save()
+                assistant.model.save()
                 print("Vector store saved")
             except Exception as e:
                 print(f"Could not save vector store: {e}")
@@ -110,13 +110,12 @@ async def initialize_backend(request: dict):
         config_manager = ConfigManager(config_path)
         session_manager = SessionManager(chats_path)
         assistant = Assistant(config_manager, session_manager)
-        
         print("Managers initialized")
         
         # Try to load existing vector store
         vector_store_loaded = False
         try:
-            assistant.llm.load()
+            assistant.model.load()
             print("Loaded existing knowledge base")
             vector_store_loaded = True
         except Exception as e:
@@ -130,17 +129,19 @@ async def initialize_backend(request: dict):
             "config_path": config_path,
             "chats_path": chats_path,
             "vector_store_loaded": vector_store_loaded,
-            "components": assistant.llm.check()
+            "components": assistant.model.check()
         }
         
     except FileNotFoundError as e:
         error_msg = f"File not found: {str(e)}"
         print(f"{error_msg}")
         raise HTTPException(status_code=400, detail=error_msg)
+    
     except ValueError as e:
         error_msg = f"Invalid request: {str(e)}"
         print(f"{error_msg}")
         raise HTTPException(status_code=400, detail=error_msg)
+    
     except Exception as e:
         error_msg = f"Initialization failed: {str(e)}"
         print(f"{error_msg}")
@@ -157,7 +158,7 @@ async def get_status():
     """Get status of all components."""
     if not assistant:
         raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    return assistant.llm.check()
+    return assistant.model.check()
 
 # ==================== LLM Endpoints ====================
 
@@ -168,12 +169,12 @@ async def switch_llm(request: dict):
         raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
     
     try:
-        model_name = request.get("model_name")
-        if not model_name:
-            raise HTTPException(status_code=400, detail="model_name is required")
+        llm_provider = request.get("llm_provider")
+        if not llm_provider:
+            raise HTTPException(status_code=400, detail="llm_provider is required")
         
-        assistant.llm.switch_llm(model_name)
-        return {"message": f"Switched to LLM: {model_name}", "status": assistant.llm.check()}
+        assistant.model.switch_llm(llm_provider)
+        return {"message": f"Switched to LLM: {llm_provider}", "status": assistant.model.check()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -182,7 +183,7 @@ async def get_llm_status():
     """Get LLM status."""
     if not assistant:
         raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    return assistant.llm.check()
+    return assistant.model.check()
 
 # ==================== Session Endpoints ====================
 
@@ -346,7 +347,7 @@ async def chat(request: ChatRequest):
     
     try:
         # Ensure LLM is initialized
-        if not assistant.llm._llm:
+        if not assistant.model._llm:
             raise HTTPException(status_code=400, detail="LLM not initialized. Use /llm/switch first.")
         
         # Create or switch session
@@ -362,7 +363,7 @@ async def chat(request: ChatRequest):
         
         # Process request (handles context retrieval internally)
         if request.use_rag:
-            if not assistant.llm.store:
+            if not assistant.model.store:
                 raise HTTPException(
                     status_code=400,
                     detail="Vector store not initialized. Use /vectorstore/setup first."
@@ -379,6 +380,7 @@ async def chat(request: ChatRequest):
             session_index=session_manager.active_session_index,
             timestamp=datetime.datetime.now().isoformat()
         )
+        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -403,10 +405,10 @@ async def process_with_tab(request: TabProcessRequest):
         raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
     
     try:
-        if not assistant.llm._llm:
+        if not assistant.model._llm:
             raise HTTPException(status_code=400, detail="LLM not initialized. Use /llm/switch first.")
         
-        result = assistant.process_tab(request.tab_id, request.text)
+        result = assistant.process_tab(request.tab_id)
         tab = config_manager.get_tab_by_id(request.tab_id)
         
         return {

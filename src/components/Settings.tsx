@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs } from "@/components/ui/Tabs";
 import { Card, CardContent } from "./ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -424,27 +424,45 @@ function ChatsTab() {
 // ─── Main Settings ─────────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const { config, loading, updateTabsConfig, updateConfig } = useConfig();
+  const {
+    config,
+    loading,
+    updateTabsConfig,
+    getBasicConfig,
+    getLlmConfig,
+    updateConfig,
+  } = useConfig();
 
   const [activeTab, setActiveTab] = useState("file-viewer");
   const [fileViewerTabs, setFileViewerTabs] = useState<Tab[]>([]);
 
-  const [selectedLlmName, setSelectedLlmName] = useState("openai");
-  const [selectedLlmModel, setSelectedLlmModel] = useState("gpt-4");
+  const basicConfig = getBasicConfig();
+  const llmConfig = getLlmConfig();
+
+  const [selectedLlmName, setSelectedLlmName] = useState(
+    basicConfig?.activeLlmProvider || "openai",
+  );
+  const [selectedLlmModel, setSelectedLlmModel] = useState(
+    llmConfig?.[basicConfig?.activeLlmProvider || ""]?.model || "",
+  );
   const [llmApiKey, setLlmApiKey] = useState("");
 
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
   const [chatPrompt, setChatPrompt] = useState("");
 
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
-    if (!loading && config) {
+    if (!loading && config && !hasInitialized.current) {
+      hasInitialized.current = true;
       if (config.tabsConfig?.tabs && Array.isArray(config.tabsConfig.tabs)) {
         setFileViewerTabs(config.tabsConfig.tabs);
       }
-      const activeLlmName = config.basicConfig?.activeLlm || "openai";
-      setSelectedLlmName(activeLlmName);
-      loadProviderFields(activeLlmName);
+      const activeLlmProvider =
+        config.basicConfig?.activeLlmProvider || "openai";
+      setSelectedLlmName(activeLlmProvider);
+      loadProviderFields(activeLlmProvider);
     }
   }, [loading, config]);
 
@@ -452,7 +470,7 @@ export default function Settings() {
     if (!config) return;
     const provider = config.llmConfig?.[providerName];
     if (provider) {
-      setSelectedLlmModel(provider.modelName || "");
+      setSelectedLlmModel(provider.model || "");
       setLlmApiKey(provider.apiKey || "");
       setTemperature(provider.temperature ?? 0.7);
       setMaxTokens(provider.maxTokens ?? 2048);
@@ -493,26 +511,26 @@ export default function Settings() {
       ...config.llmConfig,
       [selectedLlmName]: {
         ...config.llmConfig?.[selectedLlmName],
-        modelName: selectedLlmModel,
+        model: selectedLlmModel,
         apiKey: llmApiKey,
       },
     };
 
     const effectiveApiKey = llmApiKey.trim();
-    let activeLlm = config.basicConfig?.activeLlm;
+    let activeLlmProvider = config.basicConfig?.activeLlmProvider;
 
     if (effectiveApiKey) {
-      activeLlm = selectedLlmName;
-    } else if (!config.llmConfig?.[activeLlm ?? ""]?.apiKey?.trim()) {
+      activeLlmProvider = selectedLlmName;
+    } else if (!config.llmConfig?.[activeLlmProvider ?? ""]?.apiKey?.trim()) {
       const fallback = Object.entries(updatedLlmConfig).find(([, p]) =>
         p.apiKey?.trim(),
       );
-      if (fallback) activeLlm = fallback[0];
+      if (fallback) activeLlmProvider = fallback[0];
     }
 
     const updatedModelProvider: BasicConfig = {
       ...config.basicConfig,
-      activeLlm: activeLlm ?? selectedLlmName,
+      activeLlmProvider: activeLlmProvider ?? selectedLlmName,
     };
 
     updateConfig({
@@ -552,6 +570,7 @@ export default function Settings() {
       <div className="flex flex-col justify-center items-center w-full">
         <Tabs
           tabs={tabs}
+          activeTab={activeTab}
           onTabChange={(tabId) => setActiveTab(tabId)}
           className="mb-6 items-center"
         />

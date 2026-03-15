@@ -28,7 +28,6 @@ class ConfigManager:
         """Get LLM configuration by name."""
         return self.config.get("llmConfig", {}).get(model_name)
 
-
     def get_knowledge_store_files(self) -> List[dict]:
         """Get knowledge store files."""
         return self.config.get("knowledgeStoreConfig", {}).get("files", [])
@@ -49,24 +48,41 @@ class ConfigManager:
 
     def get_basic_config(self) -> List[dict]:
         """Get basic project configuration."""
-        return self.config.get("basicConfig", [])[0]
+        return self.config.get("basicConfig", {})
 
     def get_ai_config(self) -> dict:
         """Get AI configuration."""
-        return self.config.get("aiConfig", {})
-    
-    def update_ai_config(self, new_config: dict):
-        """Update AI configuration parameters."""
-        self.config.setdefault("aiConfig", {}).update(new_config)
-        self.save()
+        model_provider = self.get_basic_config().get("activeLlmProvider", "")
+        llm_config =  self.config.get("llmConfig", {}).get(model_provider, {})
         
-    def get_chat_prompt(self) -> str:
-        """Get the custom chat prompt for RAG."""
-        return self.config.get(
-            "chatPrompt",
-            "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}",
-        )
+        ai_config = {
+            "activeLlmProvider": model_provider,
+            "model": llm_config.get("model", ""),
+            "apiKey": llm_config.get("apiKey", ""),
+            "temperature": llm_config.get("temperature", 0.7),
+            "maxTokens": llm_config.get("maxTokens", 2048),
+            "chatPrompt": llm_config.get("chatPrompt", ""),
+        }
+        
+        return ai_config
 
+    def update_ai_config(self, new_ai_config: dict):
+        """Update AI configuration."""
+        if "llmConfig" not in self.config:
+            self.config["llmConfig"] = {}
+        model_name = new_ai_config.get("activeLlmProvider")
+        if not model_name:
+            raise ValueError("activeLlmProvider is required in AI config")
+
+        self.config["llmConfig"][model_name] = {
+            "model": new_ai_config.get("model", ""),
+            "apiKey": new_ai_config.get("apiKey", ""),
+            "temperature": new_ai_config.get("temperature", 0.7),
+            "maxTokens": new_ai_config.get("maxTokens", 2048),
+            "chatPrompt": new_ai_config.get("chatPrompt", ""),
+        }
+        self.save()
+    
     def get_tabs(self) -> List[dict]:
         """Get all tabs configuration."""
         tabs_config = self.config.get("tabsConfig", {})
@@ -81,25 +97,6 @@ class ConfigManager:
             if tab.get("id") == tab_id:
                 return tab
         return None
-
-    def update_chat_prompt(self, prompt: str):
-        """Update the chat prompt."""
-        self.config.setdefault("chatPrompt", prompt)
-        self.save()
-
-    def get_bookmarks(self) -> List[dict]:
-        """Get all bookmarks."""
-        return self.config.get("bookmarks", [])
-
-    def add_bookmark(self, file_name: str, file_path: str, page_no: str):
-        """Add a bookmark."""
-        if "bookmarks" not in self.config:
-            self.config.setdefault("bookmarks", [])
-
-        self.config["bookmarks"].append(
-            {"file_name": file_name, "file_path": file_path, "page_no": page_no}
-        )
-        self.save()
 
 class SessionManager:
     def __init__(self, chats_file: str):

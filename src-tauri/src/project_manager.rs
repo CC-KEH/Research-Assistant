@@ -83,7 +83,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     let new_project_config = BasicConfig {
         project_name: project.project_name.clone(),
         project_path: project_path.to_string_lossy().to_string(),
-        active_llm: project.active_llm.clone(),
+        active_llm_provider: project.active_llm_provider.clone(),
     };
 
     log::info!(
@@ -143,7 +143,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
         "anthropic".to_string(),
         LLMConfig {
             label: "Claude".to_string(),
-            model_name: "claude-2".to_string(),
+            model: "claude-2".to_string(),
             api_key: String::new(),
             temperature: 0.7,
             max_tokens: 1000,
@@ -154,7 +154,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
         "google".to_string(),
         LLMConfig {
             label: "Gemini".to_string(),
-            model_name: "gemini-pro".to_string(),
+            model: "gemini-pro".to_string(),
             api_key: String::new(),
             temperature: 0.7,
             max_tokens: 1000,
@@ -165,7 +165,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
         "openai".to_string(),
         LLMConfig {
             label: "ChatGPT".to_string(),
-            model_name: "gpt-3.5".to_string(),
+            model: "gpt-3.5".to_string(),
             api_key: String::new(),
             temperature: 0.7,
             max_tokens: 1000,

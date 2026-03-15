@@ -446,11 +446,11 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
     initializationAttempted.current = true;
 
-    const activeLLM = basicConfig?.activeLlm;
-    const modelConfig = llmConfig?.[activeLLM || ""];
+    const activeLlmProvider = basicConfig?.activeLlmProvider;
+    const modelConfig = llmConfig?.[activeLlmProvider || ""];
     const aiConfig = {
-      activeLLM: activeLLM || "",
-      modelName: modelConfig?.modelName || "",
+      activeLlmProvider: activeLlmProvider || "",
+      model: modelConfig?.model || "",
       apiKey: modelConfig?.apiKey || "",
       temperature: modelConfig?.temperature || 0.7,
       maxTokens: modelConfig?.maxTokens || 2048,
@@ -458,7 +458,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     };
 
     const initializeBackend = async () => {
-      if (!aiConfig?.activeLLM || !aiConfig.apiKey?.trim()) {
+      if (!aiConfig?.activeLlmProvider || !aiConfig.apiKey?.trim()) {
         updateInitState("no-llm-configured", "LLM not configured");
         return;
       }
@@ -475,10 +475,10 @@ export default function Assistant({ fileInfo }: AssistantProps) {
         const chatPath = `${projectPath}\\chats.json`;
 
         await initializePythonBackend(configPath, chatPath);
-        await switchLLM(aiConfig?.activeLLM);
+        await switchLLM(aiConfig?.activeLlmProvider);
 
-        if (aiConfig?.activeLLM) {
-          setCurrentProvider(aiConfig.activeLLM);
+        if (aiConfig?.activeLlmProvider) {
+          setCurrentProvider(aiConfig.activeLlmProvider);
           const providers: string[] = [];
           if (llmConfig) {
             Object.entries(llmConfig).forEach(([key, provider]) => {

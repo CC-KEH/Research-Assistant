@@ -34,7 +34,16 @@ const createProjectSchema = z.object({
   projectpath: z.string().min(2, {
     message: "Project path is required.",
   }),
+  activellmprovider: z.string().min(2, {
+    message: "LLM Provider is required.",
+  }),
 });
+
+const llmProviders = [
+  { label: "OpenAI", value: "openai" },
+  { label: "Anthropic", value: "anthropic" },
+  { label: "Google", value: "google" },
+];
 
 const tabs = [
   { id: "load-project", label: "Load Project" },
@@ -51,7 +60,6 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
       try {
         info("🔍 Fetching projects...");
         const result = await getPreviousProjects();
-
         if (Array.isArray(result)) {
           info(`✅ Setting projects: ${result}`);
           setPreviousProjects(result as Project[]);
@@ -82,6 +90,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     defaultValues: {
       projectname: "",
       projectpath: "",
+      activellmprovider: "",
     },
   });
 
@@ -122,7 +131,11 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     values: z.infer<typeof createProjectSchema>,
   ) {
     try {
-      await createProject(values.projectname, values.projectpath);
+      await createProject(
+        values.projectname,
+        values.projectpath,
+        values.activellmprovider,
+      );
       info("✅ Project created");
       onProjectPathSet(values.projectpath);
       // setTimeout(() => navigate("/Workspace"));
@@ -207,6 +220,32 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
                     <Input placeholder="My Awesome Project" {...field} />
                   </FormControl>
                   <FormDescription>Name your project.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={createForm.control}
+              name="activellmprovider"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>LLM Provider</FormLabel>
+                  <FormControl>
+                    <select
+                      {...field}
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">Select LLM Provider</option>
+                      {llmProviders.map((provider) => (
+                        <option key={provider.value} value={provider.value}>
+                          {provider.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FormControl>
+                  <FormDescription>
+                    Select the LLM provider for this project.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

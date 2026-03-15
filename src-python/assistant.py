@@ -24,7 +24,7 @@ class Assistant:
             save_chats: Whether to auto-save chats (passed to Model)
             verbose: Enable verbose logging
         """
-        self.llm = Model(
+        self.model = Model(
             config_manager=config_manager,
             session_manager=session_manager,
             save_chats=save_chats,
@@ -36,9 +36,9 @@ class Assistant:
     def check(self) -> dict:
         """Check status of all components."""
         return {
-            "llm": self.llm.check(),
-            "vectorstore": self.llm.get_vector_store_info(),
-            "knowledge_store": self.llm.get_knowledge_store_info(),
+            "llm": self.model.check(),
+            "vectorstore": self.model.get_vector_store_info(),
+            "knowledge_store": self.model.get_knowledge_store_info(),
             "sessions": {
                 "total_sessions": len(self.session_manager.get_sessions()),
                 "active_session": self.session_manager.active_session_index,
@@ -56,8 +56,8 @@ class Assistant:
         if not documents:
             raise ValueError("No documents provided for RAG setup")
         
-        self.llm.add_documents(documents, metadatas)
-        self.llm.save()
+        self.model.add_documents(documents, metadatas)
+        self.model.save()
         print(f"✓ RAG setup complete: {len(documents)} documents indexed")
 
     def add_documents(self, documents: List[str], metadatas: Optional[List[dict]] = None):
@@ -68,10 +68,10 @@ class Assistant:
             documents: List of text documents to add
             metadatas: Optional metadata for each document
         """
-        self.llm.add_documents(documents, metadatas)
+        self.model.add_documents(documents, metadatas)
         print(f"✓ Added {len(documents)} documents to vector store")
 
-    def process_tab(self, tab_id: str, text: str) -> str:
+    def process_tab(self, tab_id: str) -> str:
         """
         Process text using a tab's custom prompt from config.json.
 
@@ -87,7 +87,7 @@ class Assistant:
         if not self.config_manager:
             raise ValueError("ConfigManager not provided")
 
-        if not self.llm._llm:
+        if not self.model._llm:
             raise ValueError("LLM not initialized")
 
         # Get tab configuration
@@ -100,12 +100,9 @@ class Assistant:
         if not prompt:
             raise ValueError(f"No prompt defined for tab '{tab_id}'")
 
-        # Replace {text} placeholder with actual text
-        formatted_prompt = prompt.replace("{text}", text)
+        messages = [HumanMessage(content=prompt)]
 
-        messages = [HumanMessage(content=formatted_prompt)]
-
-        response = self.llm.llm.invoke(messages)
+        response = self.model.llm.invoke(messages)
         return response.content
 
     def query_rag(self, query: str, k: int = 4) -> str:
@@ -120,11 +117,11 @@ class Assistant:
             LLM response based on retrieved context
         """
         # Check if vector store is initialized
-        if not self.llm.store:
+        if not self.model.store:
             raise ValueError("Vector store not initialized. Call setup_rag() first.")
         
         # Retrieve relevant documents
-        docs = self.llm.retrieve(query, k=k)
+        docs = self.model.retrieve(query, k=k)
         
         if not docs:
             return "No relevant documents found. Please add documents first using setup_rag()."
@@ -133,23 +130,23 @@ class Assistant:
         context = "\n\n".join(docs)
         
         # Process through LLM with context (don't save here, let app.py handle it)
-        response = self.llm.process(query, context=context, use_context=False)
+        response = self.model.process(query, context=context, use_context=False)
         
         return response
 
     def query(self, query: str) -> str:
         """Simple chat without RAG."""
-        response = self.llm.process(query, use_context=False)
+        response = self.model.process(query, use_context=False)
         return response
 
     def save_vectorstore(self):
         """Save vector store to disk."""
-        self.llm.save()
+        self.model.save()
         print(f"✓ Vector store saved")
 
     def load_vectorstore(self):
         """Load vector store from disk."""
-        self.llm.load()
+        self.model.load()
         print(f"✓ Vector store loaded")
 
     # ==================== Convenient shortcuts ====================

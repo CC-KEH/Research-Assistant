@@ -68,17 +68,17 @@
     "llmConfig": {
         "anthropic": {
             "label": "Claude Sonnet",
-            "modelName": "claude-sonnet-4-20250514",
+            "model": "claude-sonnet-4-20250514",
             "apiKey": ""
         },
         "google": {
             "label": "Gemini Pro",
-            "modelName": "gemini-3-flash-preview",
+            "model": "gemini-3-flash-preview",
             "apiKey": ""
         },
         "openai": {
             "label": "GPT-3.5",
-            "modelName": "gpt-3.5-turbo",
+            "model": "gpt-3.5-turbo",
             "apiKey": ""
         }
     },

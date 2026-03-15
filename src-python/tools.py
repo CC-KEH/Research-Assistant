@@ -37,41 +37,8 @@ def query_arxiv(query: str, limit: int = 10, sortBy: str = "lastUpdatedDate", so
             "id":       entry.find('atom:id', ns).text.strip(),
             "title":    entry.find('atom:title', ns).text.strip(),
             "summary":  entry.find('atom:summary', ns).text.strip(),
-            "authors":  authors,          # replaces "publisher"
+            "authors":  authors,          
             "updated":  entry.find('atom:updated', ns).text.strip(),
-        })
-
-    return results
-
-@tool
-def query_tavily(query: str, limit: int = 10) -> list[dict]:
-    """Search the Tavily database for papers matching a topic.
-
-    Args:
-        query: Topic to search for (e.g., "quantum computing", "large language models")
-        limit: Maximum number of results to return
-    """
-    encoded_query = urllib.parse.quote(query)
-
-    params = urllib.parse.urlencode({
-        "query": query,
-        "limit": limit
-    })
-
-    url = f"https://api.tavily.com/v1/search?{params}"
-
-    with libreq.urlopen(url) as response:
-        r = response.read().decode('utf-8')
-
-    data = json.loads(r)
-    results = []
-    for item in data['results']:
-        results.append({
-            "id":       item['id'],
-            "title":    item['title'],
-            "summary":  item['summary'],
-            "authors":  item['authors'],
-            "updated":  item['updated'],
         })
 
     return results

@@ -1,7 +1,7 @@
 [
   {
-    "projectName": "Project 1",
-    "projectPath": "C:\\Users\\arbas\\Documents\\Projects\\research_assistant\\tests\\Project 1",
-    "activeLlm": "google"
+    "projectName": "My Project",
+    "projectPath": "C:\\Users\\arbas\\Documents\\Projects\\research_assistant\\tests\\My Project",
+    "activeLlmProvider": "google"
   }
 ]

@@ -42,37 +42,18 @@ class Model:
         self.session_manager = session_manager
         self.verbose = verbose
         self.save_chats_enabled = save_chats
+        self.basic_config = self.config_manager.get_basic_config()
 
         # Get configurations
-        self.ai_config = self.config_manager.get_ai_config()
-        self.basic_config = self.config_manager.get_basic_config()
-        self.active_llm = self.ai_config.get("activeLlm")
-        self.llm_config = self.config_manager.get_llm_config(model_name=self.active_llm)
+        self.prepare_model()
 
-        # Setup paths - use first project's path from basicConfig
-        basic_configs = (
-            self.basic_config
-            if isinstance(self.basic_config, list)
-            else [self.basic_config]
-        )
-        project_config = basic_configs[0] if basic_configs else {}
-        project_path = project_config.get("projectPath", "./")
-
-        self.project_path = project_path
-        self.persist_directory = os.path.join(project_path, "vector_store")
+        self.project_path = self.basic_config.get("projectPath", "./")
+        self.persist_directory = os.path.join(self.project_path, "vector_store")
 
         # Get knowledge store files from config
         self.knowledge_store_files = self.config_manager.get_knowledge_store_files()
         self.pdf_paths = self._extract_pdf_paths()
 
-        # Initialize API key
-        raw_api_key = self.llm_config.get("apiKey", "")
-        self.api_key = raw_api_key.strip() if raw_api_key else None
-
-        # Get chat prompt
-        self.chat_prompt = self.ai_config.get(
-            "chatPrompt", "You are a helpful assistant."
-        )
 
         # Message cache
         self._message_cache: Dict[str, List[BaseMessage]] = {}
@@ -250,7 +231,7 @@ class Model:
         """Check if model is properly initialized."""
         return {
             "status": self._llm is not None,
-            "model": self.active_llm,
+            "model": self.active_llm_provider,
             "vector_store_ready": self._store is not None,
             "pdfs_loaded": self._pdfs_loaded,
             "pdf_count": len(self.pdf_paths),
@@ -259,14 +240,14 @@ class Model:
 
     def _get_model_key(self, model_type: str) -> str:
         """Generate a cache key for models."""
-        return f"{self.active_llm}_{model_type}_{self.api_key}"
+        return f"{self.active_llm_provider}_{model_type}_{self.api_key}"
 
     def _initialize_llm(self):
         """Initialize LLM with caching to avoid recreating the same model."""
         if not self.api_key:
             raise ValueError(
-                f"No API key configured for {self.active_llm}. "
-                f"Please add your API key to config.json in llmConfig.{self.active_llm}.apiKey"
+                f"No API key configured for {self.active_llm_provider}. "
+                f"Please add your API key to config.json in llmConfig.{self.active_llm_provider}.apiKey"
             )
 
         cache_key = self._get_model_key("llm")
@@ -274,33 +255,27 @@ class Model:
             return self._model_cache[cache_key]
 
         model_config = {
-            "temperature": self.ai_config.get("temperature", 0.7),
-            "max_tokens": self.ai_config.get("maxTokens", 2000),
+            "model": self.model,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
             "api_key": self.api_key,
         }
 
         try:
-            if self.active_llm == "google":
-                llm = ChatGoogleGenerativeAI(
-                    model=self.llm_config.get("modelName", "gemini-pro"), **model_config
-                )
-            elif self.active_llm == "openai":
-                llm = ChatOpenAI(
-                    model=self.llm_config.get("modelName", "gpt-4"), **model_config
-                )
-            elif self.active_llm == "anthropic":
-                llm = ChatAnthropic(
-                    model=self.llm_config.get("modelName", "claude-3-5-sonnet-20241022"),
-                    **model_config,
-                )
+            if self.active_llm_provider == "google":
+                llm = ChatGoogleGenerativeAI(**model_config)
+            elif self.active_llm_provider == "openai":
+                llm = ChatOpenAI(**model_config)
+            elif self.active_llm_provider == "anthropic":
+                llm = ChatAnthropic(**model_config,)
             else:
-                raise ValueError(f"Unknown LLM provider: '{self.active_llm}'. "
+                raise ValueError(f"Unknown LLM provider: '{self.active_llm_provider}'. "
                                  f"Supported providers are: 'google', 'openai', 'anthropic'.")
         except ValueError:
             raise  # Re-raise unknown provider errors as-is
         except Exception as e:
             raise RuntimeError(
-                f"Failed to initialize '{self.active_llm}' LLM. "
+                f"Failed to initialize '{self.active_llm_provider}' LLM. "
                 f"Check your API key and model name in config.json.\n"
                 f"Details: {e}"
             ) from e
@@ -321,41 +296,32 @@ class Model:
         self._embedding_cache[cache_key] = embedding
         return embedding
 
-    def switch_llm(self, model_name: str):
-        """Switch to a different LLM provider efficiently."""
-        if model_name == self.active_llm:
-            return  # No-op if same model
+    def prepare_model(self):
+        self.ai_config = self.config_manager.get_ai_config()
+        self.active_llm_provider = self.basic_config.get("activeLlmProvider")
+        
+        self.model = self.ai_config.get("model")
+        self.temperature = self.ai_config.get("temperature")
+        self.max_tokens = self.ai_config.get("maxTokens")
+        self.chat_prompt = self.ai_config.get("chatPrompt")
 
-        self.ai_config["activeLlm"] = model_name
-        self.config_manager.update_ai_config(self.ai_config)
-        self.active_llm = model_name
-        self.llm_config = self.config_manager.get_llm_config(model_name=self.active_llm)
-
-        raw_api_key = self.llm_config.get("apiKey", "")
+        raw_api_key = self.ai_config.get("apiKey", "")
         self.api_key = raw_api_key.strip() if raw_api_key else None
 
-        # Reinitialize models immediately after switch
+    def switch_llm(self, llm_provider: str):
+        """Switch to a different LLM provider efficiently."""
+        if llm_provider == self.active_llm_provider:
+            return  # No-op if same model
+
+        self.config_manager.config["basicConfig"]["activeLlmProvider"] = llm_provider
+        
+        self.prepare_model()
+
         self._embedding = self._initialize_embedding()
         self._llm = self._initialize_llm()
 
-        # Clear message cache when switching models
         self._message_cache.clear()
-        self._log(f"Switched LLM to {model_name}")
-
-    def get_chat_prompt(self) -> str:
-        """Get the current chat prompt."""
-        return self.chat_prompt
-
-    def update_chat_prompt(self, new_prompt: str):
-        """Update the chat prompt and clear cache."""
-        self.chat_prompt = new_prompt
-        self._message_cache.clear()
-
-        if self.config_manager:
-            config = self.config_manager.get()
-            config["aiConfig"]["chatPrompt"] = new_prompt
-            self.config_manager.save()
-            self._log(f"Updated chat prompt")
+        self._log(f"Switched LLM to {llm_provider}")
 
     def _build_messages(self, query: str, context: str = "") -> List[BaseMessage]:
         """Build messages with caching to avoid rebuilding identical prompts."""
@@ -391,7 +357,7 @@ class Model:
         """
         if not self.api_key:
             raise ValueError(
-                f"No API key configured. Please set API key for {self.active_llm} in config.json"
+                f"No API key configured. Please set API key for {self.active_llm_provider} in config.json"
             )
 
         # Auto-retrieve context from vector store if not provided
