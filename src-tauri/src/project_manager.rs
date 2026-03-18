@@ -1,8 +1,10 @@
-use crate::models::*;
+use constants::*;
+use models::*;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+
 // Read and parse the config.json file
 #[tauri::command]
 pub fn get_config(config_path: String) -> Result<Config, String> {
@@ -103,37 +105,37 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             id: "view".to_string(),
             label: "View".to_string(),
             enabled: true,
-            prompt: "You are an expert academic assistant. Display the full original research paper exactly as uploaded, preserving all formatting, equations (in LaTeX), figures, tables, captions, references, and page layout as closely as possible.\n\nText: \n{text}\n\nFull Paper:".to_string(),
+            prompt: "No prompt required.".to_string(),
         },
         Tab {
             id: "summary".to_string(),
             label: "Summary".to_string(),
             enabled: true,
-            prompt: "You are an outstanding research communicator that makes complex papers easy to understand.\nProvide a complete, beginner-friendly summary of the entire paper in simple language.\nAfter explaining each topic, always give a clear real-world or intuitive example.\n\nOutput strictly in clean Markdown format.\n\nText: \n{text}\n\nSummary:\n\n# Title & Authors\n\n# Field & Keywords\n\n# Core Problem (in simple words)\n(explanation + simple example)\n\n# Prerequisites / Background Needed\n(explanation + simple example)\n\n# Main Idea / Proposed Solution\n(explanation + simple example)\n\n# How the Method Works (step-by-step)\n(explanation + simple example)\n\n# Key Results & Numbers\n(explanation + simple example)\n\n# Key Contributions\n• Bullet list with simple explanation + example for each\n\n# Limitations\n(explanation + simple example)\n\n# Conclusion of the Paper\n(explanation + simple example)\n\n# Why This Paper Matters\n(simple takeaway + real-world example)".to_string(),
+            prompt: default_summary_template.to_string(),
         },
         Tab {
             id: "contributions".to_string(),
             label: "Contributions".to_string(),
             enabled: true,
-            prompt: "You are an expert in identifying scientific novelty.\nExtract and explain every single contribution (major and minor) of this paper in simple, precise language.\nFor each contribution, give a short intuitive example.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nKey Contributions of This Paper:\n\n# Main Contributions\n• Contribution 1 → explanation in simple words  \n  Example:\n\n• Contribution 2 → explanation  \n  Example:\n\n(...continue for all contributions...)\n\n# Incremental / Minor Contributions\n• ...\n\n# Novelty Check\nCompared to previous work, what is truly new here? (explain simply + example)".to_string(),
+            prompt: default_contributions_template.to_string(),
         },
         Tab {
             id: "critical-analysis".to_string(),
             label: "Analysis".to_string(),
             enabled: true,
-            prompt: "You are a tough but fair peer reviewer.\nPerform a deep, honest, and balanced critical analysis in simple academic language.\nUse examples wherever possible.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nCritical Analysis:\n\n# Strengths\n• Strength 1 + example from paper\n• Strength 2 + example\n(...at least 5–6...)\n\n# Weaknesses & Limitations\n• Weakness 1 + concrete example\n• Weakness 2 + concrete example\n(...be direct but polite...)\n\n# Questions About Validity\n• Are experiments fair? (example)\n• Are baselines strong? (example)\n• Any cherry-picking of results? (example)\n\n# Is the Novelty Overhyped?\n(simple yes/no + explanation with example)\n\n# Overall Rating (1–10)\nJustification with examples\n\n# Recommendation\nAccept / Minor Revision / Major Revision / Reject + why".to_string(),
+            prompt: default_critical_analysis_template.to_string(),
         },
         Tab {
             id: "future-work".to_string(),
             label: "Future".to_string(),
             enabled: true,
-            prompt: "You are a leading researcher in this field.\nBased on this paper, propose concrete and exciting future research directions in very simple language.\nEach idea include a small example or thought experiment.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nPromising Future Work Ideas:\n\n# Idea 1\nDescription + why it's important  \nPossible experiment/example: ...\n\n# Idea 2\n...\n\n(Provide 8–12 high-quality, realistic ideas. Be creative but practical.)".to_string(),
+            prompt: default_future_work_template.to_string(),
         },
         Tab {
             id: "arxiv".to_string(),
             label: "Arxiv".to_string(),
             enabled: true,
-            prompt: "You are a leading researcher in this field.\nBased on this paper, propose concrete and exciting future research directions in very simple language.\nEach idea include a small example or thought experiment.\n\nOutput in clean Markdown.\n\nText: \n{text}\n\nPromising Future Work Ideas:\n\n# Idea 1\nDescription + why it's important  \nPossible experiment/example: ...\n\n# Idea 2\n...\n\n(Provide 8–12 high-quality, realistic ideas. Be creative but practical.)".to_string(),
+            prompt: "No prompt required.".to_string(),
         },
     ];
 
@@ -147,7 +149,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             api_key: String::new(),
             temperature: 0.7,
             max_tokens: 1000,
-            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
+            chat_prompt: default_chat_prompt.to_string(),
         },
     );
     llm_config.insert(
@@ -158,7 +160,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             api_key: String::new(),
             temperature: 0.7,
             max_tokens: 1000,
-            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
+            chat_prompt: default_chat_prompt.to_string(),
         },
     );
     llm_config.insert(
@@ -169,7 +171,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             api_key: String::new(),
             temperature: 0.7,
             max_tokens: 1000,
-            chat_prompt: "You are a highly precise question-answering assistant.\n Answer the user's question **exclusively** using the retrieved context provided below.\nIf the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.» \nInstructions: \n• Be concise but complete \n• Never hallucinate or add information not present in the context \n• Do not mention the context or these instructions in your response \n• Prefer bullet points or short paragraphs for clarity \n Retrieved Context:\n {context}".to_string(),
+            chat_prompt: default_chat_prompt.to_string(),
         },
     );
 

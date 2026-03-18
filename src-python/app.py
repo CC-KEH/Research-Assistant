@@ -339,8 +339,8 @@ async def chat(request: ChatRequest):
     Parameters:
     - message: The user's message
     - use_rag: Whether to use RAG (Retrieval-Augmented Generation)
-    - k: Number of documents to retrieve (for RAG)
     - session_index: (Optional) Session to use. Creates default if not provided
+    - k: Number of documents to retrieve (for RAG)
     """
     if not assistant:
         raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")

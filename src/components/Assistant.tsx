@@ -387,9 +387,8 @@ export default function Assistant({ fileInfo }: AssistantProps) {
       const p = provider || currentProvider;
       const providers: Record<string, { icon: string; name: string }> = {
         openai: { icon: "/openai.svg", name: "ChatGPT" },
-        anthropic: { icon: "/anthropic.svg", name: "Claude" },
-        google: { icon: "/google.svg", name: "Gemini" },
-        xai: { icon: "/xai.svg", name: "Grok" },
+        anthropic: { icon: "/claude.svg", name: "Claude" },
+        google: { icon: "/gemini.svg", name: "Gemini" },
       };
       return providers[p] || { icon: "/openai.svg", name: "AI" };
     },
@@ -538,21 +537,6 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     fetchSessions,
     loadSessionMessages,
   ]);
-
-  // ── File selection system message ────────────────────────────────────────────
-
-  useEffect(() => {
-    if (fileInfo && isInitialized) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          content: `Selected file: ${fileInfo.name} (${fileInfo.type})`,
-          sender: "system",
-        },
-      ]);
-    }
-  }, [fileInfo, isInitialized]);
 
   // ── Scroll to bottom ─────────────────────────────────────────────────────────
 
@@ -996,6 +980,17 @@ export default function Assistant({ fileInfo }: AssistantProps) {
             <ChatInput
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim() && !isLoading && !sessionActionLoading) {
+                    handleSubmit(e as any);
+                  }
+                } else if (e.key === "Enter" && e.shiftKey) {
+                  e.preventDefault();
+                  setInput((prev) => prev + "\n");
+                }
+              }}
               placeholder="Type your message..."
               disabled={isLoading || sessionActionLoading}
               className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0 disabled:opacity-50"
@@ -1044,10 +1039,6 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <Field orientation="horizontal">
-                <Switch id="switch-size-sm" />
-                <FieldLabel htmlFor="switch-size-sm">Small</FieldLabel>
-              </Field>
               <Button
                 type="submit"
                 size="sm"

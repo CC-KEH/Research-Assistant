@@ -103,7 +103,21 @@ class Assistant:
         messages = [HumanMessage(content=prompt)]
 
         response = self.model.llm.invoke(messages)
-        return response.content
+        
+        # Handle different response formats from different LLM providers
+        content = response.content
+        if isinstance(content, list):
+            # Extract text from list of content objects (e.g., Google Generative AI)
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict) and 'text' in item:
+                    text_parts.append(item['text'])
+                elif isinstance(item, str):
+                    text_parts.append(item)
+            return '\n'.join(text_parts)
+        else:
+            # Direct string response
+            return content
 
     def query_rag(self, query: str, k: int = 4) -> str:
         """

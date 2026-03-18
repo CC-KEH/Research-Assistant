@@ -329,9 +329,9 @@ export const sendChatMessage = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
+        session_index: sessionIndex ?? null,
         use_rag: useRAG,
-        session_index: sessionIndex || null,
-        k,
+        k: k,
       }),
     });
 

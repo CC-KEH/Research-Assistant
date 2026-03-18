@@ -1,34 +1,29 @@
 {
-    "basicConfig": [
-        {
-            "project_name": "Project 1",
-            "project_path": "path here"
-        }
-    ],
+    "basicConfig": {
+        "projectName": "Project 1",
+        "projectPath": "path here",
+        "activeLlmProvider": "openai"
+    },
     "bookmarks": [
         {
-            "file_name": "",
-            "file_path": "",
-            "page_no": ""
-        },
-        {
-            "file_name": "",
-            "file_path": "",
-            "page_no": ""
+            "fileName": "",
+            "filePath": "",
+            "pageNo": ""
         }
     ],
     "knowledgeStoreConfig": {
         "files": [
             {
-                "file_name": "",
-                "file_path": "",
-                "feed_llm": true,
-                "is_processed": false,
-                "file_data": {
+                "fileName": "",
+                "filePath": "",
+                "feedLlm": true,
+                "fileType": "pdf",
+                "isProcessed": false,
+                "fileData": {
                     "summary": "",
-                    "critical-analysis": "",
+                    "criticalAnalysis": "",
                     "contributions": "",
-                    "future-work": "",
+                    "futureWork": "",
                     "arxiv": []
                 }
             }
@@ -39,106 +34,67 @@
             {
                 "id": "view",
                 "label": "View",
+                "enabled": true,
                 "prompt": "Prompt goes here"
             },
             {
                 "id": "summary",
                 "label": "Summary",
+                "enabled": true,
                 "prompt": "Prompt goes here"
             },
             {
                 "id": "contributions",
                 "label": "Contributions",
+                "enabled": true,
                 "prompt": "Prompt goes here"
             },
             {
                 "id": "critical-analysis",
                 "label": "Analysis",
+                "enabled": true,
                 "prompt": "Prompt goes here"
             },
             {
                 "id": "future-work",
                 "label": "Future",
+                "enabled": true,
                 "prompt": "Prompt goes here"
             },
             {
                 "id": "arxiv",
                 "label": "Arxiv",
+                "enabled": true,
                 "prompt": "Prompt goes here"
             }
         ],
-        "customTabs": [
-            {
-                "id": "",
-                "label": "",
-                "prompt": ""
-            }
-        ]
+        "customTabs": []
     },
-    "llmConfig": [
-        {
-            "name": "openai",
+    "llmConfig": {
+        "openai": {
             "label": "GPT-3.5",
-            "value": "gpt-3.5",
-            "api_key": ""
+            "model": "gpt-3.5-turbo",
+            "apiKey": "",
+            "temperature": 0.7,
+            "maxTokens": 2048,
+            "chatPrompt": ""
         },
-        {
-            "name": "google",
+        "google": {
             "label": "Gemini",
-            "value": "gemini",
-            "api_key": ""
+            "model": "gemini-pro",
+            "apiKey": "",
+            "temperature": 0.7,
+            "maxTokens": 2048,
+            "chatPrompt": ""
         },
-        {
-            "name": "anthropic",
+        "anthropic": {
             "label": "Claude",
-            "value": "claude",
-            "api_key": ""
-        },
-        {
-            "name": "xai",
-            "label": "Grok",
-            "value": "grok",
-            "api_key": ""
+            "model": "claude-3-sonnet",
+            "apiKey": "",
+            "temperature": 0.7,
+            "maxTokens": 2048,
+            "chatPrompt": ""
         }
-    ],
-    "embeddingsConfig": [
-        {
-            "name": "openai",
-            "label": "OpenAI",
-            "value": "openai",
-            "api_key": ""
-        },
-        {
-            "name": "google",
-            "label": "Gemini",
-            "value": "gemini",
-            "api_key": ""
-        },
-        {
-            "name": "voyage",
-            "label": "Voyage",
-            "value": "voyage",
-            "api_key": ""
-        }
-    ],
-    "vectorStoreConfig": [
-        {
-            "name": "Pinecone",
-            "label": "Pinecone",
-            "value": "Pinecone",
-            "api_key": ""
-        },
-        {
-            "name": "Weaviate",
-            "label": "Weaviate",
-            "value": "weaviate",
-            "api_key": ""
-        },
-        {
-            "name": "Chroma",
-            "label": "Chroma",
-            "value": "chroma",
-            "api_key": ""
-        }
-    ]
+    },
+    "todos": []
 }

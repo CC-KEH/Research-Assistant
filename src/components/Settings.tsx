@@ -580,30 +580,34 @@ export default function Settings() {
             <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
               {fileViewerTabs.length > 0 ? (
                 <>
-                  {fileViewerTabs.map((tab) => (
-                    <Card
-                      key={tab.id}
-                      className="shadow-md rounded-2xl w-full py-4 min-h-20"
-                    >
-                      <CardContent className="space-y-2">
-                        <h3 className="text-md font-medium">{tab.label}</h3>
-                        <div className="flex flex-row justify-between items-start gap-4">
-                          <div className="text-xs text-muted-foreground max-w-[70%]">
-                            <p>
-                              <span className="font-semibold">Prompt:</span>{" "}
-                              {tab.prompt?.substring(0, 100)}...
-                            </p>
-                          </div>
-                          <Switch
-                            checked={tab.enabled !== false}
-                            onCheckedChange={(checked) =>
-                              handleToggleTab(tab.id, checked)
-                            }
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {fileViewerTabs.map(
+                    (tab) =>
+                      tab.id !== "view" &&
+                      tab.id != "arxiv" && (
+                        <Card
+                          key={tab.id}
+                          className="shadow-md rounded-2xl w-full py-4 min-h-20"
+                        >
+                          <CardContent className="space-y-2">
+                            <h3 className="text-md font-medium">{tab.label}</h3>
+                            <div className="flex flex-row justify-between items-start gap-4">
+                              <div className="text-xs text-muted-foreground max-w-[70%]">
+                                <p>
+                                  <span className="font-semibold">Prompt:</span>{" "}
+                                  {tab.prompt?.substring(0, 100)}...
+                                </p>
+                              </div>
+                              <Switch
+                                checked={tab.enabled !== false}
+                                onCheckedChange={(checked) =>
+                                  handleToggleTab(tab.id, checked)
+                                }
+                              />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ),
+                  )}
                   <Button onClick={handleSaveFileViewerTabs} className="w-full">
                     Save File Viewer Configuration
                   </Button>
