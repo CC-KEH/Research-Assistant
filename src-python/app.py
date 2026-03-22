@@ -388,7 +388,7 @@ async def chat(request: ChatRequest):
 
 # ==================== Processing Endpoints ====================
 
-@app.post("/process/tab")
+@app.post("/process_tabs")
 async def process_with_tab(request: TabProcessRequest):
     """
     Process text using any tab's prompt (standard or custom).
@@ -408,16 +408,13 @@ async def process_with_tab(request: TabProcessRequest):
         if not assistant.model._llm:
             raise HTTPException(status_code=400, detail="LLM not initialized. Use /llm/switch first.")
         
-        result = assistant.process_tab(request.tab_id)
-        tab = config_manager.get_tab_by_id(request.tab_id)
+        result = assistant.process_tab(request.tab_id, request.file_info)
         
-        return {
-            "result": result,
-            "tab_id": request.tab_id,
-            "tab_label": tab.get("label", "") if tab else ""
-        }
+        return result
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

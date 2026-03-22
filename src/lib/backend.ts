@@ -10,6 +10,7 @@ import {
   ChatResponse,
   FileInfo,
 } from "@/lib/types";
+import { useConfig } from "@/components/providers/ConfigProvider";
 const PYTHON_API_BASE = "http://localhost:8000";
 
 //*********************** */
@@ -653,28 +654,28 @@ export const createProject = async (
 
 const fetchContent = async (
   tab_id: string,
-  file_name: string,
+  file_info: FileInfo,
 ): Promise<string> => {
   const content = await fetch(`${PYTHON_API_BASE}/process_tabs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ tabId: tab_id, fileName: file_name }),
+    body: JSON.stringify({ tabId: tab_id, fileInfo: file_info }),
   });
   return content.text();
 };
 
-export const processTabs = async (file_name: string) => {
-  const contentMap: Record<string, string> = {
-    summary: await fetchContent("summary", file_name),
-    contributions: await fetchContent("contributions", file_name),
-    "critical-analysis": await fetchContent("critical-analysis", file_name),
-    "future-work": await fetchContent("future-work", file_name),
-    customTab: await fetchContent("customTab", file_name),
+export const processTabs = async (file_info: FileInfo) => {
+  const contentMap: Record<string, any> = {
+    summary: await fetchContent("summary", file_info),
+    contributions: await fetchContent("contributions", file_info),
+    "critical-analysis": await fetchContent("critical-analysis", file_info),
+    "future-work": await fetchContent("future-work", file_info),
+    arxiv: await fetchContent("arxiv", file_info),
+    customTab: await fetchContent("customTab", file_info),
   };
-  // Update KnowledgeFile with contentMap data
-  // TODO: Implement the logic to update the KnowledgeFile in the config with the contentMap data
+  return contentMap;
 };
 
 export const getContent = async (

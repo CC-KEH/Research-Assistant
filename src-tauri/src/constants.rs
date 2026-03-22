@@ -1,4 +1,6 @@
-pub const default_chat_prompt: string = "You are a highly precise question-answering assistant. 
+#![allow(non_upper_case_globals)]
+
+pub const default_chat_prompt: &str = "You are a highly precise question-answering assistant. 
 # Answer the user's question using the retrieved context if provided below else use your general knowledge. 
 # If the context lacks the information needed to answer accurately, respond only with: «Insufficient information in the provided context.»
 
@@ -12,7 +14,7 @@ pub const default_chat_prompt: string = "You are a highly precise question-answe
 # {context}
 #";
 
-pub const default_summary_template: string = "
+pub const default_summary_template: &str = "
 You are an expert assistant with expertise in summarizing research papers,
 Provide a complete summary of the entire Research Paper without missing any topic, in a simple language,
 Each topic after their explanation must have a simple example to explain further. 
@@ -48,7 +50,7 @@ Summary:
     conclusion here
 ";
 
-pub const default_contributions_template: string = "
+pub const default_contributions_template: &str = "
 You are an expert assistant specialized in analyzing research papers.
 Extract and clearly articulate the key contributions of this research paper.
 Focus on novel methods, findings, algorithms, frameworks, or insights introduced.
@@ -69,7 +71,7 @@ Key Contributions (in markdown format):
     - **Example**: [Simple example illustrating this contribution]
 ";
 
-pub const default_critical_analysis_template: string = "
+pub const default_critical_analysis_template: &str = "
 You are an expert research analyst with deep expertise in evaluating academic papers.
 Provide a balanced critical analysis of this research paper covering:
 - Strengths and weaknesses of the methodology
@@ -78,7 +80,7 @@ Provide a balanced critical analysis of this research paper covering:
 - Comparison with existing work
 - Potential biases or gaps
 
-Be objective and pub constructive in your analysis.
+Be objective and constructive in your analysis.
 
 Text:
 {text}
@@ -104,7 +106,7 @@ Critical Analysis (in markdown format):
     [Balanced summary of the paper's quality and impact]
 ";
 
-pub const default_future_work_template: string = "
+pub const default_future_work_template: &str = "
 You are an expert research strategist with expertise in identifying research directions.
 Based on the research paper, identify and elaborate on:
 - Future research directions suggested by the authors

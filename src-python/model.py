@@ -385,6 +385,57 @@ class Model:
             # Direct string response
             return content
 
+    def generate_content(self, file_path: str, query: str = "", k: int = 8) -> str:
+        """Get relevant content from a specific PDF file.
+
+        Tries vector store first (fast), falls back to direct extraction.
+
+        Args:
+            file_path: Path to the PDF file
+            query: Query to retrieve relevant chunks (uses tab prompt)
+            k: Number of chunks to retrieve from vector store
+
+        Returns:
+            Relevant text content from the PDF
+        """
+        file_name = os.path.basename(file_path)
+
+        # Try vector store first — filter by source file
+        if self._store and query:
+            try:
+                results = self._store.similarity_search(
+                    query,
+                    k=k,
+                    filter={"source_pdf": file_name}  # Only chunks from this file
+                )
+                if results:
+                    self._log(f"Retrieved {len(results)} chunks from vector store for {file_name}")
+                    return "\n\n".join([doc.page_content for doc in results])
+            except Exception as e:
+                self._log(f"Vector store retrieval failed, falling back to direct load: {e}")
+
+        # Fallback: load PDF directly (file not in vector store yet)
+        return self._extract_pdf_text(file_path)
+
+
+    def _extract_pdf_text(self, file_path: str) -> str:
+        """Extract full text from a PDF file directly.
+
+        Args:
+            file_path: Path to the PDF
+
+        Returns:
+            Full extracted text
+        """
+        if not file_path or not os.path.exists(file_path):
+            raise ValueError(f"PDF not found at path: {file_path}")
+
+        loader = PyPDFLoader(file_path)
+        documents = loader.load()
+        self._log(f"Directly extracted {len(documents)} pages from {os.path.basename(file_path)}")
+        return "\n\n".join([doc.page_content for doc in documents])
+
+
     def embed(self, text: str) -> List[float]:
         """Generate embedding for a single text."""
         if not text or not text.strip():
@@ -639,19 +690,8 @@ class Model:
             self._log(f"Error getting session stats: {e}")
             return None
 
+
     # ========================= KNOWLEDGE STORE METHODS =========================
-
-    def reload_knowledge_store(self, use_cached_store: bool = False):
-        """Reload knowledge store PDFs and rebuild vector store.
-
-        Args:
-            use_cached_store: Whether to use cached store if available
-        """
-        self._log("Reloading knowledge store PDFs...")
-        self.knowledge_store_files = self.config_manager.get_knowledge_store_files()
-        self.pdf_paths = self._extract_pdf_paths()
-        self._loaded_files.clear()
-        self._initialize_vector_store(use_cached_store=use_cached_store)
 
     def get_knowledge_store_info(self) -> Dict:
         """Get information about knowledge store files.

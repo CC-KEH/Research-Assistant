@@ -66,11 +66,11 @@ export interface KnowledgeFile {
   feedLlm: boolean;
   isProcessed: boolean;
   fileData: {
-    summary: "";
-    criticalAnalysis: "";
-    contributions: "";
-    futureWork: "";
-    arxiv: [];
+    summary: string;
+    criticalAnalysis: string;
+    contributions: string;
+    futureWork: string;
+    arxiv: [string];
   };
 }
 

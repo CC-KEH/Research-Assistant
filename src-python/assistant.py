@@ -71,11 +71,9 @@ class Assistant:
         self.model.add_documents(documents, metadatas)
         print(f"✓ Added {len(documents)} documents to vector store")
 
-    def process_tab(self, tab_id: str) -> str:
+    def process_tab(self, tab_id: str, file_info: dict) -> str:
         """
         Process text using a tab's custom prompt from config.json.
-
-        Supports all standard tabs and custom tabs defined in config.
 
         Args:
             tab_id: ID of the tab (e.g., "summary", "contributions")
@@ -86,26 +84,29 @@ class Assistant:
         """
         if not self.config_manager:
             raise ValueError("ConfigManager not provided")
-
+        
         if not self.model._llm:
             raise ValueError("LLM not initialized")
 
-        # Get tab configuration
         tab = self.config_manager.get_tab_by_id(tab_id)
+        
         if not tab:
             raise ValueError(f"Tab '{tab_id}' not found in config")
 
-        # Get prompt and replace placeholder
         prompt = tab.get("prompt", "")
+        
         if not prompt:
             raise ValueError(f"No prompt defined for tab '{tab_id}'")
 
-        messages = [HumanMessage(content=prompt)]
+        file_path = file_info.get("filePath") or file_info.get("path")
 
-        response = self.model.llm.invoke(messages)
-        
-        # Handle different response formats from different LLM providers
-        content = response.content
+        # Use model's method to get content for this specific file + tab
+        pdf_text = self.model.generate_content(file_path, query=prompt)
+
+        full_prompt = f"{prompt}\n\nDocument Content:\n{pdf_text}"
+
+        return self.model.process(full_prompt, use_context=False)  # context already injected
+
         if isinstance(content, list):
             # Extract text from list of content objects (e.g., Google Generative AI)
             text_parts = []

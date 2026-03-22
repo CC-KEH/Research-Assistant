@@ -33,6 +33,8 @@ import type {
   AssistantProps,
   InitializationState,
   InitializationPhase,
+  FileInfo,
+  KnowledgeFile,
 } from "@/lib/types";
 import {
   initializePythonBackend,
@@ -45,6 +47,7 @@ import {
   checkPythonServer,
   deleteSession,
   updateSession,
+  processTabs,
 } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
 import { useConfig } from "./providers/ConfigProvider";
@@ -335,9 +338,16 @@ function RenameModal({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Assistant({ fileInfo }: AssistantProps) {
-  const { getBasicConfig, getLlmConfig, reloadChats } = useConfig();
+  const {
+    getBasicConfig,
+    getLlmConfig,
+    reloadChats,
+    getKnowledgeStoreConfig,
+    updateKnowledgeStoreConfig,
+  } = useConfig();
   const basicConfig = getBasicConfig();
   const llmConfig = getLlmConfig();
+  const knowledgeStoreConfig = getKnowledgeStoreConfig();
 
   // Core state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -544,6 +554,42 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  // ── Scroll to bottom ─────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const knowledgeFile = knowledgeStoreConfig?.files.find(
+      (file: KnowledgeFile) => file.filePath == fileInfo?.path,
+    );
+    if (knowledgeFile?.feedLlm && knowledgeFile.isProcessed != true) {
+      const processAndUpdate = async () => {
+        const knowledgeFileData = await processTabs(fileInfo!);
+
+        const updatedKnowledgeFile: KnowledgeFile = {
+          ...knowledgeFile,
+          isProcessed: true,
+          fileData: {
+            summary: knowledgeFileData["summary"] ?? "",
+            criticalAnalysis: knowledgeFileData["critical-analysis"] ?? "",
+            contributions: knowledgeFileData["contributions"] ?? "",
+            futureWork: knowledgeFileData["future-work"] ?? "",
+            arxiv: knowledgeFileData["arxiv"],
+          },
+        };
+
+        const updatedFiles = knowledgeStoreConfig!.files.map(
+          (file: KnowledgeFile) =>
+            file.filePath === knowledgeFile.filePath
+              ? updatedKnowledgeFile
+              : file,
+        );
+
+        updateKnowledgeStoreConfig({ files: updatedFiles });
+      };
+
+      processAndUpdate();
+    }
+  }, [fileInfo]);
+
   // ── Send message ─────────────────────────────────────────────────────────────
 
   const handleSubmit = async (e: FormEvent) => {
@@ -568,7 +614,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     try {
       const data = await sendChatMessage(
         userMessageContent,
-        false,
+        true,
         currentSessionIndex,
         4,
       );
