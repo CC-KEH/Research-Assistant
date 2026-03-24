@@ -77,8 +77,12 @@ pub struct FileData {
 #[derive(Debug, Serialize, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Arxiv {
-    pub paper_name: String,
-    pub paper_path: String,
+    pub id: String,
+    pub title: String,
+    pub summary: String,
+    pub authors: Vec<String>,
+    pub updated: String,
+    pub relevance: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

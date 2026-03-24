@@ -26,6 +26,11 @@ class DocumentAdd(BaseModel):
     documents: List[str]
     metadatas: Optional[List[dict]] = None
 
+class FileInfo(BaseModel):
+    file_name: str
+    file_path: str
+    file_type: str
+
 class TabProcessRequest(BaseModel):
     tab_id: str
-    text: str
+    file_info: FileInfo

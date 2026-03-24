@@ -312,7 +312,7 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                     .to_lowercase();
                 a_name.cmp(&b_name)
             });
-
+            // TODO: Dont count project files and folders
             for entry in entries {
                 match entry {
                     Ok(entry) => {

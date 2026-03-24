@@ -70,8 +70,17 @@ export interface KnowledgeFile {
     criticalAnalysis: string;
     contributions: string;
     futureWork: string;
-    arxiv: [string];
+    arxiv: Arxiv[];
   };
+}
+
+export interface Arxiv {
+  id: string;
+  title: string;
+  summary: string;
+  authors: string[];
+  updated: string;
+  relevance: string;
 }
 
 export interface Todo {
@@ -96,9 +105,9 @@ export enum BugType {
 }
 
 export interface FileInfo {
-  name: string;
-  path: string;
-  type: string;
+  file_name: string;
+  file_path: string;
+  file_type: string;
 }
 
 export interface AnnotationPoint {

@@ -385,39 +385,6 @@ class Model:
             # Direct string response
             return content
 
-    def generate_content(self, file_path: str, query: str = "", k: int = 8) -> str:
-        """Get relevant content from a specific PDF file.
-
-        Tries vector store first (fast), falls back to direct extraction.
-
-        Args:
-            file_path: Path to the PDF file
-            query: Query to retrieve relevant chunks (uses tab prompt)
-            k: Number of chunks to retrieve from vector store
-
-        Returns:
-            Relevant text content from the PDF
-        """
-        file_name = os.path.basename(file_path)
-
-        # Try vector store first — filter by source file
-        if self._store and query:
-            try:
-                results = self._store.similarity_search(
-                    query,
-                    k=k,
-                    filter={"source_pdf": file_name}  # Only chunks from this file
-                )
-                if results:
-                    self._log(f"Retrieved {len(results)} chunks from vector store for {file_name}")
-                    return "\n\n".join([doc.page_content for doc in results])
-            except Exception as e:
-                self._log(f"Vector store retrieval failed, falling back to direct load: {e}")
-
-        # Fallback: load PDF directly (file not in vector store yet)
-        return self._extract_pdf_text(file_path)
-
-
     def _extract_pdf_text(self, file_path: str) -> str:
         """Extract full text from a PDF file directly.
 

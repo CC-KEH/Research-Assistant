@@ -14,8 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Switch } from "@/components/ui/switch";
 
 import { ChatMessageList } from "@/components/ui/chat-message-list";
 import { ChatInput } from "@/components/ui/chat-input";
@@ -33,8 +31,8 @@ import type {
   AssistantProps,
   InitializationState,
   InitializationPhase,
-  FileInfo,
   KnowledgeFile,
+  Arxiv,
 } from "@/lib/types";
 import {
   initializePythonBackend,
@@ -558,23 +556,50 @@ export default function Assistant({ fileInfo }: AssistantProps) {
 
   useEffect(() => {
     const knowledgeFile = knowledgeStoreConfig?.files.find(
-      (file: KnowledgeFile) => file.filePath == fileInfo?.path,
+      (file: KnowledgeFile) => file.filePath == fileInfo?.file_path,
     );
     if (knowledgeFile?.feedLlm && knowledgeFile.isProcessed != true) {
       const processAndUpdate = async () => {
         const knowledgeFileData = await processTabs(fileInfo!);
 
+        const parseField = (val: unknown): string => {
+          if (typeof val !== "string") return "";
+          try {
+            const parsed = JSON.parse(val);
+            return typeof parsed === "string" ? parsed : "";
+          } catch {
+            return val;
+          }
+        };
+
+        const parseArxiv = (val: unknown): Arxiv[] => {
+          if (Array.isArray(val)) return val;
+          if (typeof val === "string") {
+            try {
+              const parsed = JSON.parse(val);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch {
+              return [];
+            }
+          }
+          return [];
+        };
+
         const updatedKnowledgeFile: KnowledgeFile = {
           ...knowledgeFile,
           isProcessed: true,
           fileData: {
-            summary: knowledgeFileData["summary"] ?? "",
-            criticalAnalysis: knowledgeFileData["critical-analysis"] ?? "",
-            contributions: knowledgeFileData["contributions"] ?? "",
-            futureWork: knowledgeFileData["future-work"] ?? "",
-            arxiv: knowledgeFileData["arxiv"],
+            summary: parseField(knowledgeFileData["summary"]),
+            criticalAnalysis: parseField(
+              knowledgeFileData["critical-analysis"],
+            ),
+            contributions: parseField(knowledgeFileData["contributions"]),
+            futureWork: parseField(knowledgeFileData["future-work"]),
+            arxiv: parseArxiv(knowledgeFileData["arxiv"]),
           },
         };
+
+        info(`${JSON.stringify(updatedKnowledgeFile)}`);
 
         const updatedFiles = knowledgeStoreConfig!.files.map(
           (file: KnowledgeFile) =>

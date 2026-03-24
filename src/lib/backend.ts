@@ -10,7 +10,6 @@ import {
   ChatResponse,
   FileInfo,
 } from "@/lib/types";
-import { useConfig } from "@/components/providers/ConfigProvider";
 const PYTHON_API_BASE = "http://localhost:8000";
 
 //*********************** */
@@ -421,28 +420,6 @@ export const getVectorStoreStatus = async () => {
   }
 };
 
-export const processWithTab = async (tabId: string, text: string) => {
-  try {
-    const response = await fetch(`${PYTHON_API_BASE}/process/tab`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tab_id: tabId, text }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to process with tab");
-    }
-
-    const data = await response.json();
-    info(`✅ [processWithTab] : Processed with tab ${tabId}`);
-    return data;
-  } catch (err) {
-    error(`Failed to process with tab: ${err}`);
-    throw err;
-  }
-};
-
 //*********************** */
 //* File System Functions (via Tauri/Rust)
 //*********************** */
@@ -661,7 +638,7 @@ const fetchContent = async (
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ tabId: tab_id, fileInfo: file_info }),
+    body: JSON.stringify({ tab_id: tab_id, file_info: file_info }),
   });
   return content.text();
 };

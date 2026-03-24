@@ -30,9 +30,9 @@ export default function KnowledgeStore() {
   useEffect(() => {
     if (knowledgeStoreConfig?.files) {
       const loadedPapers = knowledgeStoreConfig.files.map((file) => ({
-        name: file.fileName,
-        path: file.filePath,
-        type: file.fileType,
+        file_name: file.fileName,
+        file_path: file.filePath,
+        file_type: file.fileType,
       }));
       setPapers(loadedPapers);
     }
@@ -43,7 +43,7 @@ export default function KnowledgeStore() {
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
       info(`Selecting all rows: ${checked}`);
-      setSelected(new Set(papers.map((p) => p.name)));
+      setSelected(new Set(papers.map((p) => p.file_name)));
     } else {
       info(`Deselecting all rows: ${checked}`);
       setSelected(new Set());
@@ -84,7 +84,7 @@ export default function KnowledgeStore() {
 
   const removeSelected = async () => {
     const selectedArray = [...selected];
-    setPapers(papers.filter((p) => !selected.has(p.name)));
+    setPapers(papers.filter((p) => !selected.has(p.file_name)));
     await removePaper(selectedArray);
     setSelected(new Set());
   };
@@ -111,21 +111,23 @@ export default function KnowledgeStore() {
           <TableBody>
             {papers.map((paper) => (
               <TableRow
-                key={paper.name}
-                data-state={selected.has(paper.name) ? "selected" : undefined}
+                key={paper.file_name}
+                data-state={
+                  selected.has(paper.file_name) ? "selected" : undefined
+                }
               >
                 <TableCell>
                   <Checkbox
-                    id={`row-${paper.name}-checkbox`}
-                    name={`row-${paper.name}-checkbox`}
-                    checked={selected.has(paper.name)}
+                    id={`row-${paper.file_name}-checkbox`}
+                    name={`row-${paper.file_name}-checkbox`}
+                    checked={selected.has(paper.file_name)}
                     onCheckedChange={(checked) =>
-                      handleSelectRow(paper.name, checked === true)
+                      handleSelectRow(paper.file_name, checked === true)
                     }
                   />
                 </TableCell>
-                <TableCell>{paper.name}</TableCell>
-                <TableCell>{paper.type}</TableCell>
+                <TableCell>{paper.file_name}</TableCell>
+                <TableCell>{paper.file_type}</TableCell>
               </TableRow>
             ))}
           </TableBody>

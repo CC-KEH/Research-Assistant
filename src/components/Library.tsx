@@ -175,9 +175,9 @@ export default function Library({ onFileSelect }: LibraryProps) {
       info(`Selected file: ${node.label}`);
       const ext = node.label.split(".").pop()?.toLowerCase() || "";
       const fileInfo: FileInfo = {
-        name: node.label,
-        type: ext,
-        path: node.path,
+        file_name: node.label,
+        file_type: ext,
+        file_path: node.path,
       };
       onFileSelect(fileInfo);
     }

@@ -408,7 +408,7 @@ async def process_with_tab(request: TabProcessRequest):
         if not assistant.model._llm:
             raise HTTPException(status_code=400, detail="LLM not initialized. Use /llm/switch first.")
         
-        result = assistant.process_tab(request.tab_id, request.file_info)
+        result = assistant.process_tab(request.tab_id, request.file_info.model_dump())
         
         return result
 

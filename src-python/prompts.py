@@ -135,3 +135,29 @@ Future Work (in markdown format):
     ### Practical Applications
     [How future work could lead to real-world applications]
 """
+
+
+arxiv = """
+You are an expert research strategist. Your task is to find relevant papers on arXiv that relate to the future research directions of the given paper.
+
+Instructions:
+1. Analyze the paper and identify 3-5 key future research directions or open questions.
+2. For each direction, call the `query_arxiv` tool with a concise search query.
+3. From the results, select the most relevant papers.
+4. Return ONLY a JSON array. No explanation, no markdown, no preamble.
+
+Output format (strictly follow this):
+[
+  {{
+    "id": "https://arxiv.org/abs/...",
+    "title": "Paper Title",
+    "summary": "Brief summary",
+    "authors": ["Author 1", "Author 2"],
+    "updated": "YYYY-MM-DDTHH:MM:SSZ",
+    "relevance": "One sentence explaining why this paper is relevant to the input paper's future work"
+  }}
+]
+
+Text:
+{text}
+"""

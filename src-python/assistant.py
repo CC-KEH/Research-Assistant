@@ -78,7 +78,7 @@ class Assistant:
         Args:
             tab_id: ID of the tab (e.g., "summary", "contributions")
             text: Text to process
-
+            
         Returns:
             Processed result from the LLM
         """
@@ -98,10 +98,10 @@ class Assistant:
         if not prompt:
             raise ValueError(f"No prompt defined for tab '{tab_id}'")
 
-        file_path = file_info.get("filePath") or file_info.get("path")
+        file_path = file_info.get("filePath") or file_info.get("file_path")
 
         # Use model's method to get content for this specific file + tab
-        pdf_text = self.model.generate_content(file_path, query=prompt)
+        pdf_text = self.model._extract_pdf_text(file_path)
 
         full_prompt = f"{prompt}\n\nDocument Content:\n{pdf_text}"
 

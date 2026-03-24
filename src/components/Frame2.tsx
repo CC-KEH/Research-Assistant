@@ -34,13 +34,13 @@ export default function Frame2({ fileInfo }: Frame2Props) {
   const [filePath, setFilePath] = useState<string>("");
 
   useEffect(() => {
-    if (!fileInfo?.path) return;
+    if (!fileInfo?.file_path) return;
 
-    setFilePath(fileInfo.path);
+    setFilePath(fileInfo.file_path);
 
     let group: TabGroup | null = null;
 
-    switch (fileInfo.type) {
+    switch (fileInfo.file_type) {
       case "md":
         group = "markdown";
         break;
@@ -49,7 +49,7 @@ export default function Frame2({ fileInfo }: Frame2Props) {
         const knowledgeStoreConfig = getKnowledgeStoreConfig();
         const isFeedLLM = knowledgeStoreConfig?.files.find(
           (file: KnowledgeFile) =>
-            file.filePath === fileInfo.path && file.feedLlm === true,
+            file.filePath === fileInfo.file_path && file.feedLlm === true,
         );
         group = isFeedLLM ? "paper" : "pdf";
         break;
@@ -79,8 +79,8 @@ export default function Frame2({ fileInfo }: Frame2Props) {
               activeTabGroup={activeTabGroup}
               activeTab={activeTab!}
               filePath={filePath}
-              fileType={fileInfo?.type}
-              fileName={fileInfo?.name}
+              fileName={fileInfo?.file_name}
+              fileType={fileInfo?.file_type}
             />
           </ViewerContextMenu>
         </>
