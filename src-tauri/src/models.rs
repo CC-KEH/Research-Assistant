@@ -61,17 +61,7 @@ pub struct KnowledgeFile {
     pub feed_llm: bool,
     pub file_type: String,
     pub is_processed: bool,
-    pub file_data: FileData,
-}
-
-#[derive(Debug, Serialize, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FileData {
-    pub summary: String,
-    pub critical_analysis: String,
-    pub contributions: String,
-    pub future_work: String,
-    pub arxiv: Vec<Arxiv>,
+    pub file_data: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
@@ -79,10 +69,10 @@ pub struct FileData {
 pub struct Arxiv {
     pub id: String,
     pub title: String,
-    pub summary: String,
+    pub description: String,
     pub authors: Vec<String>,
-    pub updated: String,
-    pub relevance: String,
+    pub published_date: String,
+    pub link: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

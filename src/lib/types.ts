@@ -65,22 +65,16 @@ export interface KnowledgeFile {
   fileType: string;
   feedLlm: boolean;
   isProcessed: boolean;
-  fileData: {
-    summary: string;
-    criticalAnalysis: string;
-    contributions: string;
-    futureWork: string;
-    arxiv: Arxiv[];
-  };
+  fileData: Record<string, string>;
 }
 
 export interface Arxiv {
   id: string;
   title: string;
-  summary: string;
+  description: string;
   authors: string[];
-  updated: string;
-  relevance: string;
+  publishedDate: string;
+  link: string;
 }
 
 export interface Todo {
@@ -202,13 +196,4 @@ export interface InitializationState {
   phase: InitializationPhase;
   message: string;
   error?: string;
-}
-
-export interface Suggestion {
-  paperName: string;
-  paperPath: string;
-  // Optional future fields (you can add later)
-  publishedDate?: string;
-  author?: string;
-  link?: string; // if backend starts providing direct URLs
 }

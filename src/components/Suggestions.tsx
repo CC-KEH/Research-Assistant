@@ -1,13 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookmarkIcon, ExternalLinkIcon } from "lucide-react"; // added ExternalLink for clarity
-import { Suggestion } from "@/lib/types";
+import { Arxiv } from "@/lib/types";
 
 interface SuggestionsProps {
-  suggestions?: Suggestion[];
+  suggestions?: Arxiv[];
   isLoading?: boolean;
   error?: string | null;
-  onToggleReadLater?: (paper: Suggestion) => void;
+  onToggleReadLater?: (paper: Arxiv) => void;
 }
 
 export default function Suggestions({
@@ -17,8 +17,8 @@ export default function Suggestions({
   onToggleReadLater,
 }: SuggestionsProps) {
   // Placeholder toggle – replace with real logic later (e.g. save to localStorage or backend)
-  const handleToggleReadLater = (paper: Suggestion) => {
-    console.log("Toggled read later:", paper.paperName);
+  const handleToggleReadLater = (paper: Arxiv) => {
+    console.log("Toggled read later:", paper.title);
     onToggleReadLater?.(paper);
   };
 
@@ -46,20 +46,20 @@ export default function Suggestions({
         <div className="flex-1 overflow-y-auto scrollbar-thin pr-2 pb-12">
           {suggestions.map((paper, index) => (
             <Card
-              key={`${paper.paperName}-${index}`}
+              key={`${paper.title}-${index}`}
               className="shadow-md rounded-2xl w-full mb-4 border border-border/60 hover:border-primary/40 transition-colors"
             >
               <CardContent className="p-4 space-y-2">
                 <h3 className="text-base font-medium leading-tight">
-                  {paper.paperName}
+                  {paper.title}
                 </h3>
 
                 <div className="flex flex-row justify-between items-start gap-4">
                   <div className="text-xs text-muted-foreground space-y-1 flex-1">
-                    {paper.author && (
+                    {paper.authors && paper.authors.length > 0 && (
                       <p>
-                        <span className="font-semibold">Author:</span>{" "}
-                        {paper.author}
+                        <span className="font-semibold">Authors:</span>{" "}
+                        {paper.authors.join(", ")}
                       </p>
                     )}
                     {paper.publishedDate && (
@@ -68,22 +68,16 @@ export default function Suggestions({
                         {new Date(paper.publishedDate).toLocaleDateString()}
                       </p>
                     )}
-                    <p className="break-all opacity-70 mt-1">
-                      {paper.paperPath}
-                    </p>
+                    <p className="break-all opacity-70 mt-1">{paper.link}</p>
                   </div>
 
                   <div className="flex flex-row gap-2 shrink-0">
                     <a
-                      href={
-                        paper.paperPath.startsWith("http")
-                          ? paper.paperPath
-                          : "#"
-                      }
+                      href={paper.link.startsWith("http") ? paper.link : "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={
-                        paper.paperPath.startsWith("http")
+                        paper.link.startsWith("http")
                           ? ""
                           : "pointer-events-none opacity-50"
                       }

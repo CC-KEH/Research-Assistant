@@ -1,4 +1,7 @@
-1. Send AI Model name to server
-2. Fix Tabs not showing after change in tabs config
-3. LLMs Dropdown in Chatbox
-4. Sessions Dropdown in Chatbox
+1. LLMs Dropdown in Chatbox
+2. Hide program files from library: vector_store, config.json, chats.json
+3. Fix the bug of knowledgeStore files render
+4. Dropdown 
+5. Application closes after update in files.
+6. Clean cache at application close.
+7. Performance improvements

@@ -14,7 +14,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 
 from manager import *
-
+from utils import *
 
 class Model:
     # Class-level cache for model instances to avoid recreating them
@@ -241,6 +241,17 @@ class Model:
     def _get_model_key(self, model_type: str) -> str:
         """Generate a cache key for models."""
         return f"{self.active_llm_provider}_{model_type}_{self.api_key}"
+    
+    def _get_llm_without_thinking(self):
+        if self.active_llm_provider == "google":
+            return ChatGoogleGenerativeAI(
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                api_key=self.api_key,
+                thinking_budget=0,
+            )
+        return self._llm
 
     def _initialize_llm(self):
         """Initialize LLM with caching to avoid recreating the same model."""
@@ -369,21 +380,7 @@ class Model:
 
         messages = self._build_messages(query, context)
         response = self._llm.invoke(messages)
-        
-        # Handle different response formats from different LLM providers
-        content = response.content
-        if isinstance(content, list):
-            # Extract text from list of content objects (e.g., Google Generative AI)
-            text_parts = []
-            for item in content:
-                if isinstance(item, dict) and 'text' in item:
-                    text_parts.append(item['text'])
-                elif isinstance(item, str):
-                    text_parts.append(item)
-            return '\n'.join(text_parts)
-        else:
-            # Direct string response
-            return content
+        return extract_content(response.content)
 
     def _extract_pdf_text(self, file_path: str) -> str:
         """Extract full text from a PDF file directly.

@@ -7,7 +7,7 @@ import { getContent, readFile, writeFile } from "@/lib/backend";
 import { error } from "@/lib/logger";
 import MarkdownEditor from "./small/MarkdownEditor";
 import { useConfig } from "./providers/ConfigProvider";
-import { Suggestion } from "@/lib/types";
+import { Arxiv } from "@/lib/types";
 
 type TabGroup = "paper" | "markdown" | "pdf";
 
@@ -112,11 +112,8 @@ export default function Viewer({
     const loadPaperContent = async () => {
       setIsLoadingPaperTab(true);
       try {
-        const tabId =
-          innerActiveTab === "customTab" ? "customTab" : innerActiveTab;
-
         const content = await getContent(
-          tabId,
+          innerActiveTab,
           fileName,
           basicConfig.projectPath,
         );
@@ -158,7 +155,7 @@ export default function Viewer({
               return <Suggestions isLoading={true} />;
             }
 
-            let suggestions: Suggestion[] = [];
+            let suggestions: Arxiv[] = [];
             let parseError: string | null = null;
 
             try {
@@ -179,7 +176,6 @@ export default function Viewer({
             );
 
           default:
-            // summary, contributions, critical-analysis, future-work, customTab
             if (isLoadingPaperTab) {
               return (
                 <div className="p-8 text-center text-muted-foreground animate-pulse">

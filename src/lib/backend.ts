@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { BasicConfig, Config, KnowledgeFile } from "@/lib/types";
+import { BasicConfig, Config, KnowledgeFile, Tab } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { error, info } from "@/lib/logger";
@@ -643,27 +643,43 @@ const fetchContent = async (
   return content.text();
 };
 
-export const processTabs = async (file_info: FileInfo) => {
-  const contentMap: Record<string, any> = {
-    summary: await fetchContent("summary", file_info),
-    contributions: await fetchContent("contributions", file_info),
-    "critical-analysis": await fetchContent("critical-analysis", file_info),
-    "future-work": await fetchContent("future-work", file_info),
-    arxiv: await fetchContent("arxiv", file_info),
-    customTab: await fetchContent("customTab", file_info),
-  };
+export const processTabs = async (
+  file_info: FileInfo,
+  tabs_config: {
+    tabs: Tab[];
+    customTabs: Tab[];
+  },
+  onTabComplete?: (tab_id: string, content: string) => void,
+): Promise<Record<string, string>> => {
+  const allTabs = [...tabs_config.tabs, ...tabs_config.customTabs];
+  const enabledTabs = allTabs.filter((tab) => tab.enabled);
+
+  const contentMap: Record<string, string> = {};
+
+  for (const tab of enabledTabs) {
+    try {
+      const content = await fetchContent(tab.id, file_info);
+      contentMap[tab.id] = content;
+      onTabComplete?.(tab.id, content);
+    } catch (err) {
+      info(`Tab "${tab.id}" failed to fetch content: ${err}`);
+      contentMap[tab.id] = "N/A";
+      onTabComplete?.(tab.id, "N/A");
+    }
+  }
+
   return contentMap;
 };
 
 export const getContent = async (
   tab_id: string,
   file_name: string,
-  configPath: string,
+  config_path: string,
 ): Promise<string> => {
   const content = await invoke<string>("get_tab_content", {
     tabId: tab_id,
     fileName: file_name,
-    configPath: configPath,
+    configPath: config_path,
   });
   return content;
 };
@@ -671,29 +687,13 @@ export const getContent = async (
 export const saveContentToPDF = async (
   basicConfig: BasicConfig | null,
   knowledgeStoreConfig: { files: KnowledgeFile[] } | null,
+  tabsConfig: { tabs: Tab[]; customTabs: Tab[] } | null,
   file: string,
 ) => {
   if (!knowledgeStoreConfig || !knowledgeStoreConfig.files.length) {
     alert("No files in knowledge store to create document");
     return;
   }
-
-  const pdfContent = knowledgeStoreConfig.files.map((file) => ({
-    fileName: file.fileName,
-    summary:
-      file.fileData?.summary ||
-      "Minim nostrud do voluptate in adipisicing sit duis. Occaecat sint cillum proident exercitation aliquip. Non incididunt sit ipsum ut nisi pariatur aliquip do esse ad id. Non cillum eiusmod elit anim ut proident quis duis non. Nulla cupidatat cillum in velit pariatur.",
-    criticalAnalysis:
-      file.fileData?.criticalAnalysis ||
-      "Reprehenderit ullamco cupidatat laboris dolore. Cillum dolor eiusmod eu mollit dolore veniam id. Aliqua consectetur pariatur qui irure consectetur ut incididunt aliqua aute. Officia elit amet enim veniam aliqua veniam Lorem occaecat officia dolor excepteur cillum tempor. Pariatur labore cillum nostrud esse dolor laborum eu enim fugiat labore pariatur quis exercitation nostrud. Sint elit labore dolor irure fugiat magna magna cupidatat minim consequat.",
-    contributions:
-      file.fileData?.contributions ||
-      "Est quis sint minim ut do. Commodo adipisicing qui ipsum adipisicing consectetur enim ex nostrud sit. Enim excepteur excepteur reprehenderit laborum aliqua aliqua occaecat aute pariatur. Exercitation aliqua dolore pariatur anim non exercitation et enim esse. Nostrud aliqua minim ut commodo labore occaecat nisi tempor officia eiusmod eu.",
-    futureWork:
-      file.fileData?.futureWork ||
-      "Aliqua ad consequat sint ea laborum aliqua est ut officia. Mollit mollit non non quis proident cupidatat. Exercitation qui ex sint pariatur ad voluptate esse cillum proident.",
-    arxiv: file.fileData?.arxiv || [],
-  }));
 
   const projectPath = basicConfig?.projectPath || "";
   const fileName =
@@ -705,13 +705,18 @@ export const saveContentToPDF = async (
     : "";
 
   try {
-    if (!pdfContent || pdfContent.length === 0) {
+    if (!knowledgeStoreConfig.files.length) {
       throw new Error("No content provided");
     }
 
     if (!documentsPath) {
       throw new Error("Invalid documents path");
     }
+
+    const allTabs = [
+      ...(tabsConfig?.tabs ?? []),
+      ...(tabsConfig?.customTabs ?? []),
+    ].filter((tab) => tab.enabled);
 
     const pdf = new jsPDF({
       orientation: "portrait",
@@ -723,9 +728,7 @@ export const saveContentToPDF = async (
     let yPosition = 15;
     let isFirstPage = true;
 
-    // Process each file in pdfContent
-    pdfContent.forEach((fileData) => {
-      // Add page break between files (not before first)
+    knowledgeStoreConfig.files.forEach((knowledgeFile) => {
       if (!isFirstPage) {
         pdf.addPage();
         yPosition = 15;
@@ -735,80 +738,51 @@ export const saveContentToPDF = async (
       // Title
       pdf.setFontSize(18);
       pdf.setFont("helvetica", "bold");
-      pdf.text(fileData.fileName, pageWidth / 2, yPosition, {
+      pdf.text(knowledgeFile.fileName, pageWidth / 2, yPosition, {
         align: "center",
       });
       yPosition += 12;
 
-      // Summary
-      if (fileData.summary && fileData.summary !== "N/A") {
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Summary", 10, yPosition);
-        yPosition += 8;
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        const summaryLines = pdf.splitTextToSize(fileData.summary, 190);
-        pdf.text(summaryLines, 10, yPosition);
-        yPosition += summaryLines.length * 5 + 5;
-      }
+      allTabs.forEach((tab) => {
+        const content = knowledgeFile.fileData?.[tab.id];
 
-      // Critical Analysis
-      if (fileData.criticalAnalysis && fileData.criticalAnalysis !== "N/A") {
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Critical Analysis", 10, yPosition);
-        yPosition += 8;
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        const analysisLines = pdf.splitTextToSize(
-          fileData.criticalAnalysis,
-          190,
-        );
-        pdf.text(analysisLines, 10, yPosition);
-        yPosition += analysisLines.length * 5 + 5;
-      }
+        if (tab.id === "arxiv") {
+          const arxivList: string[] = (() => {
+            try {
+              const parsed = JSON.parse(content ?? "[]");
+              return Array.isArray(parsed) ? parsed : [];
+            } catch {
+              return [];
+            }
+          })();
 
-      // Contributions
-      if (fileData.contributions && fileData.contributions !== "N/A") {
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Contributions", 10, yPosition);
-        yPosition += 8;
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        const contribLines = pdf.splitTextToSize(fileData.contributions, 190);
-        pdf.text(contribLines, 10, yPosition);
-        yPosition += contribLines.length * 5 + 5;
-      }
+          if (arxivList.length === 0) return;
 
-      // Future Work
-      if (fileData.futureWork && fileData.futureWork !== "N/A") {
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Future Work", 10, yPosition);
-        yPosition += 8;
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        const futureLines = pdf.splitTextToSize(fileData.futureWork, 190);
-        pdf.text(futureLines, 10, yPosition);
-        yPosition += futureLines.length * 5 + 5;
-      }
+          pdf.setFontSize(12);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(tab.label, 10, yPosition);
+          yPosition += 8;
+          pdf.setFontSize(10);
+          pdf.setFont("helvetica", "normal");
+          arxivList.forEach((arxiv) => {
+            const arxivLines = pdf.splitTextToSize(`• ${arxiv}`, 185);
+            pdf.text(arxivLines, 12, yPosition);
+            yPosition += arxivLines.length * 5 + 2;
+          });
+        } else {
+          if (!content || content === "N/A") return;
 
-      // ArXiv References
-      if (fileData.arxiv && fileData.arxiv.length > 0) {
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("ArXiv References", 10, yPosition);
-        yPosition += 8;
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        fileData.arxiv.forEach((arxiv) => {
-          const arxivLines = pdf.splitTextToSize(`• ${arxiv}`, 185);
-          pdf.text(arxivLines, 12, yPosition);
-          yPosition += arxivLines.length * 5 + 2;
-        });
-      }
+          pdf.setFontSize(12);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(tab.label, 10, yPosition);
+          yPosition += 8;
+          pdf.setFontSize(10);
+          pdf.setFont("helvetica", "normal");
+          const lines = pdf.splitTextToSize(content, 190);
+          pdf.text(lines, 10, yPosition);
+          yPosition += lines.length * 5 + 5;
+        }
+      });
     });
 
     // Get PDF as array buffer
@@ -822,7 +796,7 @@ export const saveContentToPDF = async (
       pdfData: pdfData,
     });
 
-    info(`Generated PDF for ${pdfContent.length} files`);
+    info(`Generated PDF for ${knowledgeStoreConfig.files.length} files`);
     info(`PDF saved: ${documentsPath}`);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);

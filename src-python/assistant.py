@@ -1,10 +1,11 @@
 import datetime
 from typing import List, Optional
 
-from langchain_core.messages import HumanMessage
+from langchain.agents import create_agent
 
-from manager import ConfigManager, SessionManager
+from tools import *
 from model import Model
+from manager import ConfigManager, SessionManager
 
 class Assistant:
     """Wrapper around Model to provide additional utilities and processing capabilities."""
@@ -72,53 +73,38 @@ class Assistant:
         print(f"✓ Added {len(documents)} documents to vector store")
 
     def process_tab(self, tab_id: str, file_info: dict) -> str:
-        """
-        Process text using a tab's custom prompt from config.json.
-
-        Args:
-            tab_id: ID of the tab (e.g., "summary", "contributions")
-            text: Text to process
-            
-        Returns:
-            Processed result from the LLM
-        """
+        """Process text using a tab's custom prompt from config.json."""
         if not self.config_manager:
             raise ValueError("ConfigManager not provided")
-        
         if not self.model._llm:
             raise ValueError("LLM not initialized")
-
         tab = self.config_manager.get_tab_by_id(tab_id)
         
+        print("Processing Tab:", tab_id)
+
         if not tab:
             raise ValueError(f"Tab '{tab_id}' not found in config")
-
+ 
         prompt = tab.get("prompt", "")
-        
         if not prompt:
             raise ValueError(f"No prompt defined for tab '{tab_id}'")
-
+ 
         file_path = file_info.get("filePath") or file_info.get("file_path")
-
-        # Use model's method to get content for this specific file + tab
         pdf_text = self.model._extract_pdf_text(file_path)
-
+ 
+        # ── arXiv tab: run as an agent so the tool is actually called ───────
+        if tab_id == "arxiv":
+            arxiv_llm = self.model._get_llm_without_thinking()
+            agent_executor = create_agent(arxiv_llm, tools=[query_arxiv], system_prompt=prompt)
+            result = agent_executor.invoke({"messages": [("user", pdf_text)]})
+            return result["messages"][-1].content
+ 
+        # ── All other tabs: plain LLM call ──────────────────────────────────
         full_prompt = f"{prompt}\n\nDocument Content:\n{pdf_text}"
-
-        return self.model.process(full_prompt, use_context=False)  # context already injected
-
-        if isinstance(content, list):
-            # Extract text from list of content objects (e.g., Google Generative AI)
-            text_parts = []
-            for item in content:
-                if isinstance(item, dict) and 'text' in item:
-                    text_parts.append(item['text'])
-                elif isinstance(item, str):
-                    text_parts.append(item)
-            return '\n'.join(text_parts)
-        else:
-            # Direct string response
-            return content
+        
+        print("Finished Processing Tab:", tab_id)
+        
+        return self.model.process(full_prompt, use_context=False)
 
     def query_rag(self, query: str, k: int = 4) -> str:
         """

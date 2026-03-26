@@ -32,7 +32,6 @@ import type {
   InitializationState,
   InitializationPhase,
   KnowledgeFile,
-  Arxiv,
 } from "@/lib/types";
 import {
   initializePythonBackend,
@@ -342,10 +341,12 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     reloadChats,
     getKnowledgeStoreConfig,
     updateKnowledgeStoreConfig,
+    getTabsConfig,
   } = useConfig();
   const basicConfig = getBasicConfig();
   const llmConfig = getLlmConfig();
   const knowledgeStoreConfig = getKnowledgeStoreConfig();
+  const tabsConfig = getTabsConfig();
 
   // Core state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -558,56 +559,46 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     const knowledgeFile = knowledgeStoreConfig?.files.find(
       (file: KnowledgeFile) => file.filePath == fileInfo?.file_path,
     );
+
     if (knowledgeFile?.feedLlm && knowledgeFile.isProcessed != true) {
       const processAndUpdate = async () => {
-        const knowledgeFileData = await processTabs(fileInfo!);
+        const accumulatedData: Record<string, string> = {};
 
-        const parseField = (val: unknown): string => {
-          if (typeof val !== "string") return "";
-          try {
-            const parsed = JSON.parse(val);
-            return typeof parsed === "string" ? parsed : "";
-          } catch {
-            return val;
-          }
+        const saveProgress = (tab_id: string, content: string) => {
+          accumulatedData[tab_id] = content;
+
+          const updatedFiles = knowledgeStoreConfig!.files.map(
+            (file: KnowledgeFile) =>
+              file.filePath === knowledgeFile.filePath
+                ? {
+                    ...knowledgeFile,
+                    isProcessed: false,
+                    fileData: { ...accumulatedData },
+                  }
+                : file,
+          );
+
+          updateKnowledgeStoreConfig({ files: updatedFiles });
         };
 
-        const parseArxiv = (val: unknown): Arxiv[] => {
-          if (Array.isArray(val)) return val;
-          if (typeof val === "string") {
-            try {
-              const parsed = JSON.parse(val);
-              return Array.isArray(parsed) ? parsed : [];
-            } catch {
-              return [];
-            }
-          }
-          return [];
-        };
-
-        const updatedKnowledgeFile: KnowledgeFile = {
-          ...knowledgeFile,
-          isProcessed: true,
-          fileData: {
-            summary: parseField(knowledgeFileData["summary"]),
-            criticalAnalysis: parseField(
-              knowledgeFileData["critical-analysis"],
-            ),
-            contributions: parseField(knowledgeFileData["contributions"]),
-            futureWork: parseField(knowledgeFileData["future-work"]),
-            arxiv: parseArxiv(knowledgeFileData["arxiv"]),
-          },
-        };
-
-        info(`${JSON.stringify(updatedKnowledgeFile)}`);
+        const knowledgeFileData = await processTabs(
+          fileInfo!,
+          tabsConfig!,
+          saveProgress,
+        );
 
         const updatedFiles = knowledgeStoreConfig!.files.map(
           (file: KnowledgeFile) =>
             file.filePath === knowledgeFile.filePath
-              ? updatedKnowledgeFile
+              ? {
+                  ...knowledgeFile,
+                  isProcessed: true,
+                  fileData: knowledgeFileData,
+                }
               : file,
         );
 
+        info(`${JSON.stringify(knowledgeFileData)}`);
         updateKnowledgeStoreConfig({ files: updatedFiles });
       };
 

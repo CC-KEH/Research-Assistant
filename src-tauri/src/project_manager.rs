@@ -135,7 +135,7 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
             id: "arxiv".to_string(),
             label: "Arxiv".to_string(),
             enabled: true,
-            prompt: "No prompt required.".to_string(),
+            prompt: default_arxiv_template.to_string(),
         },
     ];
 
@@ -642,13 +642,7 @@ pub fn upload_to_knowledge_store(
         file_type: file_extension.clone(),
         feed_llm: for_llm,
         is_processed: false,
-        file_data: FileData {
-            summary: "".to_string(),
-            critical_analysis: "".to_string(),
-            contributions: "".to_string(),
-            future_work: "".to_string(),
-            arxiv: Vec::new(),
-        },
+        file_data: HashMap::new(),
     };
 
     config.knowledge_store_config.files.push(knowledge_file);
@@ -691,7 +685,7 @@ pub fn get_tab_content(
     file_name: String,
     config_path: String,
 ) -> Result<String, String> {
-    // ← change return type if needed
+    // Use cache if available, avoids racing with update_config's file write
     let config = get_config(config_path.clone())?;
 
     let Some(file_info) = config
@@ -700,21 +694,14 @@ pub fn get_tab_content(
         .iter()
         .find(|f| f.file_name == file_name)
     else {
-        return Ok(String::new()); // or Err("File not found".into())
-    };
-    // TODO: handle custom tabs
-    let content = match tab_id.as_str() {
-        "summary" => file_info.file_data.summary.clone(),
-        "critical-analysis" => file_info.file_data.critical_analysis.clone(),
-        "contributions" => file_info.file_data.contributions.clone(),
-        "future-work" => file_info.file_data.future_work.clone(),
-        "arxiv" => serde_json::to_string(&file_info.file_data.arxiv)
-            .map_err(|e| format!("Serialization failed: {}", e))?,
-        custom if custom.starts_with("customTab_") => "".to_string(),
-        _ => "".to_string(),
+        return Ok(String::new());
     };
 
-    Ok(content)
+    Ok(file_info
+        .file_data
+        .get(&tab_id)
+        .cloned()
+        .unwrap_or_default())
 }
 
 fn base64_encode(data: &[u8]) -> String {
