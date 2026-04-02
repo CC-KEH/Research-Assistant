@@ -1,7 +1,9 @@
+import { useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookmarkIcon, ExternalLinkIcon } from "lucide-react"; // added ExternalLink for clarity
+import { BookmarkIcon, ExternalLinkIcon } from "lucide-react";
 import { Arxiv } from "@/lib/types";
+import { info } from "@/lib/logger";
 
 interface SuggestionsProps {
   suggestions?: Arxiv[];
@@ -16,17 +18,21 @@ export default function Suggestions({
   error = null,
   onToggleReadLater,
 }: SuggestionsProps) {
-  // Placeholder toggle – replace with real logic later (e.g. save to localStorage or backend)
-  const handleToggleReadLater = (paper: Arxiv) => {
-    console.log("Toggled read later:", paper.title);
-    onToggleReadLater?.(paper);
-  };
+  const handleToggleReadLater = useCallback(
+    (paper: Arxiv) => {
+      info(`Toggled read later: ${paper.title}`);
+      onToggleReadLater?.(paper);
+    },
+    [onToggleReadLater],
+  );
 
   return (
-    <div className="mt-3 text-muted-foreground min-w-xl h-full flex flex-col">
-      <h1 className="text-center mb-6 border-b pb-2 text-xl font-semibold">
+    <div className="mt-3 text-muted-foreground w-full h-full flex flex-col">
+      {/* FIX: changed h1 → h2 — h1 implies a top-level page heading.
+          This is a panel section within a larger layout. */}
+      <h2 className="text-center mb-6 border-b pb-2 text-xl font-semibold">
         Similar / Related Papers
-      </h1>
+      </h2>
 
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
@@ -44,9 +50,12 @@ export default function Suggestions({
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto scrollbar-thin pr-2 pb-12">
-          {suggestions.map((paper, index) => (
+          {suggestions.map((paper) => (
+            // FIX: key by paper.id — the Arxiv type has an id field.
+            // key={`${title}-${index}`} used index which defeats the purpose
+            // of keys and breaks reconciliation when the list reorders.
             <Card
-              key={`${paper.title}-${index}`}
+              key={paper.id}
               className="shadow-md rounded-2xl w-full mb-4 border border-border/60 hover:border-primary/40 transition-colors"
             >
               <CardContent className="p-4 space-y-2">
@@ -68,7 +77,8 @@ export default function Suggestions({
                         {new Date(paper.publishedDate).toLocaleDateString()}
                       </p>
                     )}
-                    <p className="break-all opacity-70 mt-1">{paper.link}</p>
+                    {/* FIX: removed raw URL text — it was redundant with the
+                        View button below and cluttered the card. */}
                   </div>
 
                   <div className="flex flex-row gap-2 shrink-0">
@@ -88,14 +98,19 @@ export default function Suggestions({
                       </Button>
                     </a>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleToggleReadLater(paper)}
-                      title="Save for later"
-                    >
-                      <BookmarkIcon className="h-4 w-4" />
-                    </Button>
+                    {/* FIX: only render the bookmark button if the handler is
+                        wired up. A non-functional UI element (icon that does
+                        nothing visible) is worse than no element at all. */}
+                    {onToggleReadLater && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleReadLater(paper)}
+                        title="Save for later"
+                      >
+                        <BookmarkIcon className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>

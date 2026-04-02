@@ -14,33 +14,21 @@ import React, {
   useState,
   useContext,
   useRef,
+  useCallback,
+  useMemo,
 } from "react";
+
 export type { ChatMessage, ChatSessionMetadata, ChatSession, Chats };
 
-// ─── Context Type ─────────────────────────────────────────────────────────────
+// ─── Config Context ────────────────────────────────────────────────────────────
 
 interface ConfigContextType {
   config: Config | null;
-  setConfig: (config: Config) => void;
-  reloadConfig: () => Promise<void>;
   loading: boolean;
+  reloadConfig: () => Promise<void>;
 
-  // Chats
-  chats: Chats | null;
-  chatsLoading: boolean;
-  reloadChats: () => Promise<void>;
-  getChats: () => Chats | null;
-  getChatSessions: () => ChatSession[] | null;
-  getChatSession: (name: string) => ChatSession | null;
-  updateChats: (chats: Chats) => void;
-  addChatSession: (session: ChatSession) => void;
-  updateChatSession: (name: string, session: ChatSession) => void;
-  removeChatSession: (name: string) => void;
-
-  // Config helpers
   getFullConfig: () => Config | null;
   getBasicConfig: () => Config["basicConfig"] | null;
-  getBookmarks: () => Config["bookmarks"] | null;
   getKnowledgeStoreConfig: () => Config["knowledgeStoreConfig"] | null;
   getTabsConfig: () => Config["tabsConfig"] | null;
   getActiveTabsConfig: () => Tab[] | null;
@@ -49,7 +37,6 @@ interface ConfigContextType {
 
   updateConfig: (newConfig: Config) => void;
   updateBasicConfig: (basicConfig: Config["basicConfig"]) => void;
-  updateBookmarks: (bookmarks: Config["bookmarks"]) => void;
   updateKnowledgeStoreConfig: (
     knowledgeStoreConfig: Config["knowledgeStoreConfig"],
   ) => void;
@@ -58,11 +45,368 @@ interface ConfigContextType {
   updateTodos: (todos: Config["todos"]) => void;
 }
 
-// ─── Context & Provider ───────────────────────────────────────────────────────
+// ─── Chats Context ─────────────────────────────────────────────────────────────
+
+interface ChatsContextType {
+  chats: Chats | null;
+  chatsLoading: boolean;
+  reloadChats: () => Promise<void>;
+
+  sessions: ChatSession[];
+
+  getChats: () => Chats | null;
+  getChatSessions: () => ChatSession[] | null;
+  getChatSession: (name: string) => ChatSession | null;
+
+  updateChats: (chats: Chats) => void;
+  addChatSession: (session: ChatSession) => void;
+  updateChatSession: (name: string, session: ChatSession) => void;
+  removeChatSession: (name: string) => void;
+}
+
+// ─── Contexts ─────────────────────────────────────────────────────────────────
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
+const ChatsContext = createContext<ChatsContextType | null>(null);
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function usePersistedJson<T>(
+  path: string | null,
+  label: string,
+): {
+  value: T | null;
+  loading: boolean;
+  reload: () => Promise<void>;
+  setValue: React.Dispatch<React.SetStateAction<T | null>>;
+} {
+  const [value, setValue] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const isFromLoadRef = useRef(false);
+
+  const cancelledRef = useRef(false);
+
+  const reload = useCallback(async (): Promise<void> => {
+    if (!path) {
+      setValue(null);
+      return;
+    }
+
+    cancelledRef.current = false;
+    setLoading(true);
+    isFromLoadRef.current = true;
+
+    try {
+      const result = await getConfig(path);
+      if (!cancelledRef.current) {
+        setValue(result as unknown as T);
+        info(`✅ ${label} loaded, ${path}`);
+      }
+    } catch (err) {
+      if (!cancelledRef.current) {
+        error(`Failed to load ${label}: ${err}`);
+        setValue(null);
+      }
+    } finally {
+      if (!cancelledRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [path, label]);
+
+  useEffect(() => {
+    if (path) {
+      reload();
+    } else {
+      setValue(null);
+    }
+
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [path, reload]);
+
+  useEffect(() => {
+    if (!path || value === null) return;
+
+    if (isFromLoadRef.current) {
+      isFromLoadRef.current = false;
+      return;
+    }
+
+    saveConfig(path, value as unknown as Config).catch((err) => {
+      error(`Failed to save ${label}: ${err}`);
+    });
+  }, [value, path, label]);
+
+  return { value, loading, reload, setValue };
+}
+
+// ─── ConfigProvider ───────────────────────────────────────────────────────────
 
 export const ConfigProvider = ({
+  config_path,
+  children,
+}: {
+  config_path: string | null;
+  children: React.ReactNode;
+}) => {
+  const {
+    value: config,
+    loading,
+    reload: reloadConfig,
+    setValue: setConfig,
+  } = usePersistedJson<Config>(config_path, "Config");
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  const getFullConfig = useCallback((): Config | null => config, [config]);
+
+  const getBasicConfig = useCallback(
+    (): Config["basicConfig"] | null => config?.basicConfig ?? null,
+    [config],
+  );
+
+  const getKnowledgeStoreConfig = useCallback(
+    (): Config["knowledgeStoreConfig"] | null =>
+      config?.knowledgeStoreConfig ?? null,
+    [config],
+  );
+
+  const getTabsConfig = useCallback(
+    (): Config["tabsConfig"] | null => config?.tabsConfig ?? null,
+    [config],
+  );
+
+  const getActiveTabsConfig = useCallback(
+    (): Tab[] | null =>
+      config?.tabsConfig?.tabs.filter((tab) => tab.enabled) ?? null,
+    [config],
+  );
+
+  const getLlmConfig = useCallback(
+    (): Config["llmConfig"] | null => config?.llmConfig ?? null,
+    [config],
+  );
+
+  const getTodos = useCallback(
+    (): Config["todos"] | null => config?.todos ?? null,
+    [config],
+  );
+
+  const updateConfig = useCallback(
+    (newConfig: Config) => setConfig(newConfig),
+    [setConfig],
+  );
+
+  const updateBasicConfig = useCallback(
+    (basicConfig: Config["basicConfig"]) =>
+      setConfig((prev) => (prev ? { ...prev, basicConfig } : prev)),
+    [setConfig],
+  );
+
+  const updateKnowledgeStoreConfig = useCallback(
+    (knowledgeStoreConfig: Config["knowledgeStoreConfig"]) =>
+      setConfig((prev) => (prev ? { ...prev, knowledgeStoreConfig } : prev)),
+    [setConfig],
+  );
+
+  const updateTabsConfig = useCallback(
+    (tabsConfig: Config["tabsConfig"]) =>
+      setConfig((prev) => (prev ? { ...prev, tabsConfig } : prev)),
+    [setConfig],
+  );
+
+  const updateLlmConfig = useCallback(
+    (llmConfig: Config["llmConfig"]) =>
+      setConfig((prev) => (prev ? { ...prev, llmConfig } : prev)),
+    [setConfig],
+  );
+
+  const updateTodos = useCallback(
+    (todos: Config["todos"]) =>
+      setConfig((prev) => (prev ? { ...prev, todos } : prev)),
+    [setConfig],
+  );
+
+  // ── Context value (memoized to avoid re-rendering all consumers) ─────────
+
+  const contextValue = useMemo<ConfigContextType>(
+    () => ({
+      config,
+      loading,
+      reloadConfig,
+      getFullConfig,
+      getBasicConfig,
+      getKnowledgeStoreConfig,
+      getTabsConfig,
+      getActiveTabsConfig,
+      getLlmConfig,
+      getTodos,
+      updateConfig,
+      updateBasicConfig,
+      updateKnowledgeStoreConfig,
+      updateTabsConfig,
+      updateLlmConfig,
+      updateTodos,
+    }),
+    [
+      config,
+      loading,
+      reloadConfig,
+      getFullConfig,
+      getBasicConfig,
+      getKnowledgeStoreConfig,
+      getTabsConfig,
+      getActiveTabsConfig,
+      getLlmConfig,
+      getTodos,
+      updateConfig,
+      updateBasicConfig,
+      updateKnowledgeStoreConfig,
+      updateTabsConfig,
+      updateLlmConfig,
+      updateTodos,
+    ],
+  );
+
+  return (
+    <ConfigContext.Provider value={contextValue}>
+      {children}
+    </ConfigContext.Provider>
+  );
+};
+
+// ─── ChatsProvider ────────────────────────────────────────────────────────────
+
+export const ChatsProvider = ({
+  chats_path,
+  children,
+}: {
+  chats_path: string | null;
+  children: React.ReactNode;
+}) => {
+  const {
+    value: chats,
+    loading: chatsLoading,
+    reload: reloadChats,
+    setValue: setChats,
+  } = usePersistedJson<Chats>(chats_path, "Chats");
+
+  const sessions = useMemo<ChatSession[]>(
+    () => chats?.sessions?.sessions ?? [],
+    [chats],
+  );
+
+  const getChats = useCallback((): Chats | null => chats, [chats]);
+
+  const getChatSessions = useCallback(
+    (): ChatSession[] | null => chats?.sessions?.sessions ?? null,
+    [chats],
+  );
+
+  const getChatSession = useCallback(
+    (name: string): ChatSession | null =>
+      chats?.sessions?.sessions.find((s) => s.name === name) ?? null,
+    [chats],
+  );
+
+  const updateChats = useCallback(
+    (newChats: Chats) => setChats(newChats),
+    [setChats],
+  );
+
+  const addChatSession = useCallback(
+    (session: ChatSession) => {
+      setChats((prev) => {
+        if (!prev) return prev;
+        return {
+          sessions: {
+            sessions: [...prev.sessions.sessions, session],
+          },
+        };
+      });
+    },
+    [setChats],
+  );
+
+  const updateChatSession = useCallback(
+    (name: string, updated: ChatSession) => {
+      setChats((prev) => {
+        if (!prev) return prev;
+
+        const index = prev.sessions.sessions.findIndex((s) => s.name === name);
+        if (index === -1) {
+          error(
+            `updateChatSession: session "${name}" not found — no update applied`,
+          );
+          return prev;
+        }
+
+        const sessions = [...prev.sessions.sessions];
+        sessions[index] = updated;
+        return { sessions: { sessions } };
+      });
+    },
+    [setChats],
+  );
+
+  const removeChatSession = useCallback(
+    (name: string) => {
+      setChats((prev) => {
+        if (!prev) return prev;
+        return {
+          sessions: {
+            sessions: prev.sessions.sessions.filter((s) => s.name !== name),
+          },
+        };
+      });
+    },
+    [setChats],
+  );
+
+  // ── Context value (memoized) ──────────────────────────────────────────────
+
+  const contextValue = useMemo<ChatsContextType>(
+    () => ({
+      chats,
+      chatsLoading,
+      reloadChats,
+      sessions,
+      getChats,
+      getChatSessions,
+      getChatSession,
+      updateChats,
+      addChatSession,
+      updateChatSession,
+      removeChatSession,
+    }),
+    [
+      chats,
+      chatsLoading,
+      reloadChats,
+      sessions,
+      getChats,
+      getChatSessions,
+      getChatSession,
+      updateChats,
+      addChatSession,
+      updateChatSession,
+      removeChatSession,
+    ],
+  );
+
+  return (
+    <ChatsContext.Provider value={contextValue}>
+      {children}
+    </ChatsContext.Provider>
+  );
+};
+
+// ─── Combined provider (convenience wrapper) ──────────────────────────────────
+
+export const AppConfigProvider = ({
   config_path,
   chats_path,
   children,
@@ -70,220 +414,26 @@ export const ConfigProvider = ({
   config_path: string | null;
   chats_path: string | null;
   children: React.ReactNode;
-}) => {
-  const [config, setConfig] = useState<Config | null>(null);
-  const [loading, setLoading] = useState(false);
-  const isLoadingRef = useRef(false);
+}) => (
+  <ConfigProvider config_path={config_path}>
+    <ChatsProvider chats_path={chats_path}>{children}</ChatsProvider>
+  </ConfigProvider>
+);
 
-  const [chats, setChats] = useState<Chats | null>(null);
-  const [chatsLoading, setChatsLoading] = useState(false);
-  const isChatsLoadingRef = useRef(false);
+// ─── Hooks ────────────────────────────────────────────────────────────────────
 
-  // ── Config load/save ────────────────────────────────────────────────────────
-
-  const reloadConfig = async () => {
-    if (!config_path) {
-      setConfig(null);
-      return;
-    }
-    setLoading(true);
-    isLoadingRef.current = true;
-    try {
-      const result = await getConfig(config_path);
-      setConfig(result);
-      info(`✅ Config loaded, ${config_path}`);
-    } catch (err) {
-      error(`Failed to load config: ${err}`);
-      setConfig(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (config_path) reloadConfig();
-    else setConfig(null);
-  }, [config_path]);
-
-  useEffect(() => {
-    if (!config_path || !config) return;
-    if (isLoadingRef.current) {
-      isLoadingRef.current = false;
-      return;
-    }
-    const saveAndReload = async () => {
-      await saveConfig(config_path, config);
-      await reloadConfig();
-    };
-    saveAndReload();
-  }, [config, config_path]);
-
-  // ── Chats load/save ─────────────────────────────────────────────────────────
-
-  const reloadChats = async () => {
-    if (!chats_path) {
-      setChats(null);
-      return;
-    }
-    setChatsLoading(true);
-    isChatsLoadingRef.current = true;
-    try {
-      const result = await getConfig(chats_path); // reuse getConfig — same JSON read
-      setChats(result as unknown as Chats);
-      info(`✅ Chats loaded, ${chats_path}`);
-    } catch (err) {
-      error(`Failed to load chats: ${err}`);
-      setChats(null);
-    } finally {
-      setChatsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (chats_path) reloadChats();
-    else setChats(null);
-  }, [chats_path]);
-
-  useEffect(() => {
-    if (!chats_path || !chats) return;
-    if (isChatsLoadingRef.current) {
-      isChatsLoadingRef.current = false;
-      return;
-    }
-    const saveAndReload = async () => {
-      await saveConfig(chats_path, chats as unknown as Config);
-      await reloadChats();
-    };
-    saveAndReload();
-  }, [chats, chats_path]);
-
-  // ── Chats helpers ───────────────────────────────────────────────────────────
-
-  const getChats = (): Chats | null => chats;
-
-  const getChatSessions = (): ChatSession[] | null =>
-    chats?.sessions?.sessions ?? null;
-
-  const getChatSession = (name: string): ChatSession | null =>
-    chats?.sessions?.sessions.find((s) => s.name === name) ?? null;
-
-  const updateChats = (newChats: Chats) => setChats(newChats);
-
-  const addChatSession = (session: ChatSession) => {
-    if (!chats) return;
-    setChats({
-      sessions: {
-        sessions: [...chats.sessions.sessions, session],
-      },
-    });
-  };
-
-  const updateChatSession = (name: string, updated: ChatSession) => {
-    if (!chats) return;
-    setChats({
-      sessions: {
-        sessions: chats.sessions.sessions.map((s) =>
-          s.name === name ? updated : s,
-        ),
-      },
-    });
-  };
-
-  const removeChatSession = (name: string) => {
-    if (!chats) return;
-    setChats({
-      sessions: {
-        sessions: chats.sessions.sessions.filter((s) => s.name !== name),
-      },
-    });
-  };
-
-  // ── Config helpers ──────────────────────────────────────────────────────────
-
-  const getFullConfig = (): Config | null => config;
-  const getBasicConfig = (): Config["basicConfig"] | null =>
-    config?.basicConfig ?? null;
-  const getBookmarks = (): Config["bookmarks"] | null =>
-    config?.bookmarks ?? null;
-  const getKnowledgeStoreConfig = (): Config["knowledgeStoreConfig"] | null =>
-    config?.knowledgeStoreConfig ?? null;
-  const getTabsConfig = (): Config["tabsConfig"] | null =>
-    config?.tabsConfig ?? null;
-  const getActiveTabsConfig = (): Tab[] | null =>
-    config?.tabsConfig?.tabs.filter((tab) => tab.enabled) ?? null;
-  const getLlmConfig = (): Config["llmConfig"] | null =>
-    config?.llmConfig ?? null;
-  const getTodos = (): Config["todos"] | null => config?.todos ?? null;
-
-  const updateConfig = (newConfig: Config) => setConfig(newConfig);
-  const updateBasicConfig = (basicConfig: Config["basicConfig"]) => {
-    if (config) setConfig({ ...config, basicConfig });
-  };
-  const updateBookmarks = (bookmarks: Config["bookmarks"]) => {
-    if (config) setConfig({ ...config, bookmarks });
-  };
-  const updateKnowledgeStoreConfig = (
-    knowledgeStoreConfig: Config["knowledgeStoreConfig"],
-  ) => {
-    if (config) setConfig({ ...config, knowledgeStoreConfig });
-  };
-  const updateTabsConfig = (tabsConfig: Config["tabsConfig"]) => {
-    if (config) setConfig({ ...config, tabsConfig });
-  };
-  const updateLlmConfig = (llmConfig: Config["llmConfig"]) => {
-    if (config) setConfig({ ...config, llmConfig });
-  };
-  const updateTodos = (todos: Config["todos"]) => {
-    if (config) setConfig({ ...config, todos });
-  };
-
-  // ── Provider ────────────────────────────────────────────────────────────────
-
-  return (
-    <ConfigContext.Provider
-      value={{
-        config,
-        setConfig,
-        reloadConfig,
-        loading,
-
-        chats,
-        chatsLoading,
-        reloadChats,
-        getChats,
-        getChatSessions,
-        getChatSession,
-        updateChats,
-        addChatSession,
-        updateChatSession,
-        removeChatSession,
-
-        getFullConfig,
-        getBasicConfig,
-        getBookmarks,
-        getKnowledgeStoreConfig,
-        getTabsConfig,
-        getActiveTabsConfig,
-        getLlmConfig,
-        getTodos,
-        updateConfig,
-        updateBasicConfig,
-        updateBookmarks,
-        updateKnowledgeStoreConfig,
-        updateTabsConfig,
-        updateLlmConfig,
-        updateTodos,
-      }}
-    >
-      {children}
-    </ConfigContext.Provider>
-  );
-};
-
-export const useConfig = () => {
+export const useConfig = (): ConfigContextType => {
   const context = useContext(ConfigContext);
   if (!context) {
     throw new Error("useConfig must be used inside a ConfigProvider");
+  }
+  return context;
+};
+
+export const useChats = (): ChatsContextType => {
+  const context = useContext(ChatsContext);
+  if (!context) {
+    throw new Error("useChats must be used inside a ChatsProvider");
   }
   return context;
 };

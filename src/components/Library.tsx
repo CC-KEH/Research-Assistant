@@ -1,7 +1,7 @@
 import { error, info } from "@/lib/logger";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileInfo, TreeNode } from "@/lib/types";
+import { DialogType, FileInfo, LibraryProps, TreeNode } from "@/lib/types";
 import { TreeView } from "@/components/small/Treeview";
 import { useConfig } from "@/components/providers/ConfigProvider";
 import {
@@ -11,20 +11,40 @@ import {
   writeFile,
   uploadFilesToLibrary,
 } from "@/lib/backend";
+import { extname } from "@tauri-apps/api/path";
 import { KnowledgeStoreButton } from "@/components/small/KnowledgeStoreButton";
 import { LibraryContextMenu } from "@/components/small/context-menus/LibraryContextMenu";
 import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "./ui/input";
 
-interface LibraryProps {
-  onFileSelect: (file: FileInfo) => void;
+// ─── Pure helpers (no closure over component state) ───────────────────────────
+
+function findNodeById(nodes: TreeNode[], id: string): TreeNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNodeById(node.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Library({ onFileSelect }: LibraryProps) {
   const navigate = useNavigate();
-  const { getBasicConfig, getKnowledgeStoreConfig } = useConfig();
-  const basicConfig = getBasicConfig();
-  const knowledgeStoreConfig = getKnowledgeStoreConfig();
-  const projectPath = basicConfig?.projectPath ?? "";
+  const { config } = useConfig();
+
+  const projectPath = config?.basicConfig?.projectPath ?? "";
+
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,11 +52,9 @@ export default function Library({ onFileSelect }: LibraryProps) {
   // Dialog state
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [dialogName, setDialogName] = useState("");
-  const [dialogType, setDialogType] = useState<
-    "pdf" | "file" | "folder" | null
-  >(null);
+  const [dialogType, setDialogType] = useState<DialogType | null>(null);
 
-  const reloadTreeData = async () => {
+  const reloadTreeData = useCallback(async () => {
     if (!projectPath) return;
     try {
       setIsLoading(true);
@@ -47,65 +65,54 @@ export default function Library({ onFileSelect }: LibraryProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectPath]);
 
   useEffect(() => {
-    if (!projectPath) {
-      info("Project path not found");
-      return;
-    }
+    if (!projectPath) return;
 
     reloadTreeData();
 
-    // Retry once after 1s in case backend isn't ready yet
+    // Retry once after 1s in case the backend isn't ready yet on first mount.
     const timer = setTimeout(() => reloadTreeData(), 1000);
     return () => clearTimeout(timer);
-  }, [projectPath, knowledgeStoreConfig]);
+  }, [projectPath, reloadTreeData]);
 
-  const findNodeById = (
-    nodes: TreeNode[],
-    id: string,
-  ): TreeNode | undefined => {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const found = findNodeById(node.children, id);
-        if (found) return found;
-      }
-    }
-    return undefined;
-  };
-
-  const getBasePath = (): string => {
+  const getBasePath = useCallback((): string => {
     if (!selectedNodeId) return projectPath;
     const node = findNodeById(treeData, selectedNodeId);
     if (!node) return projectPath;
     return node.nodeType === "folder" ? node.path : projectPath;
-  };
+  }, [selectedNodeId, treeData, projectPath]);
 
-  const handleNewFileUpload = async () => {
+  const handleNewFileUpload = useCallback(async () => {
     const destination = getBasePath();
     const newFiles = await uploadFilesToLibrary(destination);
     if (newFiles) {
       info("✅ Files uploaded");
       await reloadTreeData();
     }
-  };
+  }, [getBasePath, reloadTreeData]);
 
-  const handleNewFile = () => {
+  const handleNewFile = useCallback(() => {
     setDialogType("file");
     setDialogName("");
     setShowNameDialog(true);
-  };
+  }, []);
 
-  const handleNewFolder = () => {
+  const handleNewFolder = useCallback(() => {
     setDialogType("folder");
     setDialogName("");
     setShowNameDialog(true);
-  };
+  }, []);
 
-  const confirmCreateItem = async () => {
-    if (!projectPath || !dialogName.trim()) {
+  const handleCloseDialog = useCallback(() => {
+    setShowNameDialog(false);
+    setDialogName("");
+    setDialogType(null);
+  }, []);
+
+  const confirmCreateItem = useCallback(async () => {
+    if (!projectPath || !dialogName.trim() || !dialogType) {
       error("Please enter a valid name");
       return;
     }
@@ -113,33 +120,37 @@ export default function Library({ onFileSelect }: LibraryProps) {
     try {
       setIsLoading(true);
       const basePath = getBasePath();
-      let itemPath: string;
 
       if (dialogType === "file") {
         const fileName = dialogName.endsWith(".md")
           ? dialogName
           : `${dialogName}.md`;
-        itemPath = `${basePath}/${fileName}`;
+        const itemPath = `${basePath}/${fileName}`;
         await writeFile(itemPath, "");
         info("✅ New file created");
-      } else if (dialogType === "folder") {
-        itemPath = `${basePath}/${dialogName.trim()}`;
+      } else {
+        const itemPath = `${basePath}/${dialogName.trim()}`;
         await createDir(itemPath);
         info("✅ New folder created");
       }
 
-      setShowNameDialog(false);
-      setDialogName("");
-      setDialogType(null);
+      handleCloseDialog();
       await reloadTreeData();
     } catch (err) {
       error(`Failed to create item: ${err}`);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [
+    projectPath,
+    dialogName,
+    dialogType,
+    getBasePath,
+    handleCloseDialog,
+    reloadTreeData,
+  ]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!selectedNodeId) {
       error("No node selected");
       return;
@@ -162,26 +173,31 @@ export default function Library({ onFileSelect }: LibraryProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedNodeId, treeData, reloadTreeData]);
 
-  const handleNewProject = () => {
+  const handleNewProject = useCallback(() => {
     navigate("/project-setup");
-  };
+  }, [navigate]);
 
-  const handleNodeClick = (node: TreeNode) => {
-    setSelectedNodeId(node.id);
+  const handleNodeClick = useCallback(
+    async (node: TreeNode) => {
+      setSelectedNodeId(node.id);
 
-    if (node.nodeType === "file") {
-      info(`Selected file: ${node.label}`);
-      const ext = node.label.split(".").pop()?.toLowerCase() || "";
-      const fileInfo: FileInfo = {
-        file_name: node.label,
-        file_type: ext,
-        file_path: node.path,
-      };
-      onFileSelect(fileInfo);
-    }
-  };
+      if (node.nodeType === "file") {
+        info(`Selected file: ${node.label}`);
+
+        const ext = (await extname(node.path)).toLowerCase();
+
+        const fileInfo: FileInfo = {
+          file_name: node.label,
+          file_type: ext,
+          file_path: node.path,
+        };
+        onFileSelect(fileInfo);
+      }
+    },
+    [onFileSelect],
+  );
 
   return (
     <LibraryContextMenu
@@ -191,58 +207,52 @@ export default function Library({ onFileSelect }: LibraryProps) {
       onDelete={handleDelete}
       onNewProject={handleNewProject}
     >
-      <div className="max-w-xl mx-auto w-full h-[580px] flex flex-col gap-2">
+      <div className="max-w-xl mx-auto w-full h-full flex flex-col gap-2">
         <KnowledgeStoreButton />
         <TreeView
-          className="overflow-y-auto scrollbar-thin"
+          className="flex-1 min-h-0 overflow-y-auto scrollbar-thin"
           data={treeData}
           onNodeClick={handleNodeClick}
           defaultExpandedIds={["1"]}
         />
       </div>
 
-      {showNameDialog && (
-        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="dark:bg-[#0e0f11] bg-white rounded-lg p-6 w-96">
-            <h4 className="text-lg font-semibold mb-4 text-muted-foreground">
+      <Dialog
+        open={showNameDialog}
+        onOpenChange={(open) => !open && handleCloseDialog()}
+      >
+        <DialogContent className="w-96">
+          <DialogHeader>
+            <DialogTitle>
               {dialogType === "file" ? "Create New File" : "Create New Folder"}
-            </h4>
+            </DialogTitle>
+          </DialogHeader>
 
-            <input
-              type="text"
-              value={dialogName}
-              onChange={(e) => setDialogName(e.target.value)}
-              placeholder={
-                dialogType === "file" ? "Enter file name" : "Enter folder name"
-              }
-              className="w-full px-3 py-2 border rounded-md mb-4 focus:outline-none focus:ring-1 border-gray-300 focus:border-gray-500"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") confirmCreateItem();
-                if (e.key === "Escape") setShowNameDialog(false);
-              }}
-            />
+          <Input
+            value={dialogName}
+            onChange={(e) => setDialogName(e.target.value)}
+            placeholder={
+              dialogType === "file" ? "Enter file name" : "Enter folder name"
+            }
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") confirmCreateItem();
+            }}
+          />
 
-            <div className="flex gap-2 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowNameDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={confirmCreateItem}
-                disabled={isLoading || !dialogName.trim()}
-              >
-                Create
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmCreateItem}
+              disabled={isLoading || !dialogName.trim()}
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </LibraryContextMenu>
   );
 }

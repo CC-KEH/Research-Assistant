@@ -73,12 +73,11 @@ export default function MarkdownEditor({
   };
 
   return (
-    <div className="relative w-full h-screen flex flex-col dark:bg-black bg-white">
+    <div className="border-t-2 mt-2.5 relative w-full flex-1 min-h-0 flex flex-col dark:bg-black bg-white overflow-hidden">
       <div
         ref={highlightRef}
-        className="absolute border-t-2 top-0 left-0 mt-3 dark:bg-black dark:text-white bg-white text-black w-full h-175 font-mono text-sm pointer-events-none overflow-hidden whitespace-pre-wrap break-words"
+        className="absolute top-0 left-0 mt-3 dark:bg-black dark:text-white bg-white text-black w-full h-full font-mono text-sm pointer-events-none overflow-hidden whitespace-pre-wrap break-words"
       />
-
       <textarea
         ref={textareaRef}
         value={value}

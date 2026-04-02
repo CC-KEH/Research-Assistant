@@ -31,7 +31,10 @@ export const ViewerContextMenu = ({ children }: ViewerContextMenuProps) => {
   };
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="w-full h-full">
+      <ContextMenuTrigger
+        asChild
+        className="flex-1 min-h-0 flex flex-col overflow-hidden"
+      >
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent>

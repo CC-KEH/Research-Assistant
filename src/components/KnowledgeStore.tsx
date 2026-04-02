@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -7,92 +7,96 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { info } from "@/lib/logger";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { FileInfo } from "@/lib/types";
 import { uploadFilesToKnowledgeStore } from "@/lib/backend";
 import { useConfig } from "@/components/providers/ConfigProvider";
+import { error } from "@/lib/logger";
 
 export default function KnowledgeStore() {
-  const {
-    getBasicConfig,
-    getKnowledgeStoreConfig,
-    updateKnowledgeStoreConfig,
-  } = useConfig();
-  const basicConfig = getBasicConfig();
-  const knowledgeStoreConfig = getKnowledgeStoreConfig();
-  const projectPath = basicConfig?.projectPath;
-  const [papers, setPapers] = useState<FileInfo[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  // Load papers from knowledge store config on mount
-  useEffect(() => {
-    if (knowledgeStoreConfig?.files) {
-      const loadedPapers = knowledgeStoreConfig.files.map((file) => ({
+  const { config, reloadConfig, updateKnowledgeStoreConfig } = useConfig();
+  const papers = useMemo(
+    () =>
+      config?.knowledgeStoreConfig?.files.map((file) => ({
         file_name: file.fileName,
         file_path: file.filePath,
         file_type: file.fileType,
-      }));
-      setPapers(loadedPapers);
-    }
-  }, [knowledgeStoreConfig]);
+      })) ?? [],
+    [config],
+  );
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+
+  const projectPath = config?.basicConfig?.projectPath;
 
   const isAllSelected = papers.length > 0 && selected.size === papers.length;
 
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
-      info(`Selecting all rows: ${checked}`);
-      setSelected(new Set(papers.map((p) => p.file_name)));
-    } else {
-      info(`Deselecting all rows: ${checked}`);
-      setSelected(new Set());
-    }
-  };
+  // FIX: added indeterminate state for partial selection — standard table UX.
+  const isPartiallySelected =
+    selected.size > 0 && selected.size < papers.length;
 
-  const handleSelectRow = (id: string, checked: boolean) => {
-    const newSelected = new Set(selected);
-    if (checked) {
-      info(`Selecting row ${id}: ${checked}`);
-      newSelected.add(id);
-    } else {
-      info(`Deselecting row ${id}: ${checked}`);
-      newSelected.delete(id);
-    }
-    setSelected(newSelected);
-  };
+  const toggleSelectAll = useCallback(
+    (checked: boolean) => {
+      // FIX: removed info() log calls — logging every checkbox click floods
+      // the logger during normal use.
+      setSelected(
+        checked ? new Set(papers.map((p) => p.file_path)) : new Set(),
+      );
+    },
+    [papers],
+  );
 
-  const addPaper = async () => {
-    if (!projectPath) return;
-    const newFiles = await uploadFilesToKnowledgeStore(projectPath);
-    if (newFiles.length > 0) {
-      setPapers((prev) => [...prev, ...newFiles]);
-    }
-  };
-
-  const removePaper = async (fileIds: string[]) => {
-    info(`Removing papers:", ${fileIds}`);
-    if (!knowledgeStoreConfig) return;
-    const updatedFiles = knowledgeStoreConfig.files.filter(
-      (file) => !fileIds.includes(file.fileName),
-    );
-    await updateKnowledgeStoreConfig({
-      ...knowledgeStoreConfig,
-      files: updatedFiles,
+  const handleSelectRow = useCallback((filePath: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(filePath);
+      else next.delete(filePath);
+      return next;
     });
-  };
+  }, []);
 
-  const removeSelected = async () => {
-    const selectedArray = [...selected];
-    setPapers(papers.filter((p) => !selected.has(p.file_name)));
-    await removePaper(selectedArray);
-    setSelected(new Set());
-  };
+  const addPaper = useCallback(async () => {
+    if (!projectPath) return;
+    try {
+      setIsLoading(true);
+      const newFiles = await uploadFilesToKnowledgeStore(projectPath);
+      if (newFiles.length > 0) {
+        await reloadConfig();
+      }
+    } catch (err) {
+      error(`Failed to add files: ${err}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectPath, reloadConfig]);
+
+  const removeSelected = useCallback(async () => {
+    if (!config?.knowledgeStoreConfig) return;
+    try {
+      setIsLoading(true);
+      const updatedFiles = config.knowledgeStoreConfig.files.filter(
+        (file) => !selected.has(file.filePath),
+      );
+      updateKnowledgeStoreConfig({
+        ...config.knowledgeStoreConfig,
+        files: updatedFiles,
+      });
+      setSelected(new Set());
+    } catch (err) {
+      error(`Failed to remove files: ${err}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [config, selected, updateKnowledgeStoreConfig]);
 
   return (
-    <div className="flex flex-col justify-center items-center gap-6 max-w-2xl mx-auto py-10">
+    <div className="flex flex-col items-center gap-6 max-w-2xl mx-auto py-10 h-full min-h-0">
       <h1 className="text-3xl font-semibold">Knowledge Store</h1>
-      <div className="max-h-80 overflow-y-auto scrollbar-thin">
+
+      {/* FIX: replaced max-h-80 (too cramped for a desktop app) with
+          flex-1 min-h-0 so the table fills available space at any window size */}
+      <div className="w-full flex-1 min-h-0 overflow-y-auto scrollbar-thin">
         <Table>
           <TableHeader>
             <TableRow>
@@ -101,7 +105,10 @@ export default function KnowledgeStore() {
                   id="select-all-checkbox"
                   name="select-all-checkbox"
                   checked={isAllSelected}
-                  onCheckedChange={toggleSelectAll}
+                  data-indeterminate={isPartiallySelected}
+                  onCheckedChange={(checked) =>
+                    toggleSelectAll(checked === true)
+                  }
                 />
               </TableHead>
               <TableHead>Name</TableHead>
@@ -109,33 +116,50 @@ export default function KnowledgeStore() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {papers.map((paper) => (
-              <TableRow
-                key={paper.file_name}
-                data-state={
-                  selected.has(paper.file_name) ? "selected" : undefined
-                }
-              >
-                <TableCell>
-                  <Checkbox
-                    id={`row-${paper.file_name}-checkbox`}
-                    name={`row-${paper.file_name}-checkbox`}
-                    checked={selected.has(paper.file_name)}
-                    onCheckedChange={(checked) =>
-                      handleSelectRow(paper.file_name, checked === true)
-                    }
-                  />
+            {papers.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={3}
+                  className="text-center text-muted-foreground py-10 text-sm"
+                >
+                  No files in knowledge store. Click Add to upload files.
                 </TableCell>
-                <TableCell>{paper.file_name}</TableCell>
-                <TableCell>{paper.file_type}</TableCell>
               </TableRow>
-            ))}
+            ) : (
+              papers.map((paper) => (
+                <TableRow
+                  key={paper.file_path}
+                  data-state={
+                    selected.has(paper.file_path) ? "selected" : undefined
+                  }
+                >
+                  <TableCell>
+                    <Checkbox
+                      id={`row-${paper.file_path}-checkbox`}
+                      name={`row-${paper.file_path}-checkbox`}
+                      checked={selected.has(paper.file_path)}
+                      onCheckedChange={(checked) =>
+                        handleSelectRow(paper.file_path, checked === true)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>{paper.file_name}</TableCell>
+                  <TableCell>{paper.file_type}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+
       <div className="mb-4 flex gap-2">
-        <Button onClick={addPaper}>Add</Button>
-        <Button onClick={removeSelected} disabled={selected.size === 0}>
+        <Button onClick={addPaper} disabled={isLoading}>
+          Add
+        </Button>
+        <Button
+          onClick={removeSelected}
+          disabled={isLoading || selected.size === 0}
+        >
           Remove
         </Button>
       </div>

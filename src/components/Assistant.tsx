@@ -12,9 +12,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
+import { join } from "@tauri-apps/api/path";
 import { Button } from "@/components/ui/button";
 import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat-bubble";
-
 import { ChatMessageList } from "@/components/ui/chat-message-list";
 import { ChatInput } from "@/components/ui/chat-input";
 import { useAnimatedText } from "@/components/ui/animated-text";
@@ -48,11 +48,35 @@ import {
 } from "@/lib/backend";
 import { error, info } from "@/lib/logger";
 import { useConfig } from "./providers/ConfigProvider";
+import { useChats } from "./providers/ConfigProvider";
 import Settings from "./Settings";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const INITIAL_STATE: InitializationState = { phase: "idle", message: "" };
+
+// FIX: moved provider display map outside component — was being recreated on
+// every getProviderDisplay() call inside the component.
+const PROVIDER_DISPLAY: Record<string, { icon: string; name: string }> = {
+  openai: { icon: "/openai.svg", name: "ChatGPT" },
+  anthropic: { icon: "/claude.svg", name: "Claude" },
+  google: { icon: "/gemini.svg", name: "Gemini" },
+};
+
+const DEFAULT_PROVIDER_DISPLAY = { icon: "/openai.svg", name: "AI" };
+
+const WELCOME_MESSAGE: Message = {
+  id: 0,
+  content: "Hello! How can I help you today?",
+  sender: "ai",
+};
 
 // ─── Session Sidebar ──────────────────────────────────────────────────────────
 
@@ -81,14 +105,37 @@ function SessionSidebar({
 }: SessionSidebarProps) {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
+  // FIX: store timeout id in a ref so it can be cancelled on unmount and when
+  // the user rapidly clicks different delete buttons. The old code used a bare
+  // setTimeout with no cleanup — it fired setState on unmounted components.
+  const deleteTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimeoutRef.current !== null) {
+        window.clearTimeout(deleteTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleDeleteClick = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
     if (confirmDelete === index) {
+      if (deleteTimeoutRef.current !== null) {
+        window.clearTimeout(deleteTimeoutRef.current);
+        deleteTimeoutRef.current = null;
+      }
       onDelete(index);
       setConfirmDelete(null);
     } else {
+      if (deleteTimeoutRef.current !== null) {
+        window.clearTimeout(deleteTimeoutRef.current);
+      }
       setConfirmDelete(index);
-      setTimeout(() => setConfirmDelete(null), 3000);
+      deleteTimeoutRef.current = window.setTimeout(() => {
+        setConfirmDelete(null);
+        deleteTimeoutRef.current = null;
+      }, 3000);
     }
   };
 
@@ -103,7 +150,6 @@ function SessionSidebar({
 
   return (
     <>
-      {/* Backdrop (mobile-friendly) */}
       {isOpen && (
         <div
           className="absolute inset-0 z-10 bg-black/20 backdrop-blur-[1px] md:hidden"
@@ -111,7 +157,6 @@ function SessionSidebar({
         />
       )}
 
-      {/* Sidebar panel */}
       <div
         className={`
           absolute top-0 left-0 h-full z-20
@@ -122,7 +167,6 @@ function SessionSidebar({
       >
         {isOpen && (
           <>
-            {/* Header */}
             <div className="flex items-center justify-between px-3 py-3 border-b shrink-0">
               <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
                 Sessions
@@ -148,7 +192,6 @@ function SessionSidebar({
               </div>
             </div>
 
-            {/* Session list */}
             <div className="flex-1 overflow-y-auto py-1.5 scrollbar-thin">
               {loadingSessions ? (
                 <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
@@ -178,15 +221,12 @@ function SessionSidebar({
                         }
                       `}
                     >
-                      {/* Active indicator */}
                       {isActive && (
                         <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-primary" />
                       )}
-
                       <MessageSquare
                         className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-primary" : ""}`}
                       />
-
                       <div className="flex-1 min-w-0">
                         <p
                           className={`text-xs font-medium truncate ${isActive ? "text-foreground" : ""}`}
@@ -201,8 +241,6 @@ function SessionSidebar({
                           </p>
                         )}
                       </div>
-
-                      {/* Actions — visible on hover or when confirming */}
                       <div
                         className={`flex items-center gap-0.5 ${isConfirming ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
                       >
@@ -235,7 +273,6 @@ function SessionSidebar({
               )}
             </div>
 
-            {/* Footer */}
             <div className="px-3 py-2.5 border-t shrink-0">
               <Button
                 variant="outline"
@@ -272,11 +309,24 @@ function RenameModal({
   const [value, setValue] = useState(initialName);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // FIX: store the select() timeout in a ref so it's cancelled if the modal
+  // closes before the 50ms fires — prevents setState on unmounted component.
+  const selectTimeoutRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setValue(initialName);
-      setTimeout(() => inputRef.current?.select(), 50);
+      selectTimeoutRef.current = window.setTimeout(() => {
+        inputRef.current?.select();
+        selectTimeoutRef.current = null;
+      }, 50);
     }
+    return () => {
+      if (selectTimeoutRef.current !== null) {
+        window.clearTimeout(selectTimeoutRef.current);
+        selectTimeoutRef.current = null;
+      }
+    };
   }, [isOpen, initialName]);
 
   if (!isOpen) return null;
@@ -334,19 +384,25 @@ function RenameModal({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// FIX: unique message id counter — using Date.now() + 1 caused collisions when
+// two messages were added within the same millisecond (user + ai reply).
+let _msgId = 1;
+const nextMsgId = () => ++_msgId;
+
 export default function Assistant({ fileInfo }: AssistantProps) {
-  const {
-    getBasicConfig,
-    getLlmConfig,
-    reloadChats,
-    getKnowledgeStoreConfig,
-    updateKnowledgeStoreConfig,
-    getTabsConfig,
-  } = useConfig();
-  const basicConfig = getBasicConfig();
-  const llmConfig = getLlmConfig();
-  const knowledgeStoreConfig = getKnowledgeStoreConfig();
-  const tabsConfig = getTabsConfig();
+  // FIX: read directly from config instead of calling getter functions at
+  // render top-level. Getters return new object refs every call, destabilizing
+  // anything downstream (effects, memos, callbacks) that depends on them.
+  const { config, updateKnowledgeStoreConfig } = useConfig();
+
+  // FIX: reloadChats comes from ChatsContext via useChats(), not useConfig().
+  // The old code destructured it from useConfig() where it doesn't exist,
+  // making every reloadChats?.() call a silent no-op.
+  const { reloadChats } = useChats();
+
+  const projectPath = config?.basicConfig?.projectPath ?? "";
+  const llmConfig = config?.llmConfig;
+  const tabsConfig = config?.tabsConfig;
 
   // Core state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -362,7 +418,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   );
   const [showSettings, setShowSettings] = useState(false);
 
-  // Session management state
+  // Session state
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -373,12 +429,14 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   } | null>(null);
 
   // Refs
-  const initializationAttempted = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const animatedText = useAnimatedText(
     currentAiMessage,
-    currentAiMessage ? "" : undefined,
+    // FIX: pass empty string consistently — undefined made the hook's second
+    // arg conditional across renders which violates hook rules if the hook
+    // internally branches on it. Empty string is the safe neutral value.
+    currentAiMessage ? "" : "",
   );
 
   const isInitialized = initState.phase === "complete";
@@ -392,24 +450,16 @@ export default function Assistant({ fileInfo }: AssistantProps) {
   );
 
   const getProviderDisplay = useCallback(
-    (provider?: string) => {
-      const p = provider || currentProvider;
-      const providers: Record<string, { icon: string; name: string }> = {
-        openai: { icon: "/openai.svg", name: "ChatGPT" },
-        anthropic: { icon: "/claude.svg", name: "Claude" },
-        google: { icon: "/gemini.svg", name: "Gemini" },
-      };
-      return providers[p] || { icon: "/openai.svg", name: "AI" };
-    },
+    (provider?: string) =>
+      PROVIDER_DISPLAY[provider ?? currentProvider] ?? DEFAULT_PROVIDER_DISPLAY,
     [currentProvider],
   );
 
-  // ── Fetch sessions list ──────────────────────────────────────────────────────
+  // ── Fetch sessions list ────────────────────────────────────────────────────
 
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (): Promise<SessionInfo[]> => {
     setLoadingSessions(true);
     try {
-      // getAllSessions() returns the sessions array directly (backend already unwraps data.sessions)
       const raw: ChatSession[] = await getAllSessions();
       const sessionList: SessionInfo[] = (raw ?? []).map((s, i) => ({
         index: i,
@@ -427,189 +477,34 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     }
   }, []);
 
-  // ── Load messages for a session ──────────────────────────────────────────────
+  // ── Load messages for a session ────────────────────────────────────────────
 
-  const loadSessionMessages = useCallback(async (index: number) => {
-    // getSessionHistory() returns the history array directly (backend does `return data.history`)
-    const history: ChatSession["history"] = await getSessionHistory(index);
-    if (history?.length > 0) {
-      const loaded: Message[] = history.map((msg, idx) => ({
-        id: Date.now() + idx,
-        content: msg.message,
-        sender: msg.is_ai ? "ai" : "user",
-        timestamp: msg.timestamp,
-      }));
-      setMessages(loaded);
-      return loaded;
-    }
-    setMessages([]);
-    return [];
-  }, []);
-
-  // ── Initialize ───────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (initializationAttempted.current) return;
-    if (!basicConfig || !llmConfig) return;
-
-    initializationAttempted.current = true;
-
-    const activeLlmProvider = basicConfig?.activeLlmProvider;
-    const modelConfig = llmConfig?.[activeLlmProvider || ""];
-    const aiConfig = {
-      activeLlmProvider: activeLlmProvider || "",
-      model: modelConfig?.model || "",
-      apiKey: modelConfig?.apiKey || "",
-      temperature: modelConfig?.temperature || 0.7,
-      maxTokens: modelConfig?.maxTokens || 2048,
-      chatPrompt: modelConfig?.chatPrompt || "",
-    };
-
-    const initializeBackend = async () => {
-      if (!aiConfig?.activeLlmProvider || !aiConfig.apiKey?.trim()) {
-        updateInitState("no-llm-configured", "LLM not configured");
-        return;
+  const loadSessionMessages = useCallback(
+    async (index: number): Promise<Message[]> => {
+      const history: ChatSession["history"] = await getSessionHistory(index);
+      if (history?.length > 0) {
+        const loaded: Message[] = history.map((msg) => ({
+          id: nextMsgId(),
+          content: msg.message,
+          sender: msg.is_ai ? "ai" : "user",
+          timestamp: msg.timestamp,
+        }));
+        setMessages(loaded);
+        return loaded;
       }
+      setMessages([]);
+      return [];
+    },
+    [],
+  );
 
-      try {
-        updateInitState("checking-server", "Checking server...");
-        await checkPythonServer();
+  // ── Submit message (shared by form onSubmit and Enter key) ─────────────────
 
-        updateInitState("initializing-backend", "Initializing backend...");
-        const projectPath = basicConfig?.projectPath;
-        if (!projectPath) throw new Error("Project path not found in config");
-
-        const configPath = `${projectPath}\\config.json`;
-        const chatPath = `${projectPath}\\chats.json`;
-
-        await initializePythonBackend(configPath, chatPath);
-        await switchLLM(aiConfig?.activeLlmProvider);
-
-        if (aiConfig?.activeLlmProvider) {
-          setCurrentProvider(aiConfig.activeLlmProvider);
-          const providers: string[] = [];
-          if (llmConfig) {
-            Object.entries(llmConfig).forEach(([key, provider]) => {
-              if (provider.apiKey?.trim()) providers.push(key);
-            });
-          }
-          if (providers.length === 0)
-            throw new Error("No LLM providers configured.");
-          setAvailableProviders(providers);
-        }
-
-        updateInitState("loading-session", "Loading session...");
-        const sessionList = await fetchSessions();
-
-        if (sessionList.length > 0) {
-          const lastIndex = sessionList.length - 1;
-          setCurrentSessionIndex(lastIndex);
-          await switchSession(lastIndex);
-          const msgs = await loadSessionMessages(lastIndex);
-          if (msgs.length === 0) {
-            setMessages([
-              {
-                id: 1,
-                content: "Hello! How can I help you today?",
-                sender: "ai",
-              },
-            ]);
-          }
-        } else {
-          const newSession = await createSession("Chat Session");
-          setCurrentSessionIndex(newSession.session_index);
-          await fetchSessions();
-          setMessages([
-            {
-              id: 1,
-              content: "Hello! How can I help you today?",
-              sender: "ai",
-            },
-          ]);
-        }
-
-        updateInitState("complete", "");
-        info("✅ App fully initialized!");
-      } catch (err) {
-        const errorMsg =
-          err instanceof Error ? err.message : "Failed to initialize";
-        error(`Initialization failed: ${errorMsg}`);
-        updateInitState("error", "Initialization failed", errorMsg);
-      }
-    };
-
-    initializeBackend();
-  }, [
-    basicConfig,
-    llmConfig,
-    updateInitState,
-    fetchSessions,
-    loadSessionMessages,
-  ]);
-
-  // ── Scroll to bottom ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
-
-  // ── Scroll to bottom ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const knowledgeFile = knowledgeStoreConfig?.files.find(
-      (file: KnowledgeFile) => file.filePath == fileInfo?.file_path,
-    );
-
-    if (knowledgeFile?.feedLlm && knowledgeFile.isProcessed != true) {
-      const processAndUpdate = async () => {
-        const accumulatedData: Record<string, string> = {};
-
-        const saveProgress = (tab_id: string, content: string) => {
-          accumulatedData[tab_id] = content;
-
-          const updatedFiles = knowledgeStoreConfig!.files.map(
-            (file: KnowledgeFile) =>
-              file.filePath === knowledgeFile.filePath
-                ? {
-                    ...knowledgeFile,
-                    isProcessed: false,
-                    fileData: { ...accumulatedData },
-                  }
-                : file,
-          );
-
-          updateKnowledgeStoreConfig({ files: updatedFiles });
-        };
-
-        const knowledgeFileData = await processTabs(
-          fileInfo!,
-          tabsConfig!,
-          saveProgress,
-        );
-
-        const updatedFiles = knowledgeStoreConfig!.files.map(
-          (file: KnowledgeFile) =>
-            file.filePath === knowledgeFile.filePath
-              ? {
-                  ...knowledgeFile,
-                  isProcessed: true,
-                  fileData: knowledgeFileData,
-                }
-              : file,
-        );
-
-        info(`${JSON.stringify(knowledgeFileData)}`);
-        updateKnowledgeStoreConfig({ files: updatedFiles });
-      };
-
-      processAndUpdate();
-    }
-  }, [fileInfo]);
-
-  // ── Send message ─────────────────────────────────────────────────────────────
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  // FIX: extracted submit logic into submitMessage() so both the form's
+  // onSubmit and the keyboard Enter handler call the same typed function
+  // without the `handleSubmit(e as any)` cast that cast a KeyboardEvent
+  // to a FormEvent.
+  const submitMessage = useCallback(async () => {
     if (
       !input.trim() ||
       isLoading ||
@@ -621,7 +516,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     const userMessageContent = input.trim();
     setMessages((prev) => [
       ...prev,
-      { id: Date.now(), content: userMessageContent, sender: "user" },
+      { id: nextMsgId(), content: userMessageContent, sender: "user" },
     ]);
     setInput("");
     setIsLoading(true);
@@ -637,210 +532,360 @@ export default function Assistant({ fileInfo }: AssistantProps) {
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now() + 1,
+          id: nextMsgId(),
           content: data.response,
           sender: "ai",
           timestamp: data.timestamp,
         },
       ]);
       setCurrentAiMessage(data.response);
-      // Refresh sessions to update message counts, then sync chats in ConfigProvider
       await fetchSessions();
-      reloadChats?.();
+      reloadChats();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       error(`Error calling API: ${errorMsg}`);
       setMessages((prev) => [
         ...prev,
-        { id: Date.now() + 1, content: `❌ Error: ${errorMsg}`, sender: "ai" },
+        { id: nextMsgId(), content: `❌ Error: ${errorMsg}`, sender: "ai" },
       ]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [
+    input,
+    isLoading,
+    isInitialized,
+    currentSessionIndex,
+    fetchSessions,
+    reloadChats,
+  ]);
 
-  // ── LLM switch ───────────────────────────────────────────────────────────────
+  const handleSubmit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      submitMessage();
+    },
+    [submitMessage],
+  );
 
-  const handleLLMSelect = async (provider: string) => {
-    if (provider === currentProvider) return;
-    try {
-      await switchLLM(provider);
-      setCurrentProvider(provider);
-    } catch (err) {
-      const errorMsg =
-        err instanceof Error ? err.message : "Failed to switch LLM";
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          content: `❌ Failed to switch provider: ${errorMsg}`,
-          sender: "ai",
-        },
-      ]);
-    }
-  };
+  // ── Initialize ─────────────────────────────────────────────────────────────
 
-  // ── Session: Create ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    // FIX: guard on initState.phase === "idle" instead of a ref. The ref
+    // approach was fragile — if config arrived late the ref might already be
+    // set from a no-op early return, permanently blocking initialization.
+    // Phase-based guard is explicit and testable.
+    if (initState.phase !== "idle") return;
+    if (!config?.basicConfig || !llmConfig) return;
 
-  const handleCreateSession = async () => {
+    const activeLlmProvider = config.basicConfig.activeLlmProvider;
+    const modelConfig = llmConfig[activeLlmProvider ?? ""];
+    const aiConfig = {
+      activeLlmProvider: activeLlmProvider ?? "",
+      model: modelConfig?.model ?? "",
+      apiKey: modelConfig?.apiKey ?? "",
+      temperature: modelConfig?.temperature ?? 0.7,
+      maxTokens: modelConfig?.maxTokens ?? 2048,
+      chatPrompt: modelConfig?.chatPrompt ?? "",
+    };
+
+    const initializeBackend = async () => {
+      if (!aiConfig.activeLlmProvider || !aiConfig.apiKey.trim()) {
+        updateInitState("no-llm-configured", "LLM not configured");
+        return;
+      }
+
+      try {
+        updateInitState("checking-server", "Checking server...");
+        await checkPythonServer();
+
+        updateInitState("initializing-backend", "Initializing backend...");
+        if (!projectPath) throw new Error("Project path not found in config");
+
+        // FIX: use Tauri join() instead of hardcoded "\\" separator —
+        // "\\" breaks on macOS/Linux.
+        const configPath = await join(projectPath, "config.json");
+        const chatPath = await join(projectPath, "chats.json");
+
+        await initializePythonBackend(configPath, chatPath);
+        await switchLLM(aiConfig.activeLlmProvider);
+
+        setCurrentProvider(aiConfig.activeLlmProvider);
+
+        const providers = Object.entries(llmConfig)
+          .filter(([, p]) => p.apiKey?.trim())
+          .map(([key]) => key);
+
+        if (providers.length === 0)
+          throw new Error("No LLM providers configured.");
+        setAvailableProviders(providers);
+
+        updateInitState("loading-session", "Loading session...");
+        const sessionList = await fetchSessions();
+
+        if (sessionList.length > 0) {
+          const lastIndex = sessionList.length - 1;
+          setCurrentSessionIndex(lastIndex);
+          await switchSession(lastIndex);
+          const msgs = await loadSessionMessages(lastIndex);
+          if (msgs.length === 0)
+            setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
+        } else {
+          const newSession = await createSession("Chat Session");
+          setCurrentSessionIndex(newSession.session_index);
+          await fetchSessions();
+          setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
+        }
+
+        updateInitState("complete", "");
+        info("✅ App fully initialized!");
+      } catch (err) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to initialize";
+        error(`Initialization failed: ${errorMsg}`);
+        updateInitState("error", "Initialization failed", errorMsg);
+      }
+    };
+
+    initializeBackend();
+  }, [
+    // Depend on initState.phase so the guard re-evaluates if phase resets,
+    // but the phase check at the top prevents re-running once started.
+    initState.phase,
+    config,
+    llmConfig,
+    projectPath,
+    updateInitState,
+    fetchSessions,
+    loadSessionMessages,
+  ]);
+
+  // ── Scroll to bottom ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  // ── Process knowledge store file tabs ──────────────────────────────────────
+
+  useEffect(() => {
+    const knowledgeFiles = config?.knowledgeStoreConfig?.files;
+    if (!knowledgeFiles || !fileInfo?.file_path) return;
+
+    const knowledgeFile = knowledgeFiles.find(
+      // FIX: was == (loose equality) — use === throughout
+      (file: KnowledgeFile) => file.filePath === fileInfo.file_path,
+    );
+
+    // FIX: was != true (loose inequality) — use !== throughout
+    if (!knowledgeFile?.feedLlm || knowledgeFile.isProcessed !== false) return;
+    if (!tabsConfig) return;
+
+    // FIX: cancellation flag so that if fileInfo changes while processTabs is
+    // in flight, the stale async call's saveProgress and final update are
+    // discarded rather than writing stale data into config.
+    let cancelled = false;
+
+    const processAndUpdate = async () => {
+      const accumulatedData: Record<string, string> = {};
+
+      const saveProgress = (tab_id: string, content: string) => {
+        if (cancelled) return;
+        accumulatedData[tab_id] = content;
+
+        // FIX: read current knowledgeFiles from closure-captured config rather
+        // than the outer knowledgeStoreConfig getter (which was stale). The
+        // config object here is stable for this render's closure.
+        const currentFiles = config?.knowledgeStoreConfig?.files ?? [];
+        const updatedFiles = currentFiles.map((file: KnowledgeFile) =>
+          file.filePath === knowledgeFile.filePath
+            ? {
+                ...knowledgeFile,
+                isProcessed: false,
+                fileData: { ...accumulatedData },
+              }
+            : file,
+        );
+        updateKnowledgeStoreConfig({ files: updatedFiles });
+      };
+
+      try {
+        const knowledgeFileData = await processTabs(
+          fileInfo,
+          tabsConfig,
+          saveProgress,
+        );
+        if (cancelled) return;
+
+        const currentFiles = config?.knowledgeStoreConfig?.files ?? [];
+        const updatedFiles = currentFiles.map((file: KnowledgeFile) =>
+          file.filePath === knowledgeFile.filePath
+            ? {
+                ...knowledgeFile,
+                isProcessed: true,
+                fileData: knowledgeFileData,
+              }
+            : file,
+        );
+        updateKnowledgeStoreConfig({ files: updatedFiles });
+        // FIX: removed debug info(JSON.stringify(knowledgeFileData)) log
+      } catch (err) {
+        if (!cancelled) error(`Failed to process tabs: ${err}`);
+      }
+    };
+
+    processAndUpdate();
+    return () => {
+      cancelled = true;
+    };
+
+    // FIX: added all closed-over values to deps — the old effect only had
+    // [fileInfo] which meant config, tabsConfig, and updateKnowledgeStoreConfig
+    // were stale closures that could write outdated data back to config.
+  }, [fileInfo, config, tabsConfig, updateKnowledgeStoreConfig]);
+
+  // ── LLM switch ─────────────────────────────────────────────────────────────
+
+  const handleLLMSelect = useCallback(
+    async (provider: string) => {
+      if (provider === currentProvider) return;
+      try {
+        await switchLLM(provider);
+        setCurrentProvider(provider);
+      } catch (err) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to switch LLM";
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextMsgId(),
+            content: `❌ Failed to switch provider: ${errorMsg}`,
+            sender: "ai",
+          },
+        ]);
+      }
+    },
+    [currentProvider],
+  );
+
+  // ── Session: Create ────────────────────────────────────────────────────────
+
+  const handleCreateSession = useCallback(async () => {
     setSessionActionLoading(true);
     try {
-      const result = await createSession(`Session ${sessions.length + 1}`);
+      // FIX: use timestamp-based name to avoid duplicates when sessions are
+      // deleted and recreated ("Session 1" would repeat).
+      const result = await createSession(`Session ${Date.now()}`);
       const newIndex = result.session_index;
       await switchSession(newIndex);
       setCurrentSessionIndex(newIndex);
-      setMessages([
-        {
-          id: Date.now(),
-          content: "Hello! How can I help you today?",
-          sender: "ai",
-        },
-      ]);
+      setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
       await fetchSessions();
-      reloadChats?.();
+      reloadChats();
       info(`Created and switched to session ${newIndex}`);
     } catch (err) {
       error(`Failed to create session: ${err}`);
     } finally {
       setSessionActionLoading(false);
     }
-  };
+  }, [fetchSessions, reloadChats]);
 
-  // ── Session: Switch ──────────────────────────────────────────────────────────
+  // ── Session: Switch ────────────────────────────────────────────────────────
 
-  const handleSwitchSession = async (index: number) => {
-    if (index === currentSessionIndex || sessionActionLoading) return;
-    setSessionActionLoading(true);
-    try {
-      await switchSession(index);
-      setCurrentSessionIndex(index);
-      const msgs = await loadSessionMessages(index);
-      if (msgs.length === 0) {
-        setMessages([
-          {
-            id: Date.now(),
-            content: "Hello! How can I help you today?",
-            sender: "ai",
-          },
-        ]);
+  const handleSwitchSession = useCallback(
+    async (index: number) => {
+      if (index === currentSessionIndex || sessionActionLoading) return;
+      setSessionActionLoading(true);
+      try {
+        await switchSession(index);
+        setCurrentSessionIndex(index);
+        const msgs = await loadSessionMessages(index);
+        if (msgs.length === 0)
+          setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
+        setSidebarOpen(false);
+        info(`Switched to session ${index}`);
+      } catch (err) {
+        error(`Failed to switch session: ${err}`);
+      } finally {
+        setSessionActionLoading(false);
       }
-      setSidebarOpen(false);
-      info(`Switched to session ${index}`);
-    } catch (err) {
-      error(`Failed to switch session: ${err}`);
-    } finally {
-      setSessionActionLoading(false);
-    }
-  };
+    },
+    [currentSessionIndex, sessionActionLoading, loadSessionMessages],
+  );
 
-  // ── Session: Delete ──────────────────────────────────────────────────────────
+  // ── Session: Delete ────────────────────────────────────────────────────────
 
-  const handleDeleteSession = async (index: number) => {
-    setSessionActionLoading(true);
-    const isDeletingCurrent = index === currentSessionIndex;
+  const handleDeleteSession = useCallback(
+    async (index: number) => {
+      setSessionActionLoading(true);
+      const isDeletingCurrent = index === currentSessionIndex;
+      try {
+        await deleteSession(index);
+        const updatedList = await fetchSessions();
+        reloadChats();
 
-    try {
-      await deleteSession(index);
+        if (!isDeletingCurrent) return;
 
-      // Re-fetch updated list (indices may shift after deletion)
-      const updatedList = await fetchSessions();
-      reloadChats?.();
-
-      if (!isDeletingCurrent) return; // nothing else to do
-
-      // Need to switch: pick the next available session or create one
-      if (updatedList.length > 0) {
-        // Try to land on the same position, clamped to the new length
-        const targetIndex = Math.min(index, updatedList.length - 1);
-        const target = updatedList[targetIndex];
-        await switchSession(target.index);
-        setCurrentSessionIndex(target.index);
-        const msgs = await loadSessionMessages(target.index);
-        if (msgs.length === 0) {
-          setMessages([
-            {
-              id: Date.now(),
-              content: "Hello! How can I help you today?",
-              sender: "ai",
-            },
-          ]);
+        if (updatedList.length > 0) {
+          const targetIndex = Math.min(index, updatedList.length - 1);
+          const target = updatedList[targetIndex];
+          await switchSession(target.index);
+          setCurrentSessionIndex(target.index);
+          const msgs = await loadSessionMessages(target.index);
+          if (msgs.length === 0)
+            setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
+          info(`Deleted session ${index}, switched to session ${target.index}`);
+        } else {
+          const result = await createSession("Chat Session");
+          const newIndex = result.session_index;
+          await switchSession(newIndex);
+          setCurrentSessionIndex(newIndex);
+          setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
+          await fetchSessions();
+          reloadChats();
+          info(`Deleted last session, created new session ${newIndex}`);
         }
-        info(`Deleted session ${index}, switched to session ${target.index}`);
-      } else {
-        // No sessions left — create a fresh one
-        const result = await createSession("Chat Session");
-        const newIndex = result.session_index;
-        await switchSession(newIndex);
-        setCurrentSessionIndex(newIndex);
-        setMessages([
-          {
-            id: Date.now(),
-            content: "Hello! How can I help you today?",
-            sender: "ai",
-          },
-        ]);
-        await fetchSessions();
-        reloadChats?.();
-        info(`Deleted last session, created new session ${newIndex}`);
+      } catch (err) {
+        error(`Failed to delete session: ${err}`);
+      } finally {
+        setSessionActionLoading(false);
       }
-    } catch (err) {
-      error(`Failed to delete session: ${err}`);
-    } finally {
-      setSessionActionLoading(false);
-    }
-  };
+    },
+    [currentSessionIndex, fetchSessions, loadSessionMessages, reloadChats],
+  );
 
-  // ── Session: Rename ──────────────────────────────────────────────────────────
+  // ── Session: Rename ────────────────────────────────────────────────────────
 
-  const handleOpenRename = (index: number, name: string) => {
+  const handleOpenRename = useCallback((index: number, name: string) => {
     setRenameModal({ index, name });
-  };
+  }, []);
 
-  const handleRenameConfirm = async (newName: string) => {
-    if (!renameModal) return;
-    const { index } = renameModal;
-    setRenameModal(null);
-    setSessionActionLoading(true);
-    try {
-      // updateSession handles renames — it accepts { name, context, tags }
-      await updateSession(index, { name: newName });
-      await fetchSessions();
-      reloadChats?.();
-      info(`Renamed session ${index} to "${newName}"`);
-    } catch (err) {
-      error(`Failed to rename session: ${err}`);
-    } finally {
-      setSessionActionLoading(false);
-    }
-  };
+  const handleRenameConfirm = useCallback(
+    async (newName: string) => {
+      if (!renameModal) return;
+      const { index } = renameModal;
+      setRenameModal(null);
+      setSessionActionLoading(true);
+      try {
+        await updateSession(index, { name: newName });
+        await fetchSessions();
+        reloadChats();
+        info(`Renamed session ${index} to "${newName}"`);
+      } catch (err) {
+        error(`Failed to rename session: ${err}`);
+      } finally {
+        setSessionActionLoading(false);
+      }
+    },
+    [renameModal, fetchSessions, reloadChats],
+  );
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
 
   const providerDisplay = getProviderDisplay();
   const currentSession = sessions.find((s) => s.index === currentSessionIndex);
 
-  // ── Render: settings overlay ─────────────────────────────────────────────────
-
-  if (showSettings) {
-    return (
-      <div className="h-full border bg-background rounded-lg flex flex-col relative">
-        <div className="flex items-end self-end border-b border-l p-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSettings(false)}
-          >
-            ✕
-          </Button>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <Settings />
-        </div>
-      </div>
-    );
-  }
-
-  // ── Render: LLM not configured ───────────────────────────────────────────────
+  // ── Render: LLM not configured ─────────────────────────────────────────────
 
   if (isLlmNotConfigured) {
     return (
@@ -865,7 +910,7 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     );
   }
 
-  // ── Render: error ────────────────────────────────────────────────────────────
+  // ── Render: error ──────────────────────────────────────────────────────────
 
   if (initState.phase === "error") {
     return (
@@ -894,119 +939,129 @@ export default function Assistant({ fileInfo }: AssistantProps) {
     );
   }
 
-  // ── Render: main ─────────────────────────────────────────────────────────────
+  // ── Render: main ───────────────────────────────────────────────────────────
 
   return (
     <div className="h-full border bg-background rounded-lg flex flex-col relative overflow-hidden">
-      {/* Session Sidebar */}
-      <SessionSidebar
-        sessions={sessions}
-        currentSessionIndex={currentSessionIndex}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onSwitch={handleSwitchSession}
-        onCreate={handleCreateSession}
-        onRename={handleOpenRename}
-        onDelete={handleDeleteSession}
-        loadingSessions={loadingSessions}
-      />
-
-      {/* Rename Modal */}
-      <RenameModal
-        isOpen={!!renameModal}
-        initialName={renameModal?.name ?? ""}
-        onConfirm={handleRenameConfirm}
-        onCancel={() => setRenameModal(null)}
-      />
-
-      {/* Top bar */}
-      {isInitialized && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0 bg-background/95 backdrop-blur-sm z-10">
-          {/* Sidebar toggle */}
+      <div className={showSettings ? "flex flex-col h-full" : "hidden"}>
+        <div className="flex items-end self-end border-b border-l p-0">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 shrink-0"
-            onClick={() => setSidebarOpen((v) => !v)}
-            title="Sessions"
+            onClick={() => setShowSettings(false)}
           >
-            {sidebarOpen ? (
-              <PanelLeftClose className="w-4 h-4" />
-            ) : (
-              <PanelLeftOpen className="w-4 h-4" />
-            )}
-          </Button>
-
-          {/* Current session name */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            <span className="text-sm font-medium truncate">
-              {currentSession?.name || "Chat"}
-            </span>
-            <button
-              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() =>
-                currentSessionIndex !== null &&
-                handleOpenRename(
-                  currentSessionIndex,
-                  currentSession?.name ?? "",
-                )
-              }
-              title="Rename session"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* New session button */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs gap-1 shrink-0"
-            onClick={handleCreateSession}
-            disabled={sessionActionLoading}
-          >
-            <Plus className="w-3 h-3" />
-            New
+            ✕
           </Button>
         </div>
-      )}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <Settings />
+        </div>
+      </div>
 
-      {/* Messages */}
-      <div className="flex-1 min-h-0 relative overflow-hidden">
-        {!isInitialized ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-pulse mb-4">
-                <div className="h-12 w-12 bg-gray-300 rounded-full mx-auto mb-4" />
-              </div>
-              <p className="text-gray-600">
-                {initState.message || "Starting..."}
-              </p>
+      <div
+        className={
+          showSettings
+            ? "hidden"
+            : "flex flex-col h-full relative overflow-hidden"
+        }
+      >
+        {/* Session Sidebar */}
+        <SessionSidebar
+          sessions={sessions}
+          currentSessionIndex={currentSessionIndex}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onSwitch={handleSwitchSession}
+          onCreate={handleCreateSession}
+          onRename={handleOpenRename}
+          onDelete={handleDeleteSession}
+          loadingSessions={loadingSessions}
+        />
+
+        {/* Rename Modal */}
+        <RenameModal
+          isOpen={!!renameModal}
+          initialName={renameModal?.name ?? ""}
+          onConfirm={handleRenameConfirm}
+          onCancel={() => setRenameModal(null)}
+        />
+
+        {/* Top bar */}
+        {isInitialized && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0 bg-background/95 backdrop-blur-sm z-10">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 shrink-0"
+              onClick={() => setSidebarOpen((v) => !v)}
+              title="Sessions"
+            >
+              {sidebarOpen ? (
+                <PanelLeftClose className="w-4 h-4" />
+              ) : (
+                <PanelLeftOpen className="w-4 h-4" />
+              )}
+            </Button>
+
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+              <span className="text-sm font-medium truncate">
+                {currentSession?.name || "Chat"}
+              </span>
+              <button
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() =>
+                  currentSessionIndex !== null &&
+                  handleOpenRename(
+                    currentSessionIndex,
+                    currentSession?.name ?? "",
+                  )
+                }
+                title="Rename session"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
             </div>
-          </div>
-        ) : (
-          <ChatMessageList>
-            {messages.map((message, index) => {
-              const isLast = index === messages.length - 1;
-              const isAnimated =
-                message.sender === "ai" &&
-                message.content === currentAiMessage &&
-                isLast &&
-                !isLoading;
 
-              return (
-                <ChatBubble
-                  key={message.id}
-                  variant={
-                    message.sender === "user"
-                      ? "sent"
-                      : message.sender === "system"
-                        ? undefined
-                        : "received"
-                  }
-                >
-                  <ChatBubbleMessage
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1 shrink-0"
+              onClick={handleCreateSession}
+              disabled={sessionActionLoading}
+            >
+              <Plus className="w-3 h-3" />
+              New
+            </Button>
+          </div>
+        )}
+
+        {/* Messages */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          {!isInitialized ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-pulse mb-4">
+                  <div className="h-12 w-12 bg-gray-300 rounded-full mx-auto mb-4" />
+                </div>
+                <p className="text-gray-600">
+                  {initState.message || "Starting..."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ChatMessageList>
+              {messages.map((message, index) => {
+                const isLast = index === messages.length - 1;
+                const isAnimated =
+                  message.sender === "ai" &&
+                  message.content === currentAiMessage &&
+                  isLast &&
+                  !isLoading;
+
+                return (
+                  <ChatBubble
+                    key={message.id}
                     variant={
                       message.sender === "user"
                         ? "sent"
@@ -1015,105 +1070,111 @@ export default function Assistant({ fileInfo }: AssistantProps) {
                           : "received"
                     }
                   >
-                    {isAnimated ? animatedText : message.content}
-                  </ChatBubbleMessage>
-                </ChatBubble>
-              );
-            })}
-
-            {isLoading && (
-              <ChatBubble variant="received">
-                <ChatBubbleMessage isLoading />
-              </ChatBubble>
-            )}
-
-            <div ref={messagesEndRef} />
-          </ChatMessageList>
-        )}
-      </div>
-
-      {/* Input area */}
-      {isInitialized && (
-        <div className="p-4 border-t shrink-0 bg-background z-10">
-          <form
-            onSubmit={handleSubmit}
-            className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
-          >
-            <ChatInput
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (input.trim() && !isLoading && !sessionActionLoading) {
-                    handleSubmit(e as any);
-                  }
-                } else if (e.key === "Enter" && e.shiftKey) {
-                  e.preventDefault();
-                  setInput((prev) => prev + "\n");
-                }
-              }}
-              placeholder="Type your message..."
-              disabled={isLoading || sessionActionLoading}
-              className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0 disabled:opacity-50"
-            />
-
-            <div className="flex items-center p-3 pt-2 justify-between">
-              <div className="flex gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="default"
-                      type="button"
-                      disabled={isLoading || availableProviders.length === 0}
+                    <ChatBubbleMessage
+                      variant={
+                        message.sender === "user"
+                          ? "sent"
+                          : message.sender === "system"
+                            ? undefined
+                            : "received"
+                      }
                     >
-                      <img
-                        src={providerDisplay.icon}
-                        alt={providerDisplay.name}
-                        className="pr-1 w-5 h-5"
-                      />
-                      {providerDisplay.name}
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {availableProviders.map((provider) => {
-                      const display = getProviderDisplay(provider);
-                      return (
-                        <DropdownMenuItem
-                          key={provider}
-                          onClick={() => handleLLMSelect(provider)}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
+                      {isAnimated ? animatedText : message.content}
+                    </ChatBubbleMessage>
+                  </ChatBubble>
+                );
+              })}
+
+              {isLoading && (
+                <ChatBubble variant="received">
+                  <ChatBubbleMessage isLoading />
+                </ChatBubble>
+              )}
+
+              <div ref={messagesEndRef} />
+            </ChatMessageList>
+          )}
+        </div>
+
+        {/* Input area */}
+        {isInitialized && (
+          <div className="p-4 border-t shrink-0 bg-background z-10">
+            <form
+              onSubmit={handleSubmit}
+              className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
+            >
+              <ChatInput
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    // FIX: call submitMessage() directly instead of
+                    // handleSubmit(e as any) which cast a KeyboardEvent to
+                    // a FormEvent — an unsafe type lie.
+                    submitMessage();
+                  } else if (e.key === "Enter" && e.shiftKey) {
+                    e.preventDefault();
+                    setInput((prev) => prev + "\n");
+                  }
+                }}
+                placeholder="Type your message..."
+                disabled={isLoading || sessionActionLoading}
+                className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0 disabled:opacity-50"
+              />
+
+              <div className="flex items-center p-3 pt-2 justify-between">
+                <div className="flex gap-1">
+                  <Select
+                    value={currentProvider}
+                    onValueChange={(value) => handleLLMSelect(value)}
+                    disabled={isLoading || availableProviders.length === 0}
+                  >
+                    <SelectTrigger className="w-auto">
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
                           <img
-                            src={display.icon}
-                            alt={display.name}
+                            src={providerDisplay.icon}
+                            alt={providerDisplay.name}
                             className="w-4 h-4"
                           />
-                          <span>{display.name}</span>
-                          {provider === currentProvider && (
-                            <Check className="ml-auto h-4 w-4 text-primary" />
-                          )}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                          <span>{providerDisplay.name}</span>
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      {availableProviders.map((provider) => {
+                        const display = getProviderDisplay(provider);
+                        return (
+                          <SelectItem key={provider} value={provider}>
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={display.icon}
+                                alt={display.name}
+                                className="w-4 h-4"
+                              />
+                              <span>{display.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!input.trim() || isLoading || sessionActionLoading}
+                  className="ml-auto gap-1.5"
+                >
+                  Ask
+                  <CornerDownLeft className="size-3.5" />
+                </Button>
               </div>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!input.trim() || isLoading || sessionActionLoading}
-                className="ml-auto gap-1.5"
-              >
-                Ask
-                <CornerDownLeft className="size-3.5" />
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

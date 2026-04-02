@@ -424,7 +424,6 @@ export const getVectorStoreStatus = async () => {
 //* File System Functions (via Tauri/Rust)
 //*********************** */
 
-// Use Tauri command to get library data recursively
 export async function getLibraryData(
   project_path: string,
 ): Promise<TreeNode[]> {
@@ -432,7 +431,7 @@ export async function getLibraryData(
     const nodes = await invoke<TreeNode[]>("get_library_tree", {
       projectPath: project_path,
     });
-    return nodes; // Already filtered by backend
+    return nodes;
   } catch (err) {
     error(`Failed to read directory ${project_path}: ${err}`);
     return [];

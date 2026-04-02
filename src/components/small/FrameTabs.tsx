@@ -1,8 +1,8 @@
-import { Tab } from "@/lib/types";
+import { useMemo } from "react";
+import type { Tab } from "@/lib/types";
 import { Tabs } from "@/components/ui/Tabs";
 import { markdownViewerTabs, pdfViewerTabs } from "@/lib/tabs";
 import { useConfig } from "@/components/providers/ConfigProvider";
-import { info } from "@/lib/logger";
 
 interface FrameTabsProps {
   activeTabGroup: "paper" | "markdown" | "pdf";
@@ -13,38 +13,29 @@ export default function FrameTabs({
   activeTabGroup,
   onTabChange,
 }: FrameTabsProps) {
-  const { getActiveTabsConfig } = useConfig();
+  const { config } = useConfig();
 
-  const paperViewerTabs = getActiveTabsConfig()?.filter(
-    (tab: Tab) => tab.enabled === true,
+  const paperViewerTabs = useMemo<Tab[]>(
+    () => config?.tabsConfig?.tabs.filter((tab) => tab.enabled) ?? [],
+    [config],
   );
 
-  let tabsData: any = [];
-  info(`paper viewer tabs: ${paperViewerTabs}`);
-  switch (activeTabGroup) {
-    case "paper":
-      info("Using paper viewer tabs from config");
-      tabsData = paperViewerTabs;
-      break;
-    case "markdown":
-      info("Using markdown viewer tabs");
-      tabsData = markdownViewerTabs;
-      break;
-    case "pdf":
-      info("Using pdf viewer tabs");
-      tabsData = pdfViewerTabs;
-      break;
-    default:
-      tabsData = [];
-  }
+  const tabsData = useMemo<Tab[]>(() => {
+    switch (activeTabGroup) {
+      case "paper":
+        return paperViewerTabs;
+      case "markdown":
+        return markdownViewerTabs;
+      case "pdf":
+        return pdfViewerTabs;
+      default:
+        return [];
+    }
+  }, [activeTabGroup, paperViewerTabs]);
 
   return (
     <div className="mt-[2px] w-full flex justify-center">
-      <Tabs
-        tabs={tabsData}
-        onTabChange={(tabId: any) => onTabChange(tabId)}
-        className="mb-3"
-      />
+      <Tabs tabs={tabsData} onTabChange={onTabChange} className="mb-3" />
     </div>
   );
 }

@@ -1,6 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+class InitializeRequest(BaseModel):
+    config_path: str
+    chats_path: str
+
+class SwitchLlmRequest(BaseModel):
+    llm_provider: str
+
 class ChatRequest(BaseModel):
     message: str
     session_index: Optional[int] = None

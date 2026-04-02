@@ -2,7 +2,6 @@
 
 export interface Config {
   basicConfig: BasicConfig;
-  bookmarks: Bookmark[];
   knowledgeStoreConfig: {
     files: KnowledgeFile[];
   };
@@ -31,6 +30,12 @@ export type TreeNode = {
   children?: TreeNode[];
 };
 
+export interface LibraryProps {
+  onFileSelect: (file: FileInfo) => void;
+}
+
+export type DialogType = "file" | "folder";
+
 export interface Tab {
   id: string;
   label: string;
@@ -51,12 +56,6 @@ export interface BasicConfig {
   projectName: string;
   projectPath: string;
   activeLlmProvider: string;
-}
-
-export interface Bookmark {
-  fileName: string;
-  filePath: string;
-  pageNo: string;
 }
 
 export interface KnowledgeFile {

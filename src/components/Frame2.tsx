@@ -1,20 +1,24 @@
+import { useState, useEffect } from "react";
+import type { FileInfo, KnowledgeFile, Tab } from "@/lib/types";
+import { useConfig } from "./providers/ConfigProvider";
+import { markdownViewerTabs, pdfViewerTabs } from "@/lib/tabs";
 import Viewer from "@/components/Viewer";
 import { ViewerContextMenu } from "@/components/small/context-menus/ViewerContextMenu";
 import FrameTabs from "@/components/small/FrameTabs";
-import { useState, useEffect } from "react";
-import { useConfig } from "./providers/ConfigProvider";
-import type { FileInfo, KnowledgeFile } from "@/lib/types";
 
-type TabGroup = "paper" | "markdown" | "pdf"; // ← string discriminator
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type TabGroup = "paper" | "markdown" | "pdf";
 
 interface Frame2Props {
   fileInfo: FileInfo | null;
 }
-import { markdownViewerTabs, pdfViewerTabs } from "@/lib/tabs";
 
-function getFirstTabId(
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getFirstEnabledTabId(
   group: TabGroup,
-  getTabsConfig: () => any,
+  configTabs: Tab[] | null | undefined,
 ): string | null {
   switch (group) {
     case "markdown":
@@ -22,69 +26,67 @@ function getFirstTabId(
     case "pdf":
       return pdfViewerTabs[0]?.id ?? null;
     case "paper":
-      return getTabsConfig()?.tabs.find((t: any) => t.enabled)?.id ?? null;
+      // FIX: was (t: any) — now properly typed as Tab
+      return configTabs?.find((t: Tab) => t.enabled)?.id ?? null;
     default:
       return null;
   }
 }
+
+function resolveTabGroup(
+  fileInfo: FileInfo,
+  knowledgeFiles: KnowledgeFile[] | undefined,
+): TabGroup {
+  switch (fileInfo.file_type) {
+    case "md":
+      return "markdown";
+    case "pdf": {
+      const isFeedLlm = knowledgeFiles?.some(
+        (file) => file.filePath === fileInfo.file_path && file.feedLlm === true,
+      );
+      return isFeedLlm ? "paper" : "pdf";
+    }
+    default:
+      return "pdf";
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function Frame2({ fileInfo }: Frame2Props) {
-  const { getKnowledgeStoreConfig, getTabsConfig } = useConfig();
+  const { config } = useConfig();
   const [activeTabGroup, setActiveTabGroup] = useState<TabGroup | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
-  const [filePath, setFilePath] = useState<string>("");
 
   useEffect(() => {
     if (!fileInfo?.file_path) return;
 
-    setFilePath(fileInfo.file_path);
+    const knowledgeFiles = config?.knowledgeStoreConfig?.files;
+    const configTabs = config?.tabsConfig?.tabs;
 
-    let group: TabGroup | null = null;
+    const group = resolveTabGroup(fileInfo, knowledgeFiles);
+    const firstTabId = getFirstEnabledTabId(group, configTabs);
 
-    switch (fileInfo.file_type) {
-      case "md":
-        group = "markdown";
-        break;
+    setActiveTabGroup(group);
+    setActiveTab(firstTabId);
+  }, [fileInfo, config]);
 
-      case "pdf": {
-        const knowledgeStoreConfig = getKnowledgeStoreConfig();
-        const isFeedLLM = knowledgeStoreConfig?.files.find(
-          (file: KnowledgeFile) =>
-            file.filePath === fileInfo.file_path && file.feedLlm === true,
-        );
-        group = isFeedLLM ? "paper" : "pdf";
-        break;
-      }
-
-      default:
-        break;
-    }
-
-    if (group) {
-      setActiveTabGroup(group);
-      const firstTabId = getFirstTabId(group, getTabsConfig);
-      setActiveTab(firstTabId);
-    }
-  }, [fileInfo]);
+  if (!activeTabGroup || !activeTab || !fileInfo) return null;
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden my-4">
-      {activeTabGroup && (
-        <>
-          <FrameTabs
-            activeTabGroup={activeTabGroup}
-            onTabChange={setActiveTab}
-          />
-          <ViewerContextMenu>
-            <Viewer
-              activeTabGroup={activeTabGroup}
-              activeTab={activeTab!}
-              filePath={filePath}
-              fileName={fileInfo?.file_name}
-              fileType={fileInfo?.file_type}
-            />
-          </ViewerContextMenu>
-        </>
-      )}
+      <div className="shrink-0">
+        <FrameTabs activeTabGroup={activeTabGroup} onTabChange={setActiveTab} />
+      </div>
+      <ViewerContextMenu>
+        <Viewer
+          activeTabGroup={activeTabGroup}
+          activeTab={activeTab}
+          filePath={fileInfo.file_path}
+          fileName={fileInfo.file_name}
+          fileType={fileInfo.file_type}
+        />
+      </ViewerContextMenu>
     </div>
   );
 }

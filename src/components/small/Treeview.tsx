@@ -1,5 +1,3 @@
-// TODO: 21st Dev Link: https://21st.dev/preetsuthar17/tree-view/default
-// TODO: Display directories > files
 import { useState, useCallback } from "react";
 import { ChevronRight, Folder, File, FolderOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";

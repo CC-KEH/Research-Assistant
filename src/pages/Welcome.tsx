@@ -3,6 +3,7 @@ import { GitBranch, MoveRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { info } from "@/lib/logger";
 
 export default function Welcome() {
   const [titleNumber, setTitleNumber] = useState(0);
@@ -10,6 +11,10 @@ export default function Welcome() {
     () => ["new", "minimal", "smart", "intelligent", "powerful"],
     [],
   );
+
+  useEffect(() => {
+    info("<<<<<Welcome mounted>>>>>");
+  }, []);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {

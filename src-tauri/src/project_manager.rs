@@ -178,7 +178,6 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     // Create a default config
     let default_config = Config {
         basic_config: new_project_config.clone(),
-        bookmarks: Vec::new(),
         knowledge_store_config: KnowledgeStoreConfig { files: Vec::new() },
         tabs_config: TabsConfig {
             tabs,
@@ -290,6 +289,9 @@ impl Counter {
         self.value.to_string()
     }
 }
+
+const EXCLUDED_NAMES: &[&str] = &["vector_store", "config.json", "chats.json"];
+
 fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<TreeNode>, String> {
     let mut nodes = Vec::new();
 
@@ -312,7 +314,7 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                     .to_lowercase();
                 a_name.cmp(&b_name)
             });
-            // TODO: Dont count project files and folders
+
             for entry in entries {
                 match entry {
                     Ok(entry) => {
@@ -321,6 +323,9 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                         if let Some(file_name) = entry_path.file_name() {
                             if let Some(name_str) = file_name.to_str() {
                                 if name_str.starts_with('.') {
+                                    continue;
+                                }
+                                if EXCLUDED_NAMES.contains(&name_str) {
                                     continue;
                                 }
                             }
@@ -332,7 +337,6 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
                             .unwrap_or("Unknown")
                             .to_string();
 
-                        // Filter: only include directories, .md, and .pdf files
                         let should_include = if entry_path.is_dir() {
                             true
                         } else {
@@ -381,6 +385,7 @@ fn read_directory_recursive(path: &Path, counter: &mut Counter) -> Result<Vec<Tr
 
     Ok(nodes)
 }
+
 /// List files and directories in a given path
 #[tauri::command]
 pub fn list_dir(path: String) -> Result<Vec<FileItem>, String> {

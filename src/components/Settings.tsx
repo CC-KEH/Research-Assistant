@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { Input } from "./ui/input";
 import { Tabs } from "@/components/ui/Tabs";
 import { Card, CardContent } from "./ui/card";
+import type { ChatMessage, ChatSession, Config } from "@/lib/types";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Input } from "./ui/input";
 import type { BasicConfig, LlmProvider, Tab } from "@/lib/types";
-import { useConfig } from "@/components/providers/ConfigProvider";
-import type { ChatSession } from "@/lib/types";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useChats, useConfig } from "@/components/providers/ConfigProvider";
 import {
   Trash2,
   MessageSquare,
@@ -17,55 +17,29 @@ import {
   Search,
   RotateCcw,
 } from "lucide-react";
+import { llmProviders, modelsByProvider, tabs } from "@/lib/constants";
 
-const tabs = [
-  { id: "file-viewer", label: "File Viewer" },
-  { id: "llm", label: "LLM" },
-  { id: "Advanced", label: "Advanced" },
-  { id: "chats", label: "Chats" },
-];
+function formatDate(iso: string | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
-const llmProviders = [
-  { label: "OpenAI", value: "openai" },
-  { label: "Anthropic", value: "anthropic" },
-  { label: "Google", value: "google" },
-];
-
-const modelsByProvider: Record<string, { label: string; value: string }[]> = {
-  openai: [
-    { label: "GPT-5 Nano", value: "gpt-5-nano" },
-    { label: "GPT-4o", value: "gpt-4o" },
-    { label: "GPT-4o mini", value: "gpt-4o-mini" },
-    { label: "GPT-4", value: "gpt-4" },
-    { label: "GPT-3.5 Turbo", value: "gpt-3.5-turbo" },
-  ],
-  anthropic: [
-    { label: "Claude Opus 4.6", value: "claude-opus-4-6-20250205" },
-    { label: "Claude Opus 4.5", value: "claude-opus-4-5-20251101" },
-    { label: "Claude Sonnet 4.5", value: "claude-sonnet-4-5-20250929" },
-    { label: "Claude Sonnet 4", value: "claude-sonnet-4-20250514" },
-    { label: "Claude Haiku 4.5", value: "claude-haiku-4-5-20251001" },
-    { label: "Claude Haiku 3.5", value: "claude-haiku-3-5-20241022" },
-  ],
-  google: [
-    { label: "Gemini 3 Pro", value: "gemini-3-pro-preview" },
-    { label: "Gemini 3 Flash", value: "gemini-3-flash-preview" },
-    { label: "Gemini 2.5 Pro", value: "gemini-2-5-pro" },
-    { label: "Gemini 2.5 Flash", value: "gemini-2-5-flash" },
-  ],
-};
-
-// ─── Chats Tab ─────────────────────────────────────────────────────────────────
-
+// ─── Chats Tab ────────────────────────────────────────────────────────────────
 function ChatsTab() {
   const {
     chats,
     chatsLoading,
     reloadChats,
-    getChatSessions,
+    sessions: contextSessions,
     removeChatSession,
     updateChatSession,
-  } = useConfig();
+  } = useChats();
 
   const [search, setSearch] = useState("");
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
@@ -73,58 +47,85 @@ function ChatsTab() {
   const [editNameValue, setEditNameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const sessions = getChatSessions() ?? [];
+  const deleteTimeoutRef = useRef<number | null>(null);
 
-  const filtered = sessions.filter((s) => {
+  // Clear the pending confirm-delete timeout on unmount.
+  useEffect(() => {
+    return () => {
+      if (deleteTimeoutRef.current !== null) {
+        window.clearTimeout(deleteTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const sessions = useMemo(() => contextSessions ?? [], [contextSessions]);
+
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      s.metadata?.context?.toLowerCase().includes(q) ||
-      s.metadata?.tags?.some((t) => t.toLowerCase().includes(q))
+    if (!q) return sessions;
+    return sessions.filter(
+      (s: ChatSession) =>
+        s.name.toLowerCase().includes(q) ||
+        s.metadata?.context?.toLowerCase().includes(q) ||
+        s.metadata?.tags?.some((t) => t.toLowerCase().includes(q)),
     );
-  });
+  }, [sessions, search]);
 
-  const formatDate = (iso: string) => {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const handleRename = (session: ChatSession) => {
+  const handleRename = useCallback((session: ChatSession) => {
     setEditingName(session.name);
     setEditNameValue(session.name);
-  };
+  }, []);
 
-  const handleRenameConfirm = (oldName: string) => {
-    const session = sessions.find((s) => s.name === oldName);
-    if (!session || !editNameValue.trim()) return;
-    updateChatSession(oldName, {
-      ...session,
-      name: editNameValue.trim(),
-      metadata: {
-        ...session.metadata,
-        last_updated: new Date().toISOString(),
-      },
-    });
-    setEditingName(null);
-  };
+  const handleRenameConfirm = useCallback(
+    (oldName: string) => {
+      const session = sessions.find((s) => s.name === oldName);
+      if (!session || !editNameValue.trim()) return;
+      updateChatSession(oldName, {
+        ...session,
+        name: editNameValue.trim(),
+        metadata: {
+          ...session.metadata,
+          last_updated: new Date().toISOString(),
+        },
+      });
+      setEditingName(null);
+    },
+    [sessions, editNameValue, updateChatSession],
+  );
 
-  const handleDelete = (name: string) => {
-    if (confirmDelete === name) {
-      removeChatSession(name);
-      setConfirmDelete(null);
-    } else {
-      setConfirmDelete(name);
-      // auto-clear after 3s
-      setTimeout(() => setConfirmDelete(null), 3000);
-    }
-  };
+  const handleDelete = useCallback(
+    (name: string) => {
+      if (confirmDelete === name) {
+        // Confirmed — clear any pending timer and delete.
+        if (deleteTimeoutRef.current !== null) {
+          window.clearTimeout(deleteTimeoutRef.current);
+          deleteTimeoutRef.current = null;
+        }
+        removeChatSession(name);
+        setConfirmDelete(null);
+      } else {
+        if (deleteTimeoutRef.current !== null) {
+          window.clearTimeout(deleteTimeoutRef.current);
+        }
+        setConfirmDelete(name);
+        deleteTimeoutRef.current = window.setTimeout(() => {
+          setConfirmDelete(null);
+          deleteTimeoutRef.current = null;
+        }, 3000);
+      }
+    },
+    [confirmDelete, removeChatSession],
+  );
+
+  const totalMessages = useMemo(
+    () =>
+      sessions.reduce(
+        (acc: number, s: ChatSession) =>
+          acc + (s.metadata?.total_messages ?? 0),
+        0,
+      ),
+    [sessions],
+  );
 
   if (chatsLoading) {
     return (
@@ -176,12 +177,7 @@ function ChatsTab() {
           total sessions
         </span>
         <span>
-          <span className="font-semibold text-foreground">
-            {sessions.reduce(
-              (acc, s) => acc + (s.metadata?.total_messages ?? 0),
-              0,
-            )}
-          </span>{" "}
+          <span className="font-semibold text-foreground">{totalMessages}</span>{" "}
           total messages
         </span>
         {search && (
@@ -203,7 +199,7 @@ function ChatsTab() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((session) => {
+          {filtered.map((session: ChatSession) => {
             const isExpanded = expandedSession === session.name;
             const isEditingThis = editingName === session.name;
             const isConfirmingDelete = confirmDelete === session.name;
@@ -315,11 +311,11 @@ function ChatsTab() {
                           {formatDate(session.metadata.last_updated)}
                         </span>
                       )}
-                      {session.metadata?.tags?.length > 0 && (
+                      {(session.metadata?.tags?.length ?? 0) > 0 && (
                         <span className="flex items-center gap-1 truncate">
                           <Tag className="w-3 h-3 shrink-0" />
-                          {session.metadata.tags.slice(0, 3).join(", ")}
-                          {session.metadata.tags.length > 3 && " …"}
+                          {session.metadata!.tags!.slice(0, 3).join(", ")}
+                          {session.metadata!.tags!.length > 3 && " …"}
                         </span>
                       )}
                     </div>
@@ -377,29 +373,32 @@ function ChatsTab() {
                       )}
 
                       {/* Last few messages preview */}
-                      {session.history?.length > 0 && (
+                      {(session.history?.length ?? 0) > 0 && (
                         <div>
                           <p className="text-xs text-muted-foreground mb-1.5">
                             Recent messages
                           </p>
                           <div className="space-y-1.5">
-                            {session.history.slice(-3).map((msg, i) => (
-                              <div
-                                key={i}
-                                className={`text-xs rounded-md px-3 py-1.5 ${
-                                  msg.is_ai
-                                    ? "bg-primary/8 text-foreground"
-                                    : "bg-muted/50 text-muted-foreground"
-                                }`}
-                              >
-                                <span className="font-medium mr-1.5">
-                                  {msg.is_ai ? "AI" : "You"}:
-                                </span>
-                                <span className="line-clamp-2">
-                                  {msg.message}
-                                </span>
-                              </div>
-                            ))}
+                            {/* FIX: use msg.index as key instead of array index i */}
+                            {session
+                              .history!.slice(-3)
+                              .map((msg: ChatMessage) => (
+                                <div
+                                  key={msg.index}
+                                  className={`text-xs rounded-md px-3 py-1.5 ${
+                                    msg.is_ai
+                                      ? "bg-primary/8 text-foreground"
+                                      : "bg-muted/50 text-muted-foreground"
+                                  }`}
+                                >
+                                  <span className="font-medium mr-1.5">
+                                    {msg.is_ai ? "AI" : "You"}:
+                                  </span>
+                                  <span className="line-clamp-2">
+                                    {msg.message}
+                                  </span>
+                                </div>
+                              ))}
                           </div>
                         </div>
                       )}
@@ -421,90 +420,99 @@ function ChatsTab() {
   );
 }
 
-// ─── Main Settings ─────────────────────────────────────────────────────────────
+// ─── Main Settings ────────────────────────────────────────────────────────────
+
+function syncProviderFields(
+  providerName: string,
+  cfg: Config | null,
+  setters: {
+    setSelectedLlmModel: (v: string) => void;
+    setLlmApiKey: (v: string) => void;
+    setTemperature: (v: number) => void;
+    setMaxTokens: (v: number) => void;
+    setChatPrompt: (v: string) => void;
+  },
+) {
+  if (!cfg) return;
+  const provider = cfg.llmConfig?.[providerName];
+  if (provider) {
+    setters.setSelectedLlmModel(provider.model || "");
+    setters.setLlmApiKey(provider.apiKey || "");
+    setters.setTemperature(provider.temperature ?? 0.7);
+    setters.setMaxTokens(provider.maxTokens ?? 2048);
+    setters.setChatPrompt(provider.chatPrompt || "");
+  } else {
+    const firstModel = modelsByProvider[providerName]?.[0];
+    setters.setSelectedLlmModel(firstModel?.value || "");
+    setters.setLlmApiKey("");
+    setters.setTemperature(0.7);
+    setters.setMaxTokens(2048);
+    setters.setChatPrompt("");
+  }
+}
 
 export default function Settings() {
-  const {
-    config,
-    loading,
-    updateTabsConfig,
-    getBasicConfig,
-    getLlmConfig,
-    updateConfig,
-  } = useConfig();
+  const { config, loading, updateTabsConfig, updateConfig } = useConfig();
 
   const [activeTab, setActiveTab] = useState("file-viewer");
   const [fileViewerTabs, setFileViewerTabs] = useState<Tab[]>([]);
 
-  const basicConfig = getBasicConfig();
-  const llmConfig = getLlmConfig();
-
-  const [selectedLlmName, setSelectedLlmName] = useState(
-    basicConfig?.activeLlmProvider || "openai",
-  );
-  const [selectedLlmModel, setSelectedLlmModel] = useState(
-    llmConfig?.[basicConfig?.activeLlmProvider || ""]?.model || "",
-  );
+  const [selectedLlmName, setSelectedLlmName] = useState("openai");
+  const [selectedLlmModel, setSelectedLlmModel] = useState("");
   const [llmApiKey, setLlmApiKey] = useState("");
-
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
   const [chatPrompt, setChatPrompt] = useState("");
 
-  const hasInitialized = useRef(false);
+  const fieldSetters = useMemo(
+    () => ({
+      setSelectedLlmModel,
+      setLlmApiKey,
+      setTemperature,
+      setMaxTokens,
+      setChatPrompt,
+    }),
+    // These are all stable setState references — safe empty dep array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
+  // ── Sync form fields from config ──────────────────────────────────────────
   useEffect(() => {
-    if (!loading && config && !hasInitialized.current) {
-      hasInitialized.current = true;
-      if (config.tabsConfig?.tabs && Array.isArray(config.tabsConfig.tabs)) {
-        setFileViewerTabs(config.tabsConfig.tabs);
-      }
-      const activeLlmProvider =
-        config.basicConfig?.activeLlmProvider || "openai";
-      setSelectedLlmName(activeLlmProvider);
-      loadProviderFields(activeLlmProvider);
+    if (loading || !config) return;
+
+    if (config.tabsConfig?.tabs && Array.isArray(config.tabsConfig.tabs)) {
+      setFileViewerTabs(config.tabsConfig.tabs);
     }
-  }, [loading, config]);
 
-  const loadProviderFields = (providerName: string) => {
-    if (!config) return;
-    const provider = config.llmConfig?.[providerName];
-    if (provider) {
-      setSelectedLlmModel(provider.model || "");
-      setLlmApiKey(provider.apiKey || "");
-      setTemperature(provider.temperature ?? 0.7);
-      setMaxTokens(provider.maxTokens ?? 2048);
-      setChatPrompt(provider.chatPrompt || "");
-    } else {
-      const firstModel = modelsByProvider[providerName]?.[0];
-      setSelectedLlmModel(firstModel?.value || "");
-      setLlmApiKey("");
-      setTemperature(0.7);
-      setMaxTokens(2048);
-      setChatPrompt("");
-    }
-  };
+    const activeLlmProvider = config.basicConfig?.activeLlmProvider || "openai";
+    setSelectedLlmName(activeLlmProvider);
+    syncProviderFields(activeLlmProvider, config, fieldSetters);
+  }, [loading, config, fieldSetters]);
 
-  const handleProviderChange = (providerName: string) => {
-    setSelectedLlmName(providerName);
-    loadProviderFields(providerName);
-  };
+  const handleProviderChange = useCallback(
+    (providerName: string) => {
+      setSelectedLlmName(providerName);
+      syncProviderFields(providerName, config, fieldSetters);
+    },
+    [config, fieldSetters],
+  );
 
-  const handleSaveFileViewerTabs = () => {
+  const handleSaveFileViewerTabs = useCallback(() => {
     if (!config) return;
     updateTabsConfig({
       tabs: fileViewerTabs,
       customTabs: config.tabsConfig?.customTabs || [],
     });
-  };
+  }, [config, fileViewerTabs, updateTabsConfig]);
 
-  const handleToggleTab = (tabId: string, enabled: boolean) => {
+  const handleToggleTab = useCallback((tabId: string, enabled: boolean) => {
     setFileViewerTabs((prev) =>
       prev.map((tab) => (tab.id === tabId ? { ...tab, enabled } : tab)),
     );
-  };
+  }, []);
 
-  const handleSaveLLM = () => {
+  const handleSaveLLM = useCallback(() => {
     if (!config || !selectedLlmName) return;
 
     const updatedLlmConfig: Record<string, LlmProvider> = {
@@ -513,6 +521,9 @@ export default function Settings() {
         ...config.llmConfig?.[selectedLlmName],
         model: selectedLlmModel,
         apiKey: llmApiKey,
+        temperature,
+        maxTokens,
+        chatPrompt,
       },
     };
 
@@ -528,7 +539,7 @@ export default function Settings() {
       if (fallback) activeLlmProvider = fallback[0];
     }
 
-    const updatedModelProvider: BasicConfig = {
+    const updatedBasicConfig: BasicConfig = {
       ...config.basicConfig,
       activeLlmProvider: activeLlmProvider ?? selectedLlmName,
     };
@@ -536,25 +547,18 @@ export default function Settings() {
     updateConfig({
       ...config,
       llmConfig: updatedLlmConfig,
-      basicConfig: updatedModelProvider,
+      basicConfig: updatedBasicConfig,
     });
-  };
-
-  const handleSaveAdvanced = () => {
-    if (!config || !selectedLlmName) return;
-
-    const updatedLlmConfig: Record<string, LlmProvider> = {
-      ...config.llmConfig,
-      [selectedLlmName]: {
-        ...config.llmConfig?.[selectedLlmName],
-        temperature,
-        maxTokens,
-        chatPrompt,
-      },
-    };
-
-    updateConfig({ ...config, llmConfig: updatedLlmConfig });
-  };
+  }, [
+    config,
+    selectedLlmName,
+    selectedLlmModel,
+    llmApiKey,
+    temperature,
+    maxTokens,
+    chatPrompt,
+    updateConfig,
+  ]);
 
   if (loading) {
     return (
@@ -574,27 +578,35 @@ export default function Settings() {
           onTabChange={(tabId) => setActiveTab(tabId)}
           className="mb-6 items-center"
         />
+
         <div className="w-full max-h-98 px-4 overflow-y-auto scrollbar-thin">
-          {/* File Viewer Tab */}
+          {/* <div className="w-full max-h-[calc(100vh-12rem)] px-4 overflow-y-auto scrollbar-thin"> */}
+          {/* ── File Viewer Tab ── */}
           {activeTab === "file-viewer" && (
-            <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
+            <div className="w-full h-fit space-y-4 px-4 py-6">
               {fileViewerTabs.length > 0 ? (
                 <>
                   {fileViewerTabs.map(
                     (tab) =>
                       tab.id !== "view" &&
-                      tab.id != "arxiv" && (
+                      tab.id !== "arxiv" && (
                         <Card
                           key={tab.id}
                           className="shadow-md rounded-2xl w-full py-4 min-h-20"
                         >
                           <CardContent className="space-y-2">
-                            <h3 className="text-md font-medium">{tab.label}</h3>
+                            {/* FIX: text-gray-700 doesn't respect dark mode —
+                                use text-foreground instead throughout */}
+                            <h3 className="text-md font-medium text-foreground">
+                              {tab.label}
+                            </h3>
                             <div className="flex flex-row justify-between items-start gap-4">
                               <div className="text-xs text-muted-foreground max-w-[70%]">
                                 <p>
                                   <span className="font-semibold">Prompt:</span>{" "}
-                                  {tab.prompt?.substring(0, 100)}...
+                                  {tab.prompt && tab.prompt.length > 100
+                                    ? `${tab.prompt.substring(0, 100)}...`
+                                    : tab.prompt}
                                 </p>
                               </div>
                               <Switch
@@ -618,11 +630,11 @@ export default function Settings() {
             </div>
           )}
 
-          {/* LLM Tab */}
+          {/* ── LLM Tab ── */}
           {activeTab === "llm" && (
-            <div className="w-full h-fit space-y-4 px-4 py-6 overflow-y-auto scrollbar-thin">
+            <div className="w-full h-fit space-y-4 px-4 py-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   LLM Provider
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -644,7 +656,7 @@ export default function Settings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Model
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -665,7 +677,7 @@ export default function Settings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   API Key
                 </label>
                 <Input
@@ -681,11 +693,10 @@ export default function Settings() {
             </div>
           )}
 
-          {/* Advanced Tab */}
-          {activeTab === "Advanced" && (
-            <div className="w-full h-fit space-y-6 px-4 py-6 overflow-y-auto scrollbar-thin">
+          {activeTab === "advanced" && (
+            <div className="w-full space-y-6 px-4 py-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Editing settings for
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -709,7 +720,7 @@ export default function Settings() {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-foreground">
                     Temperature
                   </label>
                   <span className="text-sm font-semibold text-primary w-10 text-right">
@@ -737,7 +748,7 @@ export default function Settings() {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-foreground">
                     Max Tokens
                   </label>
                   <span className="text-sm font-semibold text-primary w-16 text-right">
@@ -763,30 +774,25 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-foreground">
                   Chat Prompt
                 </label>
-                <p className="text-xs text-muted-foreground">
-                  System prompt for the assistant. Use{" "}
-                  <code className="bg-muted px-1 rounded">{"{context}"}</code>{" "}
-                  as a placeholder for retrieved context.
-                </p>
                 <textarea
                   value={chatPrompt}
                   onChange={(e) => setChatPrompt(e.target.value)}
                   rows={6}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y text-foreground"
                   placeholder="Enter system prompt for this provider..."
                 />
               </div>
 
-              <Button onClick={handleSaveAdvanced} className="w-full">
+              <Button onClick={handleSaveLLM} className="w-full">
                 Save Advanced Configuration
               </Button>
             </div>
           )}
 
-          {/* Chats Tab */}
+          {/* ── Chats Tab ── */}
           {activeTab === "chats" && <ChatsTab />}
         </div>
       </div>

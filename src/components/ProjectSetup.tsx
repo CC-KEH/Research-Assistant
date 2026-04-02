@@ -11,6 +11,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 import { Input } from "@/components/ui/input";
 import { open } from "@tauri-apps/plugin-dialog";
 
@@ -56,12 +65,15 @@ interface ProjectSetupProps {
 
 export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   useEffect(() => {
+    info("<<<<<ProjectSetup mounted>>>>>");
+  }, []);
+
+  useEffect(() => {
     const fetchProjects = async () => {
       try {
         info("🔍 Fetching projects...");
         const result = await getPreviousProjects();
         if (Array.isArray(result)) {
-          info(`✅ Setting projects: ${result}`);
           setPreviousProjects(result as Project[]);
         } else {
           warn(`⚠️ Unexpected format for previous projects: ${result} `);
@@ -230,19 +242,23 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>LLM Provider</FormLabel>
-                  <FormControl>
-                    <select
-                      {...field}
-                      className="w-full border rounded px-3 py-2"
-                    >
-                      <option value="">Select LLM Provider</option>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select LLM Provider" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
                       {llmProviders.map((provider) => (
-                        <option key={provider.value} value={provider.value}>
+                        <SelectItem key={provider.value} value={provider.value}>
                           {provider.label}
-                        </option>
+                        </SelectItem>
                       ))}
-                    </select>
-                  </FormControl>
+                    </SelectContent>
+                  </Select>
                   <FormDescription>
                     Select the LLM provider for this project.
                   </FormDescription>

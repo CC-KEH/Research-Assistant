@@ -1,59 +1,70 @@
 import json
+import logging
 import urllib.parse
-import urllib.request as libreq
+import urllib.request
 import xml.etree.ElementTree as ET
- 
+
+from utils import text
 from langchain.tools import tool
 
-# ── Tool ─────────────────────────────────────────────────────────────────────
- 
-@tool("query_arxiv", description="Returns a list of papers matching the topic.")
-def query_arxiv(
-    query: str,
-    limit: int = 10,
-    sortBy: str = "lastUpdatedDate",
-    sortOrder: str = "descending",
-) -> list[dict]:
+logger = logging.getLogger(__name__)
+
+
+@tool("query_arxiv", description="Returns a JSON string of papers matching the topic.")
+def query_arxiv(query: str, limit: int = 10) -> str:
     """Search the arXiv database for papers matching a topic.
- 
+
     Args:
-        query:      Topic to search for (e.g., "quantum computing")
-        limit:      Maximum number of results to return
-        sortBy:     "relevance", "lastUpdatedDate", or "submittedDate"
-        sortOrder:  "ascending" or "descending"
+        query: Topic to search for (e.g. "transformer attention mechanisms")
+        limit: Maximum number of results (capped at 20)
+
+    Returns:
+        JSON string — list of dicts with id, title, summary, authors, updated.
+        Returns a JSON error object string on failure.
     """
+
+    limit = min(max(1, limit), 20)
+
     params = urllib.parse.urlencode(
         {
-            "search_query": f"all:{query}",   # query is already a plain string; urlencode escapes it
+            "search_query": f"all:{query}",
             "start": 0,
             "max_results": limit,
-            "sortBy": sortBy,
-            "sortOrder": sortOrder,
+            "sortBy": "lastUpdatedDate",
+            "sortOrder": "descending",
         }
     )
- 
-    url = f"http://export.arxiv.org/api/query?{params}"
- 
-    with libreq.urlopen(url) as response:
-        r = response.read().decode("utf-8")
- 
-    root = ET.fromstring(r)
+
+    url = f"https://export.arxiv.org/api/query?{params}"
+
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            raw = response.read().decode("utf-8")
+    except Exception as e:
+        logger.error(f"arXiv request failed: {e}")
+        return json.dumps({"error": f"Failed to fetch arXiv results: {e}"})
+
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as e:
+        logger.error(f"arXiv XML parse error: {e}")
+        return json.dumps({"error": f"Failed to parse arXiv response: {e}"})
+
     ns = {"atom": "http://www.w3.org/2005/Atom"}
- 
+
     results = []
     for entry in root.findall("atom:entry", ns):
         authors = [
-            a.find("atom:name", ns).text
+            text(a, "atom:name", ns)
             for a in entry.findall("atom:author", ns)
         ]
         results.append(
             {
-                "id":      entry.find("atom:id", ns).text.strip(),
-                "title":   entry.find("atom:title", ns).text.strip(),
-                "summary": entry.find("atom:summary", ns).text.strip(),
+                "id":      text(entry, "atom:id", ns),
+                "title":   text(entry, "atom:title", ns),
+                "summary": text(entry, "atom:summary", ns),
                 "authors": authors,
-                "updated": entry.find("atom:updated", ns).text.strip(),
+                "updated": text(entry, "atom:updated", ns),
             }
         )
- 
-    return results
+    return json.dumps(results)

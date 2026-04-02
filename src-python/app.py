@@ -1,283 +1,296 @@
 import os
+import logging
 import datetime
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
 from manager import ConfigManager, SessionManager
 from assistant import Assistant
-from api_models import SessionCreate, SessionUpdate, ChatRequest, ChatResponse, TabProcessRequest
+from api_models import (
+    SessionCreate,
+    SessionUpdate,
+    ChatRequest,
+    ChatResponse,
+    TabProcessRequest,
+    InitializeRequest,
+    SwitchLlmRequest,
+)
 
-config_manager = None
-session_manager = None
-assistant = None
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+
+# ─── Lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup - keep it simple to avoid blocking
-    print("Research Assistant API starting...")
-    print("Server ready! Waiting for initialize call from frontend...")
-    print("Available endpoints: /health, /initialize, /status")
-    
+    app.state.config_manager = None
+    app.state.session_manager = None
+    app.state.assistant = None
+
+    logger.info("Research Assistant API starting...")
+    logger.info("Waiting for /initialize call from frontend...")
+
     yield
-    
-    print("\n Shutting down gracefully...")
-    
-    # Shutdown - save state if initialized
+
+    logger.info("Shutting down gracefully...")
+
     try:
-        if assistant and hasattr(assistant, 'llm') and assistant.model.store:
-            try:
-                assistant.model.save()
-                print("Vector store saved")
-            except Exception as e:
-                print(f"Could not save vector store: {e}")
-    except Exception:
-        pass
-    
+        assistant = app.state.assistant
+        if assistant and hasattr(assistant, "model") and assistant.model.store:
+            assistant.model.save()
+            logger.info("Vector store saved")
+    except Exception as e:
+        logger.error(f"Could not save vector store: {e}")
+
     try:
+        session_manager = app.state.session_manager
         if session_manager:
             session_manager.save_chats()
-            print(f"Chats saved")
+            logger.info("Chats saved")
     except Exception as e:
-        print(f"Could not save chats: {e}")
-    
+        logger.error(f"Could not save chats: {e}")
+
     try:
+        config_manager = app.state.config_manager
         if config_manager:
             config_manager.save()
-            print(f"Config saved")
+            logger.info("Config saved")
     except Exception as e:
-        print(f"Could not save config: {e}")
-    
-    print("Shutdown complete")
+        logger.error(f"Could not save config: {e}")
+
+    logger.info("Shutdown complete")
+
+
+# ─── App ──────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Research Assistant API", version="1.0.0", lifespan=lifespan)
 
-# CORS for Tauri
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+CORS_ORIGINS = [
+    "http://localhost:1420",
+    "tauri://localhost",
+    *(["http://localhost:3000"] if DEBUG else []),
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:1420", "tauri://localhost", "http://localhost:3000"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ==================== Initialization Endpoint ====================
+# ─── Dependencies ──────────────────────────────────────────────────────────────
+
+def get_assistant(request: Request) -> Assistant:
+    assistant = request.app.state.assistant
+    if not assistant:
+        raise HTTPException(
+            status_code=400,
+            detail="Backend not initialized. Call /initialize first.",
+        )
+    return assistant
+
+def get_session_manager(request: Request) -> SessionManager:
+    session_manager = request.app.state.session_manager
+    if not session_manager:
+        raise HTTPException(
+            status_code=400,
+            detail="Backend not initialized. Call /initialize first.",
+        )
+    return session_manager
+
+def get_config_manager(request: Request) -> ConfigManager:
+    config_manager = request.app.state.config_manager
+    if not config_manager:
+        raise HTTPException(
+            status_code=400,
+            detail="Backend not initialized. Call /initialize first.",
+        )
+    return config_manager
+
+# ─── Initialization ────────────────────────────────────────────────────────────
 
 @app.post("/initialize")
-async def initialize_backend(request: dict):
+async def initialize_backend(request: InitializeRequest):
     """
-    Initialize the backend with paths from frontend.
-    This must be called before any other endpoints.
-    
-    Request body:
-    {
-        "config_path": "path/to/config.json",  # Required: path to config.json
-        "chats_path": "path/to/chats.json",    # Required: path to chats.json
-    }
-    
-    Example:
-    {
-        "config_path": "C:/Users/user/Documents/config.json",
-        "chats_path": "C:/Users/user/Documents/chats.json"
-    }
+    Initialize the backend with paths from the frontend.
+    Must be called before any other endpoints.
     """
-    global config_manager, session_manager, assistant
-    
-    try:
-        # Extract paths from request
-        config_path = request.get("config_path")
-        chats_path = request.get("chats_path")
-        
-        # Validate that paths were provided
-        if not config_path:
-            raise ValueError("config_path is required")
-        if not chats_path:
-            raise ValueError("chats_path is required")
-        
-        print(f"\nInitializing backend...")
-        print(f"Config path: {config_path}")
-        print(f"Chats path:  {chats_path}")
-        
-        # Check if config file exists
-        import os
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Config file not found at: {config_path}")
-        
-        print("Config file found")
-        
-        # Initialize managers with provided paths
-        config_manager = ConfigManager(config_path)
-        session_manager = SessionManager(chats_path)
-        assistant = Assistant(config_manager, session_manager)
-        print("Managers initialized")
-        
-        # Try to load existing vector store
-        vector_store_loaded = False
+    if app.state.session_manager:
         try:
-            assistant.model.load()
-            print("Loaded existing knowledge base")
-            vector_store_loaded = True
+            app.state.session_manager.save_chats()
+            logger.info("Saved existing chats before reinitializing")
         except Exception as e:
-            print(f"No existing vector store found")
-            print("You can add documents using /vectorstore/setup or /vectorstore/add")
+            logger.warning(f"Could not save chats before reinitialize: {e}")
+
+    if app.state.config_manager:
+        try:
+            app.state.config_manager.save()
+            logger.info("Saved existing config before reinitializing")
+        except Exception as e:
+            logger.warning(f"Could not save config before reinitialize: {e}")
+
+    try:
+        if not os.path.exists(request.config_path):
+            raise FileNotFoundError(f"Config file not found at: {request.config_path}")
+
+        logger.info(f"Initializing backend — config: {request.config_path}, chats: {request.chats_path}")
         
-        print("Backend initialization complete!\n")
+        if app.state.assistant:
+            app.state.assistant = None
+            app.state.session_manager = None
+            app.state.config_manager = None
+            
+        config_manager  = ConfigManager(request.config_path)
+        session_manager = SessionManager(request.chats_path)
+        assistant       = Assistant(config_manager, session_manager)
+
+        app.state.config_manager  = config_manager
+        app.state.session_manager = session_manager
+        app.state.assistant       = assistant
+
+        logger.info("Managers initialized")
         
+        components = assistant.model.check()
+
         return {
             "status": "initialized",
-            "config_path": config_path,
-            "chats_path": chats_path,
-            "vector_store_loaded": vector_store_loaded,
-            "components": assistant.model.check()
+            "config_path": request.config_path,
+            "chats_path": request.chats_path,
+            "vector_store_loaded": components["vector_store_ready"],  # ← read from check() instead
+            "components": components,
         }
-        
-    except FileNotFoundError as e:
-        error_msg = f"File not found: {str(e)}"
-        print(f"{error_msg}")
-        raise HTTPException(status_code=400, detail=error_msg)
-    
-    except ValueError as e:
-        error_msg = f"Invalid request: {str(e)}"
-        print(f"{error_msg}")
-        raise HTTPException(status_code=400, detail=error_msg)
-    
-    except Exception as e:
-        error_msg = f"Initialization failed: {str(e)}"
-        print(f"{error_msg}")
-        raise HTTPException(status_code=500, detail=error_msg)
 
-# ==================== Health & Status ====================
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        logger.error(str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("Initialization failed")
+        raise HTTPException(status_code=500, detail=f"Initialization failed: {e}")
+
+
+# ─── Health & Status ───────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "Server is running"}
 
+
 @app.get("/status")
-async def get_status():
-    """Get status of all components."""
-    if not assistant:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
+async def get_status(assistant: Assistant = Depends(get_assistant)):
     return assistant.model.check()
 
-# ==================== LLM Endpoints ====================
+
+# ─── LLM Endpoints ────────────────────────────────────────────────────────────
 
 @app.post("/llm/switch")
-async def switch_llm(request: dict):
-    """Switch LLM provider."""
-    if not assistant:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def switch_llm(
+    request: SwitchLlmRequest,
+    assistant: Assistant = Depends(get_assistant),
+):
     try:
-        llm_provider = request.get("llm_provider")
-        if not llm_provider:
-            raise HTTPException(status_code=400, detail="llm_provider is required")
-        
-        assistant.model.switch_llm(llm_provider)
-        return {"message": f"Switched to LLM: {llm_provider}", "status": assistant.model.check()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/llm/status")
-async def get_llm_status():
-    """Get LLM status."""
-    if not assistant:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    return assistant.model.check()
-
-# ==================== Session Endpoints ====================
-
-@app.post("/sessions/create")
-async def create_session(session: SessionCreate):
-    """Create a new chat session."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
-    try:
-        session_idx = session_manager.create_session(
-            name=session.name,
-            tags=session.tags or [],
-            context=session.context or ""
-        )
+        assistant.model.switch_llm(request.llm_provider)
         return {
-            "message": "Session created",
-            "session_index": session_idx,
-            "session": session_manager.get_session_by_index(session_idx)
+            "message": f"Switched to LLM: {request.llm_provider}",
+            "status": assistant.model.check(),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/llm/status")
+async def get_llm_status(assistant: Assistant = Depends(get_assistant)):
+    return assistant.model.check()
+
+
+# ─── Session Endpoints ─────────────────────────────────────────────────────────
+
+@app.post("/sessions/create")
+async def create_session(
+    session: SessionCreate,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
+    try:
+        session_idx = session_manager.create_session(
+            name=session.name,
+            tags=session.tags or [],
+            context=session.context or "",
+        )
+        return {
+            "message": "Session created",
+            "session_index": session_idx,
+            "session": session_manager.get_session_by_index(session_idx),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/sessions")
-async def get_all_sessions():
-    """Get all sessions."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
+async def get_all_sessions(
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     return {"sessions": session_manager.get_sessions()}
 
+
 @app.get("/sessions/active")
-async def get_active_session():
-    """Get currently active session."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def get_active_session(
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     if session_manager.active_session_index is None:
         raise HTTPException(status_code=404, detail="No active session")
-    
+
     session = session_manager.get_session_by_index(session_manager.active_session_index)
-    return {
-        "session": session,
-        "session_index": session_manager.active_session_index
-    }
+    return {"session": session, "session_index": session_manager.active_session_index}
+
 
 @app.get("/sessions/{session_index}")
-async def get_session(session_index: int):
-    """Get specific session."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def get_session(
+    session_index: int,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     session = session_manager.get_session_by_index(session_index)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return session
 
+
 @app.get("/sessions/{session_index}/history")
-async def get_session_history(session_index: int):
-    """Get formatted history for a session."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def get_session_history(
+    session_index: int,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     session = session_manager.get_session_by_index(session_index)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
-    # Temporarily switch to get history
-    old_session = session_manager.active_session_index
-    session_manager.switch_session(session_index)
-    history = session_manager.get_formatted_history()
-    
-    # Restore old session if needed
-    if old_session is not None:
-        session_manager.active_session_index = old_session
-    
+    history = session_manager.get_formatted_history(session_index)
     return {"history": history}
 
+
 @app.get("/sessions/{session_index}/stats")
-async def get_session_stats(session_index: int):
-    """Get session statistics."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def get_session_stats(
+    session_index: int,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     stats = session_manager.get_session_stats(session_index)
     if not stats:
         raise HTTPException(status_code=404, detail="Session not found")
     return stats
 
+
 @app.put("/sessions/{session_index}")
-async def update_session(session_index: int, update: SessionUpdate):
-    """Update session details."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def update_session(
+    session_index: int,
+    update: SessionUpdate,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     try:
         if update.name:
             session_manager.rename_session(session_index, update.name)
@@ -285,142 +298,126 @@ async def update_session(session_index: int, update: SessionUpdate):
             session_manager.update_session_context(session_index, update.context)
         if update.tags:
             session_manager.add_session_tags(session_index, update.tags)
-        return {"message": "Session updated", "session": session_manager.get_session_by_index(session_index)}
+        return {
+            "message": "Session updated",
+            "session": session_manager.get_session_by_index(session_index),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.delete("/sessions/{session_index}")
-async def delete_session(session_index: int):
-    """Delete a session."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def delete_session(
+    session_index: int,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     try:
         session_manager.delete_session(session_index)
         return {"message": "Session deleted"}
+    except ValueError as e:                              
+        raise HTTPException(status_code=404, detail=str(e)) 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/sessions/{session_index}/reset")
-async def reset_session(session_index: int):
-    """Clear history for a session."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def reset_session(
+    session_index: int,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     try:
         session_manager.reset_session(session_index)
         return {"message": "Session history cleared"}
+    except ValueError as e:                              
+        raise HTTPException(status_code=404, detail=str(e)) 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/sessions/{session_index}/switch")
-async def switch_session(session_index: int):
-    """Switch to a different session."""
-    if not session_manager:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def switch_session(
+    session_index: int,
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     try:
         session_manager.switch_session(session_index)
         return {
             "message": "Session switched",
             "active_session": session_index,
-            "session": session_manager.get_session_by_index(session_index)
+            "session": session_manager.get_session_by_index(session_index),
         }
+    except ValueError as e:                              
+        raise HTTPException(status_code=404, detail=str(e)) 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Chat Endpoints ====================
+
+# ─── Chat Endpoint ─────────────────────────────────────────────────────────────
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    """
-    Chat with the assistant (with or without RAG).
-    
-    Parameters:
-    - message: The user's message
-    - use_rag: Whether to use RAG (Retrieval-Augmented Generation)
-    - session_index: (Optional) Session to use. Creates default if not provided
-    - k: Number of documents to retrieve (for RAG)
-    """
-    if not assistant:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def chat(
+    request: ChatRequest,
+    assistant: Assistant = Depends(get_assistant),
+    session_manager: SessionManager = Depends(get_session_manager),
+):
     try:
-        # Ensure LLM is initialized
-        if not assistant.model._llm:
-            raise HTTPException(status_code=400, detail="LLM not initialized. Use /llm/switch first.")
-        
-        # Create or switch session
+        if not assistant.model.check()["status"]:
+            raise HTTPException(status_code=400, detail="LLM not initialized...")
+
         if request.session_index is not None:
             session_manager.switch_session(request.session_index)
-        else:
-            # Create default session if none exists
-            if session_manager.active_session_index is None:
-                session_manager.create_session("Default Chat")
-        
-        # Save user message to history
+        elif session_manager.active_session_index is None:
+            session_manager.create_session("Default Chat")
+
         session_manager.add_to_history(request.message, is_ai=False)
-        
-        # Process request (handles context retrieval internally)
+
         if request.use_rag:
             if not assistant.model.store:
                 raise HTTPException(
                     status_code=400,
-                    detail="Vector store not initialized. Use /vectorstore/setup first."
+                    detail="Vector store not initialized. Use /vectorstore/setup first.",
                 )
             response = assistant.query_rag(request.message, k=request.k or 4)
         else:
             response = assistant.query(request.message)
-        
-        # Save assistant response to history
+
         session_manager.add_to_history(response, is_ai=True)
-        
+
         return ChatResponse(
             response=response,
             session_index=session_manager.active_session_index,
-            timestamp=datetime.datetime.now().isoformat()
+            timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Processing Endpoints ====================
+
+# ─── Processing Endpoint ───────────────────────────────────────────────────────
 
 @app.post("/process_tabs")
-async def process_with_tab(request: TabProcessRequest):
-    """
-    Process text using any tab's prompt (standard or custom).
-    
-    Supported tab_ids:
-    - summary: Summarize the text
-    - contributions: Extract main contributions
-    - critical-analysis: Provide critical analysis
-    - future-work: Suggest future research directions
-    - arxiv: Extract Arxiv metadata
-    - Any custom tab IDs defined in config.json
-    """
-    if not assistant:
-        raise HTTPException(status_code=400, detail="Backend not initialized. Call /initialize first.")
-    
+async def process_with_tab(
+    request: TabProcessRequest,
+    assistant: Assistant = Depends(get_assistant),
+):
     try:
-        if not assistant.model._llm:
-            raise HTTPException(status_code=400, detail="LLM not initialized. Use /llm/switch first.")
-        
-        result = assistant.process_tab(request.tab_id, request.file_info.model_dump())
-        
-        return result
+        if not assistant.model.check()["status"]:
+            raise HTTPException(status_code=400, detail="LLM not initialized...")
 
+        result = assistant.process_tab(request.tab_id, request.file_info.model_dump())
+        return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Main ====================
+
+# ─── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    print(f"Starting server on http://127.0.0.1:{port}")
-    uvicorn.run("app:app", host="127.0.0.1", port=port, reload=True)
+    reload = DEBUG  # only reload in debug/dev mode
+    logger.info(f"Starting server on http://127.0.0.1:{port} (reload={reload})")
+    uvicorn.run("app:app", host="127.0.0.1", port=port, reload=reload)

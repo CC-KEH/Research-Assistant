@@ -13,7 +13,6 @@ pub struct Paper {
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub basic_config: BasicConfig,
-    pub bookmarks: Vec<Bookmark>,
     pub knowledge_store_config: KnowledgeStoreConfig,
     pub tabs_config: TabsConfig,
     pub llm_config: HashMap<String, LLMConfig>,
@@ -37,14 +36,6 @@ pub struct FileItem {
     pub path: String,
     pub is_directory: bool,
     pub extension: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Bookmark {
-    pub file_name: String,
-    pub file_path: String,
-    pub page_no: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

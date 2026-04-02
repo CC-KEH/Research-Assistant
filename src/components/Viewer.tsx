@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
-import PDFView from "@/components/small/PDFView";
-import { pdfViewerTabs, markdownViewerTabs } from "@/lib/tabs";
-import Suggestions from "./Suggestions";
-import MarkdownRenderer from "./small/MarkdownRenderer";
+import type { Arxiv } from "@/lib/types";
 import { getContent, readFile, writeFile } from "@/lib/backend";
-import { error } from "@/lib/logger";
-import MarkdownEditor from "./small/MarkdownEditor";
 import { useConfig } from "./providers/ConfigProvider";
-import { Arxiv } from "@/lib/types";
+import { error } from "@/lib/logger";
+import Suggestions from "./Suggestions";
+import PDFView from "@/components/small/PDFView";
+import MarkdownEditor from "./small/MarkdownEditor";
+import MarkdownRenderer from "./small/MarkdownRenderer";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type TabGroup = "paper" | "markdown" | "pdf";
 
@@ -19,25 +20,140 @@ interface ViewerProps {
   fileType?: string;
 }
 
+// ─── Sub-renderers ────────────────────────────────────────────────────────────
+
+function LoadingDiv({ message }: { message: string }) {
+  return (
+    <div className="p-8 text-center text-muted-foreground animate-pulse">
+      {message}
+    </div>
+  );
+}
+
+interface PaperRendererProps {
+  activeTab: string;
+  filePath: string;
+  paperTabContent: string;
+  isLoadingPaperTab: boolean;
+}
+
+function PaperRenderer({
+  activeTab,
+  filePath,
+  paperTabContent,
+  isLoadingPaperTab,
+}: PaperRendererProps) {
+  switch (activeTab) {
+    case "view":
+      return <PDFView file={filePath} />;
+
+    case "arxiv": {
+      if (isLoadingPaperTab) return <Suggestions isLoading={true} />;
+
+      let suggestions: Arxiv[] = [];
+      let parseError: string | null = null;
+
+      try {
+        if (paperTabContent.trim()) {
+          suggestions = JSON.parse(paperTabContent);
+        }
+      } catch (e) {
+        parseError = "Failed to parse related papers data from backend.";
+        error(`arXiv JSON parse error: ${e} — raw content: ${paperTabContent}`);
+      }
+
+      return (
+        <Suggestions
+          suggestions={suggestions}
+          isLoading={false}
+          error={parseError}
+        />
+      );
+    }
+
+    default:
+      if (isLoadingPaperTab) return <LoadingDiv message="Loading content..." />;
+      return (
+        <MarkdownRenderer
+          content={paperTabContent || "No content available yet."}
+        />
+      );
+  }
+}
+
+interface MarkdownRendererProps {
+  activeTab: string;
+  filePath: string;
+  markdownContent: string;
+  isLoadingMarkdown: boolean;
+  onContentChange: (content: string) => void;
+}
+
+function MarkdownViewerRenderer({
+  activeTab,
+  filePath,
+  markdownContent,
+  isLoadingMarkdown,
+  onContentChange,
+}: MarkdownRendererProps) {
+  if (isLoadingMarkdown) return <LoadingDiv message="Loading markdown..." />;
+
+  switch (activeTab) {
+    case "view":
+      return (
+        <MarkdownRenderer
+          content={markdownContent || "Go to Edit tab to start editing."}
+        />
+      );
+    case "edit":
+      return (
+        <MarkdownEditor
+          value={markdownContent}
+          onChange={onContentChange}
+          onSave={(content) => writeFile(filePath, content)}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+function PdfRenderer({
+  activeTab,
+  filePath,
+}: {
+  activeTab: string;
+  filePath: string;
+}) {
+  switch (activeTab) {
+    case "view":
+      return <PDFView file={filePath} />;
+    default:
+      return null;
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function Viewer({
   activeTabGroup,
   activeTab,
   filePath,
   fileType,
-  fileName = "",
+  fileName,
 }: ViewerProps) {
-  const [innerActiveTab, setInnerActiveTab] = useState(activeTab);
+  const { config } = useConfig();
+
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isLoadingMarkdown, setIsLoadingMarkdown] = useState(false);
 
-  // For paper tabs that load generated markdown (summary, contributions, etc.)
   const [paperTabContent, setPaperTabContent] = useState<string>("");
   const [isLoadingPaperTab, setIsLoadingPaperTab] = useState(false);
 
-  const { getBasicConfig, getTabsConfig } = useConfig();
-  const basicConfig = getBasicConfig();
+  const projectPath = config?.basicConfig?.projectPath;
 
-  // ── Load markdown file content when it's a .md file ────────────────────────
+  // ── Load markdown file ─────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!filePath || fileType !== "md") {
       setMarkdownContent("");
@@ -45,197 +161,90 @@ export default function Viewer({
     }
 
     let isCurrent = true;
-    const load = async () => {
-      setIsLoadingMarkdown(true);
-      try {
-        const content = await readFile(filePath);
+    setIsLoadingMarkdown(true);
+
+    readFile(filePath)
+      .then((content) => {
         if (isCurrent) setMarkdownContent(content);
-      } catch (err) {
+      })
+      .catch((err) => {
         error(`Failed to load markdown: ${err}`);
         if (isCurrent) setMarkdownContent("");
-      } finally {
+      })
+      .finally(() => {
         if (isCurrent) setIsLoadingMarkdown(false);
-      }
-    };
+      });
 
-    load();
     return () => {
       isCurrent = false;
     };
   }, [filePath, fileType]);
 
-  // ── Reset inner tab when the tab group changes ─────────────────────────────
-  useEffect(() => {
-    switch (activeTabGroup) {
-      case "paper":
-        setInnerActiveTab(
-          getTabsConfig()?.tabs.find((t: any) => t.enabled)?.id ?? "view",
-        );
-        break;
-      case "markdown":
-        setInnerActiveTab(markdownViewerTabs[0]?.id ?? "view");
-        break;
-      case "pdf":
-        setInnerActiveTab(pdfViewerTabs[0]?.id ?? "view");
-        break;
-    }
-  }, [activeTabGroup, getTabsConfig]);
+  // ── Load paper tab content ─────────────────────────────────────────────────
 
-  // ── Sync inner tab with prop when parent changes it ────────────────────────
   useEffect(() => {
-    setInnerActiveTab(activeTab);
-  }, [activeTab]);
+    const shouldLoad =
+      activeTabGroup === "paper" &&
+      fileName != null &&
+      fileName !== "" &&
+      projectPath &&
+      activeTab !== "view";
 
-  // ── Load async content for "paper" tabs ────────────────────────────────────
-  useEffect(() => {
-    if (activeTabGroup !== "paper") {
+    if (!shouldLoad) {
       setPaperTabContent("");
       setIsLoadingPaperTab(false);
       return;
     }
 
-    if (!fileName || !basicConfig?.projectPath) {
-      setPaperTabContent("");
-      setIsLoadingPaperTab(false);
-      return;
-    }
-
-    // Only skip loading for pure PDF view tab
-    if (innerActiveTab === "view") {
-      setPaperTabContent("");
-      setIsLoadingPaperTab(false);
-      return;
-    }
-
-    // Now load for ALL other tabs, including "arxiv"
     let isCurrent = true;
-    const loadPaperContent = async () => {
-      setIsLoadingPaperTab(true);
-      try {
-        const content = await getContent(
-          innerActiveTab,
-          fileName,
-          basicConfig.projectPath,
-        );
+    setIsLoadingPaperTab(true);
 
-        if (isCurrent) {
-          setPaperTabContent(content);
-        }
-      } catch (err: any) {
+    getContent(activeTab, fileName, projectPath)
+      .then((content) => {
+        if (isCurrent) setPaperTabContent(content);
+      })
+      .catch((err) => {
         error(`Failed to load paper tab content: ${err}`);
         if (isCurrent) {
-          setPaperTabContent(
-            `Error: ${err.message || "Failed to fetch content"}`,
-          );
+          const message =
+            err instanceof Error ? err.message : "Failed to fetch content";
+          setPaperTabContent(`Error: ${message}`);
         }
-      } finally {
-        if (isCurrent) {
-          setIsLoadingPaperTab(false);
-        }
-      }
-    };
-
-    loadPaperContent();
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingPaperTab(false);
+      });
 
     return () => {
       isCurrent = false;
     };
-  }, [activeTabGroup, innerActiveTab, fileName, basicConfig?.projectPath]);
+  }, [activeTabGroup, activeTab, fileName, projectPath]);
 
-  const renderInnerContent = () => {
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  const renderContent = () => {
     switch (activeTabGroup) {
-      // ── PAPER GROUP ───────────────────────────────────────────────────────
       case "paper":
-        switch (innerActiveTab) {
-          case "view":
-            return <PDFView file={filePath} />;
-
-          case "arxiv":
-            if (isLoadingPaperTab) {
-              return <Suggestions isLoading={true} />;
-            }
-
-            let suggestions: Arxiv[] = [];
-            let parseError: string | null = null;
-
-            try {
-              if (paperTabContent.trim()) {
-                suggestions = JSON.parse(paperTabContent);
-              }
-            } catch (e) {
-              parseError = "Failed to parse related papers data from backend.";
-              console.error("arXiv JSON parse error:", e, paperTabContent);
-            }
-
-            return (
-              <Suggestions
-                suggestions={suggestions}
-                isLoading={false}
-                error={parseError}
-              />
-            );
-
-          default:
-            if (isLoadingPaperTab) {
-              return (
-                <div className="p-8 text-center text-muted-foreground animate-pulse">
-                  Loading content...
-                </div>
-              );
-            }
-            return (
-              <MarkdownRenderer
-                content={paperTabContent || "No content available yet."}
-              />
-            );
-        }
-
-      // ── MARKDOWN GROUP ────────────────────────────────────────────────────
+        return (
+          <PaperRenderer
+            activeTab={activeTab}
+            filePath={filePath}
+            paperTabContent={paperTabContent}
+            isLoadingPaperTab={isLoadingPaperTab}
+          />
+        );
       case "markdown":
-        switch (innerActiveTab) {
-          case "view":
-            if (isLoadingMarkdown) {
-              return (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading markdown...
-                </div>
-              );
-            }
-            return (
-              <MarkdownRenderer
-                content={markdownContent || "Go to Edit tab to start editing."}
-              />
-            );
-
-          case "edit":
-            if (isLoadingMarkdown) {
-              return (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading markdown...
-                </div>
-              );
-            }
-            return (
-              <MarkdownEditor
-                value={markdownContent}
-                onChange={setMarkdownContent}
-                onSave={(content) => writeFile(filePath, content)}
-              />
-            );
-
-          default:
-            return null;
-        }
-
-      // ── PDF GROUP ─────────────────────────────────────────────────────────
+        return (
+          <MarkdownViewerRenderer
+            activeTab={activeTab}
+            filePath={filePath}
+            markdownContent={markdownContent}
+            isLoadingMarkdown={isLoadingMarkdown}
+            onContentChange={setMarkdownContent}
+          />
+        );
       case "pdf":
-        switch (innerActiveTab) {
-          case "view":
-            return <PDFView file={filePath} />;
-          default:
-            return null;
-        }
-
+        return <PdfRenderer activeTab={activeTab} filePath={filePath} />;
       default:
         return (
           <div className="p-4 text-sm text-muted-foreground">
@@ -246,8 +255,8 @@ export default function Viewer({
   };
 
   return (
-    <div className="h-full flex flex-col items-center pb-12 overflow-auto">
-      {renderInnerContent()}
+    <div className="flex flex-1 min-h-0 flex-col items-center overflow-auto">
+      {renderContent()}
     </div>
   );
 }

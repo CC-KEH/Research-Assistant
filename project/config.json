@@ -4,13 +4,6 @@
         "projectPath": "path here",
         "activeLlmProvider": "openai"
     },
-    "bookmarks": [
-        {
-            "fileName": "",
-            "filePath": "",
-            "pageNo": ""
-        }
-    ],
     "knowledgeStoreConfig": {
         "files": [
             {
