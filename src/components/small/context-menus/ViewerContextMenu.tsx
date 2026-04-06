@@ -7,23 +7,33 @@ import {
 import { BugIcon, MoonIcon, Settings } from "lucide-react";
 import { info } from "@/lib/logger";
 import { ReactNode } from "react";
+import { useNavigate } from "react-router";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 interface ViewerContextMenuProps {
   children: ReactNode;
 }
 
 export const ViewerContextMenu = ({ children }: ViewerContextMenuProps) => {
-  const handleAction = (action: string) => {
+  const navigate = useNavigate();
+  const themeProvider = useTheme();
+
+  const handleAction = async (action: string) => {
     info(`Action selected: ${action}`);
     switch (action) {
       case "dark-mode":
-        // togglePDFDarkMode();
+        themeProvider.setTheme(
+          themeProvider.theme === "dark" ? "light" : "dark",
+        );
         break;
       case "tabs-settings":
-        // tabsSettings();
+        navigate("/settings", { state: { initialTab: "file-viewer" } });
         break;
       case "report-bug":
-        // reportBug();
+        await openUrl(
+          "https://github.com/ArbashHussain/Research-Assistant/issues",
+        );
         break;
       default:
         break;

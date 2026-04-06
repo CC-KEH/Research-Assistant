@@ -6,11 +6,13 @@ import { useConfig } from "@/components/providers/ConfigProvider";
 
 interface FrameTabsProps {
   activeTabGroup: "paper" | "markdown" | "pdf";
+  activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
 export default function FrameTabs({
   activeTabGroup,
+  activeTab,
   onTabChange,
 }: FrameTabsProps) {
   const { config } = useConfig();
@@ -35,7 +37,12 @@ export default function FrameTabs({
 
   return (
     <div className="mt-[2px] w-full flex justify-center">
-      <Tabs tabs={tabsData} onTabChange={onTabChange} className="mb-3" />
+      <Tabs
+        tabs={tabsData}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        className="mb-3"
+      />
     </div>
   );
 }

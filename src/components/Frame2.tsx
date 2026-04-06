@@ -26,7 +26,6 @@ function getFirstEnabledTabId(
     case "pdf":
       return pdfViewerTabs[0]?.id ?? null;
     case "paper":
-      // FIX: was (t: any) — now properly typed as Tab
       return configTabs?.find((t: Tab) => t.enabled)?.id ?? null;
     default:
       return null;
@@ -76,7 +75,11 @@ export default function Frame2({ fileInfo }: Frame2Props) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden my-4">
       <div className="shrink-0">
-        <FrameTabs activeTabGroup={activeTabGroup} onTabChange={setActiveTab} />
+        <FrameTabs
+          activeTabGroup={activeTabGroup}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       </div>
       <ViewerContextMenu>
         <Viewer

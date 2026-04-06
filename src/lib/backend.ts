@@ -51,8 +51,6 @@ export const checkPythonServer = async (): Promise<boolean> => {
   }
 };
 
-// Aliases for compatibility with old code
-// export const startServer = startPythonServer;
 export const stopServer = stopPythonServer;
 export const checkServer = checkPythonServer;
 

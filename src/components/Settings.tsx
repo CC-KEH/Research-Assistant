@@ -18,6 +18,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { llmProviders, modelsByProvider, tabs } from "@/lib/constants";
+import { useLocation } from "react-router-dom";
 
 function formatDate(iso: string | undefined): string {
   if (!iso) return "—";
@@ -452,9 +453,12 @@ function syncProviderFields(
 }
 
 export default function Settings() {
+  const location = useLocation();
   const { config, loading, updateTabsConfig, updateConfig } = useConfig();
+  const [activeTab, setActiveTab] = useState(
+    (location.state as { initialTab?: string })?.initialTab ?? "file-viewer",
+  );
 
-  const [activeTab, setActiveTab] = useState("file-viewer");
   const [fileViewerTabs, setFileViewerTabs] = useState<Tab[]>([]);
 
   const [selectedLlmName, setSelectedLlmName] = useState("openai");

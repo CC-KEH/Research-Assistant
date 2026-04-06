@@ -7,30 +7,38 @@ import {
 import { ResetIcon } from "@radix-ui/react-icons";
 import { Bug, Plus, Settings } from "lucide-react";
 import { info } from "@/lib/logger";
-
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { ReactNode } from "react";
 
 interface AssistantContextMenuProps {
   children: ReactNode;
+  onNewSession: () => void;
+  onResetChat: () => void;
+  onOpenSettings: () => void;
 }
 
 export const AssistantContextMenu = ({
   children,
+  onNewSession,
+  onResetChat,
+  onOpenSettings,
 }: AssistantContextMenuProps) => {
-  const handleAction = (action: string) => {
+  const handleAction = async (action: string) => {
     info(`Action selected: ${action}`);
     switch (action) {
       case "new-session":
-        // createNewSession();
+        onNewSession();
         break;
       case "model-settings":
-        // modelSettings();
+        onOpenSettings();
         break;
       case "reset-session":
-        // resetSession();
+        onResetChat();
         break;
       case "report-bug":
-        // reportBug();
+        await openUrl(
+          "https://github.com/ArbashHussain/Research-Assistant/issues",
+        );
         break;
       default:
         break;

@@ -9,7 +9,7 @@ pub struct Paper {
     pub email: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub basic_config: BasicConfig,
@@ -38,7 +38,7 @@ pub struct FileItem {
     pub extension: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KnowledgeStoreConfig {
     pub files: Vec<KnowledgeFile>,
@@ -66,7 +66,7 @@ pub struct Arxiv {
     pub link: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TabsConfig {
     pub tabs: Vec<Tab>,

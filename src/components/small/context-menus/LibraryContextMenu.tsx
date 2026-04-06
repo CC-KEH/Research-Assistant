@@ -70,7 +70,7 @@ export const LibraryContextMenu = ({
         <ContextMenuItem
           onClick={async () => {
             await openUrl(
-              "https://github.com/CC-KEH/Research-Assistant/issues",
+              "https://github.com/ArbashHussain/Research-Assistant/issues",
             );
           }}
           className="flex flex-row justify-between gap-6"

@@ -5,26 +5,50 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+use std::sync::{OnceLock, RwLock};
+
+static CONFIG_CACHE: OnceLock<RwLock<Option<Config>>> = OnceLock::new();
+
+fn get_cache() -> &'static RwLock<Option<Config>> {
+    CONFIG_CACHE.get_or_init(|| RwLock::new(None))
+}
+
 // Read and parse the config.json file
 #[tauri::command]
 pub fn get_config(config_path: String) -> Result<Config, String> {
+    {
+        let cache = get_cache().read().map_err(|e| e.to_string())?;
+        if let Some(config) = cache.as_ref() {
+            return Ok(config.clone());
+        }
+    }
+
+    // Cache miss — read from disk
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read config file: {}", e))?;
 
     let config: Config = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse config JSON: {}", e))?;
 
+    // Populate cache
+    if let Ok(mut cache) = get_cache().write() {
+        *cache = Some(config.clone());
+    }
+
     Ok(config)
 }
 
-// Update the config.json file
 #[tauri::command]
 pub fn update_config(config_path: String, config: Config) -> Result<(), String> {
-    let json_content = serde_json::to_string_pretty(&config)
+    // Update cache first so concurrent readers see fresh data immediately
+    if let Ok(mut cache) = get_cache().write() {
+        *cache = Some(config.clone());
+    }
+
+    let content = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
 
-    fs::write(&config_path, json_content)
-        .map_err(|e| format!("Failed to write config file: {}", e))?;
+    fs::write(&config_path, content).map_err(|e| format!("Failed to write config file: {}", e))?;
 
     Ok(())
 }
@@ -478,34 +502,6 @@ pub fn write_file(path: String, content: String) -> Result<(), String> {
     }
 
     fs::write(&file_path, content).map_err(|e| format!("Failed to write file: {}", e))
-}
-
-/// Map file extension to a readable type
-#[tauri::command]
-pub fn map_extension_to_type(extension: String) -> String {
-    match extension.to_lowercase().as_str() {
-        "pdf" => "PDF Document",
-        "txt" => "Text File",
-        "md" => "Markdown",
-        "doc" | "docx" => "Word Document",
-        "xls" | "xlsx" => "Excel Spreadsheet",
-        "ppt" | "pptx" => "PowerPoint Presentation",
-        "json" => "JSON File",
-        "xml" => "XML File",
-        "csv" => "CSV File",
-        "html" | "htm" => "HTML Document",
-        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "svg" => "Image",
-        "mp4" | "avi" | "mov" | "mkv" => "Video",
-        "mp3" | "wav" | "flac" => "Audio",
-        "zip" | "rar" | "7z" | "tar" | "gz" => "Archive",
-        "rs" => "Rust Source",
-        "py" => "Python Source",
-        "js" | "ts" => "JavaScript/TypeScript",
-        "java" => "Java Source",
-        "cpp" | "c" | "h" => "C/C++ Source",
-        _ => "Unknown",
-    }
-    .to_string()
 }
 
 #[tauri::command]

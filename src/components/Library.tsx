@@ -54,6 +54,8 @@ export default function Library({ onFileSelect }: LibraryProps) {
   const [dialogName, setDialogName] = useState("");
   const [dialogType, setDialogType] = useState<DialogType | null>(null);
 
+  const knowledgeStoreFiles = config?.knowledgeStoreConfig?.files;
+
   const reloadTreeData = useCallback(async () => {
     if (!projectPath) return;
     try {
@@ -75,7 +77,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
     // Retry once after 1s in case the backend isn't ready yet on first mount.
     const timer = setTimeout(() => reloadTreeData(), 1000);
     return () => clearTimeout(timer);
-  }, [projectPath, reloadTreeData]);
+  }, [projectPath, reloadTreeData, knowledgeStoreFiles]);
 
   const getBasePath = useCallback((): string => {
     if (!selectedNodeId) return projectPath;

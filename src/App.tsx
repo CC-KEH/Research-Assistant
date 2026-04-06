@@ -33,7 +33,7 @@ function ProtectedRoutes({ projectPath }: { projectPath: string | null }) {
   }, [projectPath]);
 
   if (!projectPath) return <Navigate to="/project-setup" replace />;
-  if (!configPath || !chatsPath) return null; // or a loading spinner
+  if (!configPath || !chatsPath) return null;
 
   return (
     <ConfigProvider config_path={configPath}>
@@ -71,7 +71,6 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/knowledge-store" element={<KnowledgeStore />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </ThemeProvider>

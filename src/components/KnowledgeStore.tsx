@@ -32,14 +32,11 @@ export default function KnowledgeStore() {
 
   const isAllSelected = papers.length > 0 && selected.size === papers.length;
 
-  // FIX: added indeterminate state for partial selection — standard table UX.
   const isPartiallySelected =
     selected.size > 0 && selected.size < papers.length;
 
   const toggleSelectAll = useCallback(
     (checked: boolean) => {
-      // FIX: removed info() log calls — logging every checkbox click floods
-      // the logger during normal use.
       setSelected(
         checked ? new Set(papers.map((p) => p.file_path)) : new Set(),
       );
