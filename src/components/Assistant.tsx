@@ -109,9 +109,6 @@ function SessionSidebar({
 }: SessionSidebarProps) {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  // FIX: store timeout id in a ref so it can be cancelled on unmount and when
-  // the user rapidly clicks different delete buttons. The old code used a bare
-  // setTimeout with no cleanup — it fired setState on unmounted components.
   const deleteTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {

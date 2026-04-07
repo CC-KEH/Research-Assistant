@@ -161,6 +161,7 @@ class Model:
         return f"{self.active_llm_provider}_{model_type}_{key_hash}"
 
     def _initialize_llm(self):
+        
         """Initialize LLM with instance-level caching."""
         if not self.api_key:
             raise ValueError(
