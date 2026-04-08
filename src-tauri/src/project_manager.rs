@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use tauri::Manager;
 
 use std::sync::{OnceLock, RwLock};
 
@@ -11,6 +12,48 @@ static CONFIG_CACHE: OnceLock<RwLock<Option<Config>>> = OnceLock::new();
 
 fn get_cache() -> &'static RwLock<Option<Config>> {
     CONFIG_CACHE.get_or_init(|| RwLock::new(None))
+}
+
+fn get_registry_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+
+    fs::create_dir_all(&app_data_dir)
+        .map_err(|e| format!("Failed to create app data dir: {}", e))?;
+
+    Ok(app_data_dir.join("projects.json"))
+}
+
+fn save_project_to_registry(
+    app_handle: &tauri::AppHandle,
+    config: &BasicConfig,
+) -> Result<(), String> {
+    let registry_path = get_registry_path(app_handle)?;
+
+    // Read existing projects
+    let mut projects: Vec<BasicConfig> = if registry_path.exists() {
+        let content = fs::read_to_string(&registry_path)
+            .map_err(|e| format!("Failed to read registry: {}", e))?;
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    // Add if not already present
+    if !projects
+        .iter()
+        .any(|p| p.project_path == config.project_path)
+    {
+        projects.push(config.clone());
+    }
+
+    let json = serde_json::to_string_pretty(&projects)
+        .map_err(|e| format!("Failed to serialize registry: {}", e))?;
+    fs::write(&registry_path, json).map_err(|e| format!("Failed to write registry: {}", e))?;
+
+    Ok(())
 }
 
 // Read and parse the config.json file
@@ -53,44 +96,38 @@ pub fn update_config(config_path: String, config: Config) -> Result<(), String> 
     Ok(())
 }
 
-// Get a list of previous projects by scanning a base directory
-fn get_projects_file_path() -> Result<PathBuf, String> {
-    if cfg!(debug_assertions) {
-        // During development, read from src-tauri directory
-        let project_root =
-            std::env::current_dir().map_err(|e| format!("Failed to get current dir: {}", e))?;
-        Ok(project_root.join("projects.json"))
-    } else {
-        // In production, use home directory or app data directory
-        if let Some(home) = dirs::home_dir() {
-            Ok(home.join(".your_app_name").join("projects.json"))
-        } else {
-            Err("Failed to determine app data directory".to_string())
-        }
-    }
+fn get_projects_file_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+
+    fs::create_dir_all(&app_data_dir)
+        .map_err(|e| format!("Failed to create app data dir: {}", e))?;
+
+    Ok(app_data_dir.join("projects.json"))
 }
+
 #[tauri::command]
-pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
-    let projects_file = get_projects_file_path()?;
+pub fn get_previous_projects(app_handle: tauri::AppHandle) -> Result<Vec<BasicConfig>, String> {
+    let projects_file = get_projects_file_path(&app_handle)?;
 
     if !projects_file.exists() {
         return Ok(Vec::new());
     }
+
     let content = fs::read_to_string(&projects_file)
         .map_err(|e| format!("Failed to read projects.json: {}", e))?;
 
     let projects: Vec<BasicConfig> = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse projects.json: {}", e))?;
 
+    let original_count = projects.len();
+
     let valid_projects: Vec<BasicConfig> = projects
         .into_iter()
         .filter(|p| Path::new(&p.project_path).exists())
         .collect();
-
-    // Only write back if something was actually removed
-    let original_count = serde_json::from_str::<Vec<BasicConfig>>(&content)
-        .map(|p| p.len())
-        .unwrap_or(0);
 
     if valid_projects.len() != original_count {
         let updated = serde_json::to_string_pretty(&valid_projects)
@@ -103,7 +140,10 @@ pub fn get_previous_projects() -> Result<Vec<BasicConfig>, String> {
 }
 
 #[tauri::command]
-pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
+pub fn create_new_project(
+    app_handle: tauri::AppHandle,
+    project: BasicConfig,
+) -> Result<BasicConfig, String> {
     let project_path = PathBuf::from(&project.project_path).join(&project.project_name);
 
     let new_project_config = BasicConfig {
@@ -239,48 +279,8 @@ pub fn create_new_project(project: BasicConfig) -> Result<BasicConfig, String> {
     fs::create_dir_all(project_path.join("Papers"))
         .map_err(|e| format!("Failed to create Papers directory: {}", e))?;
 
-    // Save Project BasicConfig to projects.json
-    save_project_to_registry(&new_project_config)?;
+    save_project_to_registry(&app_handle, &new_project_config)?;
     Ok(new_project_config)
-}
-
-fn save_project_to_registry(project: &BasicConfig) -> Result<(), String> {
-    let registry_path = get_projects_file_path()?; // note the ? since it returns Result
-
-    // Load existing list, or start fresh if the file doesn't exist / is corrupt
-    let mut projects: Vec<BasicConfig> = if registry_path.exists() {
-        let raw = fs::read_to_string(&registry_path)
-            .map_err(|e| format!("Failed to read projects.json: {}", e))?;
-        serde_json::from_str(&raw).unwrap_or_else(|_| Vec::new())
-    } else {
-        Vec::new()
-    };
-
-    // Avoid duplicate entries (same project_path = same project)
-    if projects
-        .iter()
-        .any(|p| p.project_path == project.project_path)
-    {
-        log::info!(
-            "📋 [save_project_to_registry] Project '{}' already in registry, skipping.",
-            project.project_path
-        );
-        return Ok(());
-    }
-
-    projects.push(project.clone());
-
-    let json = serde_json::to_string_pretty(&projects)
-        .map_err(|e| format!("Failed to serialize projects.json: {}", e))?;
-
-    fs::write(&registry_path, json).map_err(|e| format!("Failed to write projects.json: {}", e))?;
-
-    log::info!(
-        "📋 [save_project_to_registry] Project '{}' added to registry.",
-        project.project_path
-    );
-
-    Ok(())
 }
 
 #[tauri::command]

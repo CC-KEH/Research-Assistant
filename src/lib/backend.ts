@@ -597,7 +597,7 @@ export const getPreviousProjects = async (): Promise<Project[]> => {
     const previousProjects = await invoke<Project[]>("get_previous_projects");
     return Array.isArray(previousProjects) ? previousProjects : [];
   } catch (err) {
-    info(`Failed loading previous projects: ${error}`);
+    info(`Failed loading previous projects: ${err}`);
     return [];
   }
 };

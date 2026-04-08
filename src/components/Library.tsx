@@ -23,6 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "./ui/input";
+import Loader from "./small/Loader";
 
 // ─── Pure helpers (no closure over component state) ───────────────────────────
 
@@ -41,7 +42,7 @@ function findNodeById(nodes: TreeNode[], id: string): TreeNode | undefined {
 
 export default function Library({ onFileSelect }: LibraryProps) {
   const navigate = useNavigate();
-  const { config } = useConfig();
+  const { config, loading } = useConfig(); // ← add loading
 
   const projectPath = config?.basicConfig?.projectPath ?? "";
 
@@ -55,6 +56,10 @@ export default function Library({ onFileSelect }: LibraryProps) {
   const [dialogType, setDialogType] = useState<DialogType | null>(null);
 
   const knowledgeStoreFiles = config?.knowledgeStoreConfig?.files;
+
+  if (loading || !projectPath) {
+    return <Loader />;
+  }
 
   const reloadTreeData = useCallback(async () => {
     if (!projectPath) return;

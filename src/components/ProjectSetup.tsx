@@ -138,19 +138,19 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     }
   }
 
-  // In ProjectSetup.tsx
+  // ProjectSetup.tsx - fix this:
   async function onCreateProjectSubmit(
     values: z.infer<typeof createProjectSchema>,
   ) {
     try {
-      await createProject(
+      const result = (await createProject(
         values.projectname,
         values.projectpath,
         values.activellmprovider,
-      );
+      )) as { projectPath: string };
+
       info("✅ Project created");
-      onProjectPathSet(values.projectpath);
-      // setTimeout(() => navigate("/Workspace"));
+      onProjectPathSet(result.projectPath);
       navigate("/Workspace");
     } catch (err) {
       error(`Failed to create project: ${err}`);
