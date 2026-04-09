@@ -131,7 +131,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
   ) {
     try {
       onProjectPathSet(values.projectpath);
-      setTimeout(() => navigate("/Workspace"), 500);
+      setTimeout(() => navigate("/workspace"), 500);
     } catch (err) {
       error(`Failed to load project: ${err}`);
       alert("Failed to load project: " + err);
@@ -151,7 +151,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
 
       info("✅ Project created");
       onProjectPathSet(result.projectPath);
-      navigate("/Workspace");
+      navigate("/workspace");
     } catch (err) {
       error(`Failed to create project: ${err}`);
     }

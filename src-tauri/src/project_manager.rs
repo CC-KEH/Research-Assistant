@@ -10,8 +10,17 @@ use std::sync::{OnceLock, RwLock};
 
 static CONFIG_CACHE: OnceLock<RwLock<Option<Config>>> = OnceLock::new();
 
-fn get_cache() -> &'static RwLock<Option<Config>> {
+#[tauri::command]
+pub fn get_cache() -> &'static RwLock<Option<Config>> {
     CONFIG_CACHE.get_or_init(|| RwLock::new(None))
+}
+
+#[tauri::command]
+pub fn clear_config_cache() -> Result<(), String> {
+    if let Ok(mut cache) = get_cache().write() {
+        *cache = None;
+    }
+    Ok(())
 }
 
 fn get_registry_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {

@@ -69,7 +69,18 @@ interface ChatsContextType {
 const ConfigContext = createContext<ConfigContextType | null>(null);
 const ChatsContext = createContext<ChatsContextType | null>(null);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── usePersistedJson ─────────────────────────────────────────────────────────
+//
+// Tracks whether the current `value` came from a disk-load or from a user
+// edit by stamping each loaded value with a monotonically-increasing
+// `loadGen` counter.  The save effect only runs when the value's stamp does
+// NOT match the latest load generation, meaning the value changed due to an
+// edit, not a load — eliminating the unreliable isFromLoadRef boolean.
+
+interface Stamped<T> {
+  data: T;
+  gen: number; // which load generation produced this value
+}
 
 function usePersistedJson<T>(
   path: string | null,
@@ -78,67 +89,94 @@ function usePersistedJson<T>(
   value: T | null;
   loading: boolean;
   reload: () => Promise<void>;
-  setValue: React.Dispatch<React.SetStateAction<T | null>>;
+  setValue: (updater: T | ((prev: T | null) => T | null)) => void;
 } {
-  const [value, setValue] = useState<T | null>(null);
+  // gen that was last loaded from disk
+  const loadGenRef = useRef(0);
+
+  const [stamped, setStamped] = useState<Stamped<T> | null>(null);
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
 
-  const isFromLoadRef = useRef(false);
-
-  const cancelledRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const reload = useCallback(async (): Promise<void> => {
     if (!path) {
-      setValue(null);
+      setStamped(null);
       return;
     }
 
-    cancelledRef.current = false;
+    // Increment load generation so any in-flight previous load is ignored
+    loadGenRef.current += 1;
+    const thisGen = loadGenRef.current;
+
     setLoading(true);
-    isFromLoadRef.current = true;
 
     try {
       const result = await getConfig(path);
-      if (!cancelledRef.current) {
-        setValue(result as unknown as T);
-        info(`✅ ${label} loaded, ${path}`);
-      }
+      if (!mountedRef.current || thisGen !== loadGenRef.current) return;
+
+      // Stamp the loaded value with thisGen so the save effect can detect it
+      setStamped({ data: result as unknown as T, gen: thisGen });
+      info(`✅ ${label} loaded, ${path}`);
     } catch (err) {
-      if (!cancelledRef.current) {
-        error(`Failed to load ${label}: ${err}`);
-        setValue(null);
-      }
+      if (!mountedRef.current || thisGen !== loadGenRef.current) return;
+      error(`Failed to load ${label}: ${err}`);
+      setStamped(null);
     } finally {
-      if (!cancelledRef.current) {
+      if (mountedRef.current && thisGen === loadGenRef.current) {
         setLoading(false);
       }
     }
   }, [path, label]);
 
+  // Reload whenever path changes
   useEffect(() => {
     if (path) {
       reload();
     } else {
-      setValue(null);
+      loadGenRef.current += 1; // invalidate any in-flight load
+      setStamped(null);
+      setLoading(false);
     }
-
-    return () => {
-      cancelledRef.current = true;
-    };
   }, [path, reload]);
 
+  // Save to disk only when the stamped value came from an edit (gen mismatch)
   useEffect(() => {
-    if (!path || value === null) return;
+    if (!path || !stamped) return;
 
-    if (isFromLoadRef.current) {
-      isFromLoadRef.current = false;
-      return;
-    }
+    // If this value was produced by the most recent load, don't save it back
+    if (stamped.gen === loadGenRef.current) return;
 
-    saveConfig(path, value as unknown as Config).catch((err) => {
+    saveConfig(path, stamped.data as unknown as Config).catch((err) => {
       error(`Failed to save ${label}: ${err}`);
     });
-  }, [value, path, label]);
+  }, [stamped, path, label]);
+
+  // Expose a stable setter that keeps the gen as "edit" (0, never matching loadGenRef)
+  const setValue = useCallback(
+    (updater: T | ((prev: T | null) => T | null)) => {
+      setStamped((prev) => {
+        const prevData = prev?.data ?? null;
+        const nextData =
+          typeof updater === "function"
+            ? (updater as (prev: T | null) => T | null)(prevData)
+            : updater;
+        if (nextData === null) return null;
+        // gen: -1 ensures it never equals loadGenRef.current (which starts at 0
+        // and only increments), so the save effect will always fire for edits.
+        return { data: nextData, gen: -1 };
+      });
+    },
+    [],
+  );
+
+  const value = stamped?.data ?? null;
 
   return { value, loading, reload, setValue };
 }
@@ -229,8 +267,6 @@ export const ConfigProvider = ({
       setConfig((prev) => (prev ? { ...prev, todos } : prev)),
     [setConfig],
   );
-
-  // ── Context value (memoized to avoid re-rendering all consumers) ─────────
 
   const contextValue = useMemo<ConfigContextType>(
     () => ({
@@ -365,8 +401,6 @@ export const ChatsProvider = ({
     },
     [setChats],
   );
-
-  // ── Context value (memoized) ──────────────────────────────────────────────
 
   const contextValue = useMemo<ChatsContextType>(
     () => ({

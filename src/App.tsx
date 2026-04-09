@@ -16,32 +16,59 @@ import KnowledgeStore from "@/components/KnowledgeStore";
 
 // ─── Protected layout ─────────────────────────────────────────────────────────
 
+interface PathsState {
+  configPath: string;
+  chatsPath: string;
+}
+
 function ProtectedRoutes({ projectPath }: { projectPath: string | null }) {
-  const [configPath, setConfigPath] = useState<string | null>(null);
-  const [chatsPath, setChatsPath] = useState<string | null>(null);
+  const [paths, setPaths] = useState<PathsState | null>(null);
 
   useEffect(() => {
-    if (!projectPath) return;
+    if (!projectPath) {
+      setPaths(null);
+      return;
+    }
+    let cancelled = false;
     (async () => {
       const [cfg, cht] = await Promise.all([
         join(projectPath, "config.json"),
         join(projectPath, "chats.json"),
       ]);
-      setConfigPath(cfg);
-      setChatsPath(cht);
+      if (!cancelled) setPaths({ configPath: cfg, chatsPath: cht });
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [projectPath]);
 
   if (!projectPath) return <Navigate to="/project-setup" replace />;
-  if (!configPath || !chatsPath) return null;
+
+  if (!paths) {
+    return (
+      <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
 
   return (
-    <ConfigProvider config_path={configPath}>
-      <ChatsProvider chats_path={chatsPath}>
+    <ConfigProvider config_path={paths.configPath}>
+      <ChatsProvider chats_path={paths.chatsPath}>
         <Outlet />
       </ChatsProvider>
     </ConfigProvider>
   );
+}
+
+// ─── Root redirect ─────────────────────────────────────────────────────────────
+// HashRouter always starts at /#/ on every app launch / Ctrl+R.
+// If a project is already saved in localStorage, skip Welcome and go straight
+// to the workspace so the user never sees a blank screen.
+
+function RootRedirect({ projectPath }: { projectPath: string | null }) {
+  if (projectPath) return <Navigate to="/workspace" replace />;
+  return <Welcome />;
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -52,15 +79,19 @@ function App() {
   );
 
   const handleProjectPathSet = (path: string) => {
-    setProjectPath(path);
     localStorage.setItem("projectPath", path);
+    setProjectPath(path);
   };
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <div className="h-full w-full overflow-hidden">
         <Routes>
-          <Route path="/" element={<Welcome />} />
+          {/* / always hits RootRedirect — bounces to /workspace if a project exists */}
+          <Route
+            path="/"
+            element={<RootRedirect projectPath={projectPath} />}
+          />
           <Route path="/about" element={<About />} />
           <Route
             path="/project-setup"
