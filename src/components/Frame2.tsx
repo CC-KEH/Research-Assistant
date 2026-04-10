@@ -50,6 +50,43 @@ function resolveTabGroup(
   }
 }
 
+// ─── Empty State ──────────────────────────────────────────────────────────────
+function EmptyState() {
+  return (
+    <div className="flex h-full w-full items-center justify-center flex-col p-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 w-full">
+        {/* Dashed drop zone */}
+        <div className="flex flex-col items-center justify-center gap-4 w-full max-w-[260px] rounded-xl border border-dashed border-border/60 px-6 py-10 ">
+          {/* Stacked pages illustration */}
+          <div className="relative h-14 w-10">
+            {/* Back page */}
+            <div className="absolute left-2 top-1 h-11 w-9 rounded-sm border border-border/40 bg-muted/30 rotate-3" />
+            {/* Middle page */}
+            <div className="absolute left-1 top-0.5 h-11 w-9 rounded-sm border border-border/50 bg-muted/50 -rotate-1" />
+            {/* Front page */}
+            <div className="absolute left-0 top-0 h-11 w-9 rounded-sm border border-border bg-background">
+              <div className="mt-2 mx-1.5 space-y-1.5">
+                <div className="h-px w-5 bg-muted-foreground/25 rounded" />
+                <div className="h-px w-6 bg-muted-foreground/20 rounded" />
+                <div className="h-px w-4 bg-muted-foreground/20 rounded" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1 text-center">
+            <p className="text-sm font-medium text-foreground/60">
+              No file open
+            </p>
+            <p className="text-xs text-muted-foreground/70 leading-relaxed">
+              Select a file from the Library
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Frame2({ fileInfo }: Frame2Props) {
@@ -70,7 +107,13 @@ export default function Frame2({ fileInfo }: Frame2Props) {
     setActiveTab(firstTabId);
   }, [fileInfo, config]);
 
-  if (!activeTabGroup || !activeTab || !fileInfo) return null;
+  if (!activeTabGroup || !activeTab || !fileInfo) {
+    return (
+      <div className="flex h-full w-full flex-col overflow-hidden">
+        <EmptyState />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden my-4">

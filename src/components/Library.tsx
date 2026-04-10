@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "./ui/input";
-import Loader from "./small/Loader";
+import LibraryLoader from "./small/LibraryLoader";
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ export default function Library({ onFileSelect }: LibraryProps) {
   // ── Early return AFTER all hooks ──────────────────────────────────────────
 
   if (loading || !projectPath) {
-    return <Loader />;
+    return <LibraryLoader />;
   }
 
   // ── Render ────────────────────────────────────────────────────────────────

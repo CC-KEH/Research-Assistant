@@ -200,3 +200,20 @@ body{
 .react-pdf__Page__annotations > * {
   pointer-events: auto;
 }
+
+
+@keyframes shimmer {
+  0% { background-position: -500px 0; }
+  100% { background-position: 500px 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 500px 100%;
+  animation: shimmer 1.5s infinite linear;
+}

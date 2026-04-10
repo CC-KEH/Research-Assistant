@@ -617,7 +617,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(
             if (msgs.length === 0)
               setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
           } else {
-            const newSession = await createSession("Chat Session");
+            const newSession = await createSession("Session 1");
             setCurrentSessionIndex(newSession.session_index);
             await fetchSessions();
             setMessages([{ ...WELCOME_MESSAGE, id: nextMsgId() }]);
@@ -859,7 +859,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(
               `Deleted session ${index}, switched to session ${target.index}`,
             );
           } else {
-            const result = await createSession("Chat Session");
+            const result = await createSession("Session 1");
             const newIndex = result.session_index;
             await switchSession(newIndex);
             setCurrentSessionIndex(newIndex);
