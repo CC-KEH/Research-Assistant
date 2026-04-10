@@ -652,18 +652,34 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(
 
     // ── Process knowledge store file tabs ──────────────────────────────────────
 
-    useEffect(() => {
-      const knowledgeFiles = config?.knowledgeStoreConfig?.files;
-      if (!knowledgeFiles || !fileInfo?.file_path) return;
+    const configRef = useRef(config);
+    const tabsConfigRef = useRef(tabsConfig);
+    const updateKnowledgeStoreConfigRef = useRef(updateKnowledgeStoreConfig);
+    configRef.current = config;
+    tabsConfigRef.current = tabsConfig;
+    updateKnowledgeStoreConfigRef.current = updateKnowledgeStoreConfig;
 
-      const knowledgeFile = knowledgeFiles.find(
-        (file: KnowledgeFile) => file.filePath === fileInfo.file_path,
+    const processingFilesRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+      const filePath = fileInfo?.file_path;
+      if (!filePath) return;
+
+      // Already running for this file — skip.
+      if (processingFilesRef.current.has(filePath)) return;
+
+      const knowledgeFiles = configRef.current?.knowledgeStoreConfig?.files;
+      const knowledgeFile = knowledgeFiles?.find(
+        (f: KnowledgeFile) => f.filePath === filePath,
       );
 
       if (!knowledgeFile?.feedLlm || knowledgeFile.isProcessed !== false)
         return;
-      if (!tabsConfig) return;
 
+      const currentTabsConfig = tabsConfigRef.current;
+      if (!currentTabsConfig) return;
+
+      processingFilesRef.current.add(filePath);
       let cancelled = false;
 
       const processAndUpdate = async () => {
@@ -673,49 +689,46 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(
           if (cancelled) return;
           accumulatedData[tab_id] = content;
 
-          const currentFiles = config?.knowledgeStoreConfig?.files ?? [];
-          const updatedFiles = currentFiles.map((file: KnowledgeFile) =>
-            file.filePath === knowledgeFile.filePath
-              ? {
-                  ...knowledgeFile,
-                  isProcessed: false,
-                  fileData: { ...accumulatedData },
-                }
-              : file,
+          const latestFiles =
+            configRef.current?.knowledgeStoreConfig?.files ?? [];
+          const updatedFiles = latestFiles.map((f: KnowledgeFile) =>
+            f.filePath === filePath
+              ? { ...f, isProcessed: false, fileData: { ...accumulatedData } }
+              : f,
           );
-          updateKnowledgeStoreConfig({ files: updatedFiles });
+          updateKnowledgeStoreConfigRef.current({ files: updatedFiles });
         };
 
         try {
-          const knowledgeFileData = await processTabs(
+          const finalData = await processTabs(
             fileInfo,
-            tabsConfig,
+            currentTabsConfig,
             saveProgress,
           );
           if (cancelled) return;
 
-          const currentFiles = config?.knowledgeStoreConfig?.files ?? [];
-          const updatedFiles = currentFiles.map((file: KnowledgeFile) =>
-            file.filePath === knowledgeFile.filePath
-              ? {
-                  ...knowledgeFile,
-                  isProcessed: true,
-                  fileData: knowledgeFileData,
-                }
-              : file,
+          const latestFiles =
+            configRef.current?.knowledgeStoreConfig?.files ?? [];
+          const updatedFiles = latestFiles.map((f: KnowledgeFile) =>
+            f.filePath === filePath
+              ? { ...f, isProcessed: true, fileData: finalData }
+              : f,
           );
-          updateKnowledgeStoreConfig({ files: updatedFiles });
-          info(JSON.stringify(knowledgeFileData));
+          updateKnowledgeStoreConfigRef.current({ files: updatedFiles });
+          info(JSON.stringify(finalData));
         } catch (err) {
           if (!cancelled) error(`Failed to process tabs: ${err}`);
+        } finally {
+          processingFilesRef.current.delete(filePath);
         }
       };
 
       processAndUpdate();
       return () => {
         cancelled = true;
+        processingFilesRef.current.delete(filePath);
       };
-    }, [fileInfo, config, tabsConfig, updateKnowledgeStoreConfig]);
+    }, [fileInfo?.file_path]);
 
     // ── LLM switch ─────────────────────────────────────────────────────────────
 

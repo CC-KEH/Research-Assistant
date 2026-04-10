@@ -569,7 +569,6 @@ export const getConfig = async (
     const config = await invoke<Config>("get_config", {
       configPath: config_path,
     });
-    info(`Config : ${JSON.stringify(config)}`);
     return config;
   } catch (err) {
     error(`Failed to load config: ${err}`);

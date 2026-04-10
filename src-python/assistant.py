@@ -107,6 +107,9 @@ class Assistant:
         pdf_text = extract_pdf_text(file_path)
 
         # ── arXiv tab: run as agent so the tool is actually invoked ──────────
+        if tab_id == "view":
+            return "View tab selected. This tab is meant for displaying PDFs and does not invoke any LLM."
+
         if tab_id == "arxiv":
             arxiv_llm = self.model._get_llm_without_thinking()
             agent_executor = create_agent(

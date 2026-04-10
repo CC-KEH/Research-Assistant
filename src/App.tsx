@@ -87,7 +87,6 @@ function App() {
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <div className="h-full w-full overflow-hidden">
         <Routes>
-          {/* / always hits RootRedirect — bounces to /workspace if a project exists */}
           <Route
             path="/"
             element={<RootRedirect projectPath={projectPath} />}
