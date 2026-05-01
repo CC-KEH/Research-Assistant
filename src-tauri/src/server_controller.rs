@@ -1,9 +1,35 @@
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use std::time::Duration;
 use tauri::State;
+use tokio::time::sleep;
 
 pub struct PythonServer {
     pub child: Mutex<Option<Child>>,
+}
+
+async fn wait_for_server(url: &str, timeout_secs: u64) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let deadline = std::time::Instant::now() + Duration::from_secs(timeout_secs);
+
+    log::info!("⏳ Waiting for Python server at {}...", url);
+
+    while std::time::Instant::now() < deadline {
+        match client.get(url).timeout(Duration::from_secs(2)).send().await {
+            Ok(res) if res.status().is_success() => {
+                log::info!("✅ Python server is ready!");
+                return Ok(());
+            }
+            _ => {
+                sleep(Duration::from_millis(500)).await;
+            }
+        }
+    }
+
+    Err(format!(
+        "❌ Server did not become ready within {}s",
+        timeout_secs
+    ))
 }
 
 #[tauri::command]
@@ -11,12 +37,14 @@ pub async fn start_python_server(
     app: tauri::AppHandle,
     state: State<'_, PythonServer>,
 ) -> Result<String, String> {
-    let mut child_guard = state.child.lock().unwrap();
-
-    if child_guard.is_some() {
-        log::warn!("Server already running");
-        return Ok("Server already running".to_string());
-    }
+    // ✅ Scoped block — guard is dropped before cfg blocks
+    {
+        let child_guard = state.child.lock().unwrap();
+        if child_guard.is_some() {
+            log::warn!("Server already running");
+            return Ok("Server already running".to_string());
+        }
+    } // ← guard dropped here
 
     #[cfg(debug_assertions)]
     {
@@ -30,10 +58,8 @@ pub async fn start_python_server(
 
         let venv_path = project_root.join("src-python").join("env");
         let src_python_dir = project_root.join("src-python");
-
         let python_exe = venv_path.join("Scripts").join("python.exe");
 
-        // Validate paths
         if !python_exe.exists() {
             return Err(format!(
                 "❌ Virtual environment not found at {:?}\nPlease create venv with: python -m venv env",
@@ -57,33 +83,35 @@ pub async fn start_python_server(
                 "-m",
                 "uvicorn",
                 "app:app",
-                // "--reload",
                 "--host",
                 "127.0.0.1",
                 "--port",
                 "8000",
             ])
             .current_dir(&src_python_dir)
-            .env("PYTHONPATH", &src_python_dir)  // Add src-python to Python path
+            .env("PYTHONPATH", &src_python_dir)
             .spawn()
-            .map_err(|e| {
-                format!(
-                    "❌ Failed to start Python server: {}\nMake sure Python and Uvicorn are installed in venv",
-                    e
-                )
-            })?;
+            .map_err(|e| format!(
+                "❌ Failed to start Python server: {}\nMake sure Python and Uvicorn are installed in venv",
+                e
+            ))?;
 
         let pid = child.id();
         log::info!("FastAPI server started successfully (PID: {})", pid);
         log::info!("Server URL: http://127.0.0.1:8000");
-        log::info!("Auto-reload: enabled (watches for file changes)");
 
-        *child_guard = Some(child);
+        // ✅ Re-acquire, store child, then drop before await
+        {
+            let mut child_guard = state.child.lock().unwrap();
+            *child_guard = Some(child);
+        } // ← guard dropped here
 
-        Ok(format!(
-            "FastAPI server started with PID: {}. Waiting for health check...",
+        wait_for_server("http://127.0.0.1:8000/health", 60).await?;
+
+        return Ok(format!(
+            "FastAPI server started with PID: {} and is ready.",
             pid
-        ))
+        ));
     }
 
     #[cfg(not(debug_assertions))]
@@ -97,10 +125,8 @@ pub async fn start_python_server(
 
         let src_python_dir = project_path.join("src-python");
         let venv_path = project_path.join("venv");
-
         let python_exe = venv_path.join("Scripts").join("python.exe");
 
-        // Validate paths
         if !python_exe.exists() {
             return Err(format!(
                 "❌ Virtual environment not found at {:?}\nPlease deploy with venv included",
@@ -130,25 +156,29 @@ pub async fn start_python_server(
                 "8000",
             ])
             .current_dir(&src_python_dir)
-            .env("PYTHONPATH", &src_python_dir)  // Add src-python to Python path
+            .env("PYTHONPATH", &src_python_dir)
             .spawn()
-            .map_err(|e| {
-                format!(
-                    "❌ Failed to start Python server: {}\nEnsure Python and Uvicorn are installed in venv",
-                    e
-                )
-            })?;
+            .map_err(|e| format!(
+                "❌ Failed to start Python server: {}\nEnsure Python and Uvicorn are installed in venv",
+                e
+            ))?;
 
         let pid = child.id();
         log::info!("FastAPI server started successfully (PID: {})", pid);
         log::info!("Server URL: http://127.0.0.1:8000");
 
-        *child_guard = Some(child);
+        // ✅ Re-acquire, store child, then drop before await
+        {
+            let mut child_guard = state.child.lock().unwrap();
+            *child_guard = Some(child);
+        } // ← guard dropped here
 
-        Ok(format!(
-            "FastAPI server started with PID: {}. Waiting for health check...",
+        wait_for_server("http://127.0.0.1:8000/health", 60).await?;
+
+        return Ok(format!(
+            "FastAPI server started with PID: {} and is ready.",
             pid
-        ))
+        ));
     }
 }
 

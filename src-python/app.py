@@ -122,6 +122,7 @@ async def initialize_backend(request: InitializeRequest):
     Initialize the backend with paths from the frontend.
     Must be called before any other endpoints.
     """
+    print(f"\n\n\n \t\tReceived initialization request: {request}")
     if app.state.session_manager:
         try:
             app.state.session_manager.save_chats()

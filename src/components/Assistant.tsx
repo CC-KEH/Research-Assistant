@@ -297,6 +297,8 @@ function SessionSidebar({
 interface RenameModalProps {
   isOpen: boolean;
   initialName: string;
+  existingNames: string[];
+  currentName: string;
   onConfirm: (name: string) => void;
   onCancel: () => void;
 }
@@ -304,6 +306,8 @@ interface RenameModalProps {
 function RenameModal({
   isOpen,
   initialName,
+  existingNames,
+  currentName,
   onConfirm,
   onCancel,
 }: RenameModalProps) {
@@ -311,6 +315,8 @@ function RenameModal({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectTimeoutRef = useRef<number | null>(null);
+  const isDuplicate =
+    existingNames.includes(value.trim()) && value.trim() !== currentName;
 
   useEffect(() => {
     if (isOpen) {
@@ -358,6 +364,11 @@ function RenameModal({
           placeholder="Session name..."
           autoFocus
         />
+        {isDuplicate && (
+          <p className="text-xs text-destructive mb-2">
+            A session with this name already exists.
+          </p>
+        )}
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -371,7 +382,7 @@ function RenameModal({
             size="sm"
             className="flex-1"
             onClick={handleSubmit}
-            disabled={!value.trim()}
+            disabled={!value.trim() || isDuplicate}
           >
             Rename
           </Button>
@@ -796,7 +807,13 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(
     const handleCreateSession = useCallback(async () => {
       setSessionActionLoading(true);
       try {
-        const result = await createSession(`Session ${Date.now()}`);
+        const existingNames = new Set(sessions.map((s) => s.name));
+        let candidateName = "New Session";
+        let counter = 1;
+        while (existingNames.has(candidateName)) {
+          candidateName = `New Session ${counter++}`;
+        }
+        const result = await createSession(candidateName);
         const newIndex = result.session_index;
         await switchSession(newIndex);
         setCurrentSessionIndex(newIndex);
@@ -887,6 +904,16 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(
       async (newName: string) => {
         if (!renameModal) return;
         const { index } = renameModal;
+
+        const isDuplicate = sessions.some(
+          (s) => s.name === newName && s.index !== index,
+        );
+        if (isDuplicate) {
+          // surface an error — option A: alert (simple), option B: set error state in modal
+          alert(`A session named "${newName}" already exists.`);
+          return;
+        }
+
         setRenameModal(null);
         setSessionActionLoading(true);
         try {
@@ -1009,6 +1036,8 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(
           <RenameModal
             isOpen={!!renameModal}
             initialName={renameModal?.name ?? ""}
+            existingNames={sessions.map((s) => s.name)}
+            currentName={renameModal?.name ?? ""}
             onConfirm={handleRenameConfirm}
             onCancel={() => setRenameModal(null)}
           />

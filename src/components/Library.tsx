@@ -1,7 +1,7 @@
 import { error, info } from "@/lib/logger";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { DialogType, FileInfo, LibraryProps, TreeNode } from "@/lib/types";
+import { DialogType, LibraryProps, TreeNode } from "@/lib/types";
 import { TreeView } from "@/components/small/Treeview";
 import { useConfig } from "@/components/providers/ConfigProvider";
 import {

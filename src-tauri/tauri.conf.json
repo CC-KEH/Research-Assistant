@@ -12,9 +12,10 @@
   "app": {
     "windows": [
       {
-        "title": "research_assistant",
+        "title": "Research Assistant",
         "width": 1400,
-        "height": 1200
+        "height": 1200,
+        "decorations": false
       }
     ],
     "security": {

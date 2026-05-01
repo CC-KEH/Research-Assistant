@@ -13,6 +13,7 @@ import About from "@/pages/About";
 import Welcome from "@/pages/Welcome";
 import Settings from "@/components/Settings";
 import KnowledgeStore from "@/components/KnowledgeStore";
+import { TitleBar } from "@/components/small/Titlebar";
 
 // ─── Protected layout ─────────────────────────────────────────────────────────
 
@@ -62,9 +63,6 @@ function ProtectedRoutes({ projectPath }: { projectPath: string | null }) {
 }
 
 // ─── Root redirect ─────────────────────────────────────────────────────────────
-// HashRouter always starts at /#/ on every app launch / Ctrl+R.
-// If a project is already saved in localStorage, skip Welcome and go straight
-// to the workspace so the user never sees a blank screen.
 
 function RootRedirect({ projectPath }: { projectPath: string | null }) {
   if (projectPath) return <Navigate to="/workspace" replace />;
@@ -85,23 +83,30 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <div className="h-full w-full overflow-hidden">
-        <Routes>
-          <Route
-            path="/"
-            element={<RootRedirect projectPath={projectPath} />}
-          />
-          <Route path="/about" element={<About />} />
-          <Route
-            path="/project-setup"
-            element={<ProjectSetup onProjectPathSet={handleProjectPathSet} />}
-          />
-          <Route element={<ProtectedRoutes projectPath={projectPath} />}>
-            <Route path="/workspace" element={<Workspace />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/knowledge-store" element={<KnowledgeStore />} />
-          </Route>
-        </Routes>
+      {/* Outer shell: full viewport, column layout */}
+      <div className="flex flex-col h-screen w-screen overflow-hidden">
+        {/* Title bar always on top, outside the router so it never unmounts */}
+        <TitleBar title="My App" />
+
+        {/* Page content fills the rest */}
+        <div className="flex-1 overflow-hidden">
+          <Routes>
+            <Route
+              path="/"
+              element={<RootRedirect projectPath={projectPath} />}
+            />
+            <Route path="/about" element={<About />} />
+            <Route
+              path="/project-setup"
+              element={<ProjectSetup onProjectPathSet={handleProjectPathSet} />}
+            />
+            <Route element={<ProtectedRoutes projectPath={projectPath} />}>
+              <Route path="/workspace" element={<Workspace />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/knowledge-store" element={<KnowledgeStore />} />
+            </Route>
+          </Routes>
+        </div>
       </div>
     </ThemeProvider>
   );
