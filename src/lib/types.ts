@@ -1,5 +1,3 @@
-// ---------------- Types related to config and settings ------------------ //
-
 export interface Config {
   basicConfig: BasicConfig;
   knowledgeStoreConfig: {
@@ -30,8 +28,9 @@ export type TreeNode = {
   children?: TreeNode[];
 };
 
-export interface LibraryProps {
-  onFileSelect: (file: FileInfo) => void;
+export enum Item {
+  directory,
+  file,
 }
 
 export type DialogType = "file" | "folder";
@@ -67,7 +66,7 @@ export interface KnowledgeFile {
   fileData: Record<string, string>;
 }
 
-export interface Arxiv {
+export interface ArxivItem {
   id: string;
   title: string;
   description: string;
@@ -85,17 +84,14 @@ export interface Todo {
   completed: boolean;
 }
 
-export enum Item {
-  directory,
-  file,
-}
-
 export enum BugType {
   fileManager,
   fileViewer,
   assistant,
   enhancement,
 }
+
+// ─── Viewer Types ───────────────────────────────────────────────────────────────
 
 export interface FileInfo {
   file_name: string;
@@ -162,7 +158,7 @@ export interface ChatSession {
   metadata: ChatSessionMetadata;
 }
 
-// Assistant related types
+// ─── Assistant Types ───────────────────────────────────────────────────────────────
 
 export interface Message {
   id: number;
@@ -176,10 +172,6 @@ export interface SessionInfo {
   name: string;
   total_messages?: number;
   last_updated?: string;
-}
-
-export interface AssistantProps {
-  fileInfo: FileInfo | null;
 }
 
 export type InitializationPhase =

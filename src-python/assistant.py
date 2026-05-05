@@ -3,8 +3,8 @@ from typing import List, Optional
 
 from langchain.agents import create_agent
 
-from utils import extract_pdf_text
-from tools import query_arxiv
+from lib.utils import extract_pdf_text
+from lib.tools import query_arxiv
 from model import Model
 from manager import ConfigManager, SessionManager
 

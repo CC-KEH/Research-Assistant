@@ -4,10 +4,10 @@ import { useOnClickOutside } from "usehooks-ts";
 import { LucideIcon, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import Todos from "@/pages/Todos";
-import Settings from "@/components/Settings";
-import About from "@/pages/About";
-import News from "@/pages/News";
+import Todos from "@/components/frame1/controls/Todos";
+import Settings from "@/components/common/settings/Settings";
+import About from "@/components/frame1/controls/About";
+import News from "@/components/frame1/controls/News";
 import { useTheme } from "../providers/ThemeProvider";
 
 interface Tab {

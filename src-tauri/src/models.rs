@@ -57,7 +57,7 @@ pub struct KnowledgeFile {
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Arxiv {
+pub struct ArxivItem {
     pub id: String,
     pub title: String,
     pub description: String,

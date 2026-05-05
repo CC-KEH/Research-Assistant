@@ -49,13 +49,17 @@ pub fn run() {
             read_pdf_file
         ])
         .setup(|app| {
-            // Start Python server automatically on app launch
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let state = handle.state::<PythonServer>();
                 match start_python_server(handle.clone(), state).await {
                     Ok(msg) => log::info!("🟢 {}", msg),
                     Err(e) => log::error!("❌ Failed to auto-start server: {}", e),
+                }
+
+                // Show the window after server startup (success or failure)
+                if let Some(window) = handle.get_webview_window("main") {
+                    let _ = window.show();
                 }
             });
             Ok(())

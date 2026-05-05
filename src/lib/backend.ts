@@ -10,7 +10,53 @@ import {
   ChatResponse,
   FileInfo,
 } from "@/lib/types";
+import { modelsByProvider } from "@/lib/constants";
+
 const PYTHON_API_BASE = "http://localhost:8000";
+
+// *********************** */
+//* Frame 1
+// *********************** */
+
+export function formatDate(iso: string | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function syncProviderFields(
+  providerName: string,
+  cfg: Config | null,
+  setters: {
+    setSelectedLlmModel: (v: string) => void;
+    setLlmApiKey: (v: string) => void;
+    setTemperature: (v: number) => void;
+    setMaxTokens: (v: number) => void;
+    setChatPrompt: (v: string) => void;
+  },
+) {
+  if (!cfg) return;
+  const provider = cfg.llmConfig?.[providerName];
+  if (provider) {
+    setters.setSelectedLlmModel(provider.model || "");
+    setters.setLlmApiKey(provider.apiKey || "");
+    setters.setTemperature(provider.temperature ?? 0.7);
+    setters.setMaxTokens(provider.maxTokens ?? 2048);
+    setters.setChatPrompt(provider.chatPrompt || "");
+  } else {
+    const firstModel = modelsByProvider[providerName]?.[0];
+    setters.setSelectedLlmModel(firstModel?.value || "");
+    setters.setLlmApiKey("");
+    setters.setTemperature(0.7);
+    setters.setMaxTokens(2048);
+    setters.setChatPrompt("");
+  }
+}
 
 //*********************** */
 //* Server Management
@@ -421,6 +467,20 @@ export const getVectorStoreStatus = async () => {
 //*********************** */
 //* File System Functions (via Tauri/Rust)
 //*********************** */
+
+export function findNodeById(
+  nodes: TreeNode[],
+  id: string,
+): TreeNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNodeById(node.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
 
 export async function getLibraryData(
   project_path: string,

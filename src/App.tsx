@@ -1,19 +1,24 @@
 import "@/App.css";
 import { useState, useEffect } from "react";
-import { Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { join } from "@tauri-apps/api/path";
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Routes, Route, Outlet, Navigate } from "react-router-dom";
+
 import {
   ConfigProvider,
   ChatsProvider,
 } from "@/components/providers/ConfigProvider";
-import { ProjectSetup } from "@/components/ProjectSetup";
-import { Workspace } from "@/pages/Workspace";
-import About from "@/pages/About";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+
+import About from "@/components/frame1/controls/About";
 import Welcome from "@/pages/Welcome";
-import Settings from "@/components/Settings";
-import KnowledgeStore from "@/components/KnowledgeStore";
-import { TitleBar } from "@/components/small/Titlebar";
+import { Workspace } from "@/pages/Workspace";
+
+import Settings from "@/components/common/settings/Settings";
+import KnowledgeStore from "@/components/frame1/library/KnowledgeStore";
+
+import { TitleBar } from "@/components/common/TitleBar";
+import { ProjectSetup } from "@/components/ProjectSetup";
 
 // ─── Protected layout ─────────────────────────────────────────────────────────
 
@@ -76,6 +81,11 @@ function App() {
     localStorage.getItem("projectPath"),
   );
 
+  // Show window once React has mounted
+  useEffect(() => {
+    getCurrentWindow().show().catch(console.error);
+  }, []);
+
   const handleProjectPathSet = (path: string) => {
     localStorage.setItem("projectPath", path);
     setProjectPath(path);
@@ -84,12 +94,12 @@ function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       {/* Outer shell: full viewport, column layout */}
-      <div className="flex flex-col h-screen w-screen overflow-hidden">
+      <div className="flex flex-col h-screen w-screen">
         {/* Title bar always on top, outside the router so it never unmounts */}
         <TitleBar title="My App" />
 
         {/* Page content fills the rest */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1">
           <Routes>
             <Route
               path="/"

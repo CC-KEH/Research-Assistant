@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Research Assistant",
         "width": 1400,
         "height": 1200,
+        "visible": false,
         "decorations": false
       }
     ],

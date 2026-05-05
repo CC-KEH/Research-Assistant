@@ -45,7 +45,7 @@
   --muted-foreground:  #7A6F61;
 
   /* Accent — antique gold */
-  --accent:            #C9A96E;
+  --accent:            #DDD6CB;
   --accent-foreground: #1C1917;
 
   --destructive:       oklch(0.577 0.245 27.325);
@@ -90,7 +90,7 @@
   --muted:             #28231E;
   --muted-foreground:  #8F8070;
 
-  --accent:            #C9A96E;
+  --accent:            #2E2820;
   --accent-foreground: #EDE8DF;
 
   --destructive:       oklch(0.704 0.191 22.216);

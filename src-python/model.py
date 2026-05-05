@@ -13,7 +13,8 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 
 from manager import ConfigManager, SessionManager
-from utils import extract_content
+
+from lib.utils import extract_content
 
 logger = logging.getLogger(__name__)
 

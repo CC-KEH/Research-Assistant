@@ -4,15 +4,16 @@ import {
   ResizableHandle,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import Frame1 from "@/components/Frame1";
-import Frame2 from "@/components/Frame2";
-import Frame3 from "@/components/Frame3";
+import Frame1 from "@/components/frame1/library/Frame1";
+import Frame2 from "@/components/frame2/Frame2";
+import Frame3 from "@/components/frame3/Frame3";
+
 import type { FileInfo } from "@/lib/types";
 
 export function Workspace() {
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   return (
-    <ResizablePanelGroup direction="horizontal" className="min-h-screen">
+    <ResizablePanelGroup direction="horizontal" className="h-[90%]">
       <ResizablePanel defaultSize={25}>
         <Frame1 onFileSelect={setSelectedFile} />
       </ResizablePanel>
