@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_openai import ChatOpenAI
+from langchain_deepseek import ChatDeepSeek
 from langchain_core.documents import Document
 from langchain_anthropic import ChatAnthropic
 from langchain_community.vectorstores import FAISS
@@ -189,6 +190,8 @@ class Model:
                 llm = ChatOpenAI(**model_config)
             elif self.active_llm_provider == "anthropic":
                 llm = ChatAnthropic(**model_config)
+            elif self.active_llm_provider == "deepseek":
+                llm = ChatDeepSeek(**model_config)
             else:
                 raise ValueError(
                     f"Unknown LLM provider: '{self.active_llm_provider}'. "

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Research Assistant — AI-Powered Research Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-serif: 'Lora', 'Georgia', serif;
+      --font-sans:  'DM Sans', system-ui, sans-serif;
+      --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+      --background:        #F8F5F0;
+      --foreground:        #1C1917;
+      --card:              #FDFBF8;
+      --primary:           #2C2416;
+      --primary-foreground:#F8F5F0;
+      --secondary:         #EDE8DF;
+      --muted:             #EDE8DF;
+      --muted-foreground:  #7A6F61;
+      --accent:            #DDD6CB;
+      --border:            #DDD6CB;
+      --gold:              #C9A96E;
+      --gold-light:        rgba(201,169,110,0.3);
+      --sidebar:           #F2EDE5;
+
+      font-family: var(--font-serif);
+      font-size: 16px;
+      line-height: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--background);
+      color: var(--foreground);
+      overflow-x: hidden;
+      width: 100%;
+      height: auto;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+    }
+
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(248,245,240,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1080px; margin: 0 auto; padding: 0 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 62px;
+    }
+    .logo {
+      font-family: var(--font-serif); font-weight: 600; font-size: 1.05rem;
+      color: var(--primary); text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-mark {
+      width: 30px; height: 30px;
+      border: 1.5px solid var(--gold); border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--gold);
+    }
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-sans); color: var(--muted-foreground);
+      text-decoration: none; font-size: 0.82rem; font-weight: 400;
+      letter-spacing: 0.06em; text-transform: uppercase; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--primary); }
+    .nav-cta {
+      font-family: var(--font-sans); font-size: 0.78rem; font-weight: 500;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      background: var(--primary); color: var(--primary-foreground);
+      border: none; border-radius: 4px; padding: 9px 20px; cursor: pointer; transition: opacity 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.8; }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 100px 0 80px; text-align: center;
+    }
+    .hero-eyebrow {
+      font-family: var(--font-sans); font-size: 0.7rem; font-weight: 500;
+      letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold);
+      margin-bottom: 30px;
+      animation: fadeUp 0.7s ease both;
+    }
+    .hero h1 {
+      font-family: var(--font-serif); font-size: clamp(2.6rem, 6vw, 4.4rem);
+      font-weight: 600; line-height: 1.12; letter-spacing: -0.01em;
+      color: var(--primary); border: none; text-transform: none;
+      padding: 0; margin-bottom: 0;
+      animation: fadeUp 0.7s 0.09s ease both;
+    }
+    .hero h1 em { font-style: italic; color: var(--gold); }
+    .hero-rule {
+      width: 48px; height: 1px; background: var(--gold); margin: 30px auto;
+      animation: fadeUp 0.7s 0.18s ease both;
+    }
+    .hero-sub {
+      font-family: var(--font-sans); font-size: 1.05rem; font-weight: 300;
+      color: var(--muted-foreground); max-width: 520px; line-height: 1.78;
+      margin-bottom: 44px;
+      animation: fadeUp 0.7s 0.25s ease both;
+    }
+    .hero-actions {
+      display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+      animation: fadeUp 0.7s 0.32s ease both;
+    }
+    .btn-primary {
+      font-family: var(--font-sans); font-size: 0.78rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: var(--primary); color: var(--primary-foreground);
+      border: none; border-radius: 4px; padding: 13px 28px;
+      cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.84; transform: translateY(-1px); }
+    .btn-ghost {
+      font-family: var(--font-sans); font-size: 0.78rem; font-weight: 400;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: transparent; color: var(--primary);
+      border: 1px solid var(--border); border-radius: 4px; padding: 13px 28px;
+      cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { background: var(--secondary); border-color: var(--gold); transform: translateY(-1px); }
+    .hero-footnote {
+      margin-top: 60px;
+      font-family: var(--font-sans); font-size: 0.75rem; color: var(--muted-foreground);
+      letter-spacing: 0.1em;
+      display: flex; gap: 36px; justify-content: center; flex-wrap: wrap;
+      animation: fadeUp 0.7s 0.4s ease both;
+    }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+
+    /* SECTION */
+    section { padding: 96px 0; position: relative; z-index: 1; }
+    .section-header { text-align: center; margin-bottom: 60px; }
+    .section-tag {
+      font-family: var(--font-sans); font-size: 0.7rem; font-weight: 500;
+      letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold);
+      margin-bottom: 18px; display: block;
+    }
+    .section-title {
+      font-family: var(--font-serif); font-size: clamp(1.65rem, 3vw, 2.3rem);
+      font-weight: 600; line-height: 1.2; color: var(--primary);
+      margin-bottom: 14px; letter-spacing: -0.01em;
+    }
+    .section-title em { font-style: italic; color: var(--gold); }
+    .section-sub {
+      font-family: var(--font-sans); font-weight: 300; font-size: 0.97rem;
+      color: var(--muted-foreground); line-height: 1.75; max-width: 480px; margin: 0 auto;
+    }
+
+    /* FEATURES */
+    #features { background: var(--sidebar); }
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1px; border: 1px solid var(--border); border-radius: 6px;
+      overflow: hidden; background: var(--border);
+    }
+    .feature-card {
+      background: var(--card); padding: 36px 30px; transition: background 0.2s;
+    }
+    .feature-card:hover { background: var(--background); }
+    .feature-glyph {
+      font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500;
+      color: var(--gold); letter-spacing: 0.1em; margin-bottom: 18px; display: block;
+    }
+    .feature-title {
+      font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600;
+      color: var(--primary); margin-bottom: 10px;
+    }
+    .feature-desc {
+      font-family: var(--font-sans); font-size: 0.88rem; font-weight: 300;
+      color: var(--muted-foreground); line-height: 1.72;
+    }
+
+    /* HOW IT WORKS */
+    #how-it-works { background: var(--background); }
+    .steps-wrap { max-width: 640px; margin: 0 auto; }
+    .step {
+      display: grid; grid-template-columns: 52px 1fr; gap: 20px;
+      padding: 32px 0; border-bottom: 1px solid var(--border);
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .step.visible { opacity: 1; transform: none; }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500;
+      color: var(--gold); letter-spacing: 0.08em; padding-top: 4px;
+    }
+    .step-title {
+      font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600;
+      color: var(--primary); margin-bottom: 8px;
+    }
+    .step-desc {
+      font-family: var(--font-sans); font-size: 0.88rem; font-weight: 300;
+      color: var(--muted-foreground); line-height: 1.72;
+    }
+
+    /* DOWNLOAD */
+    #download { background: var(--sidebar); }
+    .download-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px;
+    }
+    .dl-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+      padding: 30px 24px; text-align: center; text-decoration: none; color: inherit;
+      display: block;
+      opacity: 0; transform: translateY(14px);
+      transition: opacity 0.5s ease, transform 0.5s ease, border-color 0.2s, box-shadow 0.2s;
+    }
+    .dl-card.visible { opacity: 1; transform: none; }
+    .dl-card:hover { border-color: var(--gold); box-shadow: 0 4px 24px rgba(201,169,110,0.08); }
+    .dl-glyph {
+      font-family: var(--font-mono); font-size: 0.62rem; color: var(--gold);
+      letter-spacing: 0.1em; margin-bottom: 14px; display: block;
+    }
+    .dl-platform {
+      font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600;
+      color: var(--primary); margin-bottom: 6px;
+    }
+    .dl-meta {
+      font-family: var(--font-sans); font-size: 0.78rem; font-weight: 300;
+      color: var(--muted-foreground); margin-bottom: 22px; line-height: 1.6;
+    }
+    .dl-btn {
+      display: inline-block;
+      font-family: var(--font-sans); font-size: 0.7rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      border: 1px solid var(--primary); color: var(--primary);
+      border-radius: 3px; padding: 7px 16px; transition: all 0.2s;
+    }
+    .dl-card:hover .dl-btn { background: var(--primary); color: var(--primary-foreground); }
+
+    /* SIGNUP */
+    #signup { background: var(--background); }
+    .signup-inner {
+      max-width: 580px; margin: 0 auto; text-align: center;
+      padding: 60px 48px;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); position: relative;
+    }
+    .signup-inner::before {
+      content: ''; position: absolute; inset: 6px;
+      border: 1px solid var(--gold-light); border-radius: 3px;
+      opacity: 0.5; pointer-events: none;
+    }
+    .signup-inner .section-title { margin-bottom: 10px; }
+    .signup-inner .section-sub { margin-bottom: 36px; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .form-input {
+      flex: 1; min-width: 200px;
+      font-family: var(--font-sans); font-size: 0.9rem; font-weight: 300;
+      background: var(--background); border: 1px solid var(--border); border-radius: 4px;
+      padding: 12px 16px; color: var(--foreground); outline: none; transition: border-color 0.2s;
+    }
+    .form-input::placeholder { color: var(--muted-foreground); }
+    .form-input:focus { border-color: var(--gold); }
+    .form-note {
+      margin-top: 18px; font-family: var(--font-sans); font-size: 0.75rem;
+      color: var(--muted-foreground); font-style: italic;
+    }
+    .form-divider {
+      display: flex; align-items: center; gap: 14px;
+      margin: 28px 0; color: var(--muted-foreground); font-size: 0.72rem;
+      font-family: var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .form-divider::before, .form-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .gh-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-sans); font-size: 0.78rem; font-weight: 400;
+      color: var(--muted-foreground); text-decoration: none;
+      border: 1px solid var(--border); border-radius: 4px; padding: 10px 20px;
+      transition: all 0.2s;
+    }
+    .gh-link:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      background: var(--sidebar); padding: 52px 0 36px;
+    }
+    .footer-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 36px; margin-bottom: 44px;
+    }
+    .footer-brand { max-width: 260px; }
+    .footer-logo {
+      font-family: var(--font-serif); font-weight: 600; font-size: 1rem;
+      color: var(--primary); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .footer-tagline {
+      font-family: var(--font-sans); font-size: 0.82rem; font-weight: 300;
+      color: var(--muted-foreground); line-height: 1.7; font-style: italic;
+    }
+    .footer-group-title {
+      font-family: var(--font-sans); font-size: 0.68rem; font-weight: 500;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted-foreground);
+      margin-bottom: 14px;
+    }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a {
+      font-family: var(--font-sans); font-size: 0.875rem; font-weight: 300;
+      color: var(--muted-foreground); text-decoration: none; transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--primary); }
+    .footer-bottom {
+      border-top: 1px solid var(--border); padding-top: 24px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    }
+    .footer-copy {
+      font-family: var(--font-sans); font-size: 0.78rem; font-weight: 300; color: var(--muted-foreground);
+    }
+    .footer-mono {
+      font-family: var(--font-mono); font-size: 0.68rem; color: var(--gold); letter-spacing: 0.08em;
+    }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px; z-index: 999;
+      background: var(--primary); color: var(--primary-foreground);
+      border-radius: 5px; padding: 13px 22px;
+      font-family: var(--font-sans); font-size: 0.85rem; font-weight: 400;
+      transform: translateY(14px); opacity: 0; pointer-events: none; transition: all 0.3s;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .signup-inner { padding: 40px 22px; }
+      .footer-top { flex-direction: column; }
+      h1 { font-size: 2.4rem !important; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <span class="logo-mark">✦</span>
+      Research Assistant
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How it Works</a></li>
+      <li><a href="#download">Download</a></li>
+      <li><a href="https://github.com/ArbashHussain/Research-Assistant" target="_blank">GitHub</a></li>
+    </ul>
+    <button class="nav-cta" onclick="document.getElementById('signup').scrollIntoView({behavior:'smooth'})">Get Early Access</button>
+  </div>
+</nav>
+
+<section class="hero" id="home">
+  <div class="container">
+    <div class="hero-eyebrow">✦ &nbsp; AI-Powered Research Tool &nbsp; ✦</div>
+    <h1>Research, <em>understood</em>.<br/>Knowledge, distilled.</h1>
+    <div class="hero-rule"></div>
+    <p class="hero-sub">Stop drowning in papers and tabs. Research Assistant reads, summarises, and synthesises academic literature so you can focus on the thinking that matters.</p>
+    <div class="hero-actions">
+      <a href="#signup" class="btn-primary">Get Early Access</a>
+      <a href="https://github.com/ArbashHussain/Research-Assistant/tree/development" target="_blank" class="btn-ghost">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <div class="hero-footnote">
+      <span>✦ Open Source</span>
+      <span>✦ Self-Hostable</span>
+      <span>✦ Cited Answers Only</span>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-tag">Capabilities</span>
+      <h2 class="section-title">Everything you need to research <em>smarter</em></h2>
+      <p class="section-sub">Built for students, academics, and professionals who need to move fast without missing what matters.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-glyph">[ 01 ] — INGEST</span>
+        <div class="feature-title">Instant Paper Summaries</div>
+        <p class="feature-desc">Upload any PDF or paste a DOI and receive a structured summary in seconds — key findings, methodology, and limitations clearly delineated.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-glyph">[ 02 ] — QUERY</span>
+        <div class="feature-title">Chat With Your Sources</div>
+        <p class="feature-desc">Ask questions directly about your documents in plain language. Every answer is cited back to the exact passage it came from.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-glyph">[ 03 ] — DISCOVER</span>
+        <div class="feature-title">Semantic Search</div>
+        <p class="feature-desc">Find the exact section across your entire library using meaning-based search — not just keyword matching. Thought leads to thought.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-glyph">[ 04 ] — ORGANISE</span>
+        <div class="feature-title">Knowledge Library</div>
+        <p class="feature-desc">All your papers, annotations, and findings in one quiet, organised workspace. The kind of order a scholar's desk rarely achieves.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-glyph">[ 05 ] — WRITE</span>
+        <div class="feature-title">Writing Assistance</div>
+        <p class="feature-desc">Draft literature reviews, abstracts, and citations grounded in your actual sources. Nothing invented; everything attributable.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-glyph">[ 06 ] — CONNECT</span>
+        <div class="feature-title">Cross-Paper Insights</div>
+        <p class="feature-desc">Surface connections, contradictions, and recurring themes across your entire collection. The synthesis you've been trying to write.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-tag">Process</span>
+      <h2 class="section-title">From paper to insight in <em>three steps</em></h2>
+      <p class="section-sub">No complex setup, no steep learning curve. Upload and begin.</p>
+    </div>
+    <div class="steps-wrap">
+      <div class="step">
+        <div class="step-num">01.</div>
+        <div>
+          <div class="step-title">Upload your papers</div>
+          <p class="step-desc">Drop in any PDF, paste a DOI, or connect to arXiv and PubMed. Research Assistant ingests and indexes everything automatically, ready for interrogation.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02.</div>
+        <div>
+          <div class="step-title">Ask your questions</div>
+          <p class="step-desc">Converse with your entire research library in plain English. Ask for summaries, comparisons, specific data points, or thematic overviews spanning dozens of papers at once.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03.</div>
+        <div>
+          <div class="step-title">Export and build</div>
+          <p class="step-desc">Export annotated summaries, citation-ready quotes, and draft sections. Everything you need to write, already organised and attributed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-tag">Download</span>
+      <h2 class="section-title">Available on <em>every platform</em></h2>
+      <p class="section-sub">All versions stay in sync. Your library follows you across devices.</p>
+    </div>
+    <div class="download-grid">
+      <a class="dl-card" href="https://github.com/ArbashHussain/Research-Assistant/releases" target="_blank">
+        <span class="dl-glyph">PLATFORM — macOS</span>
+        <div class="dl-platform">macOS</div>
+        <p class="dl-meta">macOS 12 Monterey or later<br/>Apple Silicon & Intel</p>
+        <span class="dl-btn">Download .dmg</span>
+      </a>
+      <a class="dl-card" href="https://github.com/ArbashHussain/Research-Assistant/releases" target="_blank">
+        <span class="dl-glyph">PLATFORM — Windows</span>
+        <div class="dl-platform">Windows</div>
+        <p class="dl-meta">Windows 10 / 11<br/>64-bit only</p>
+        <span class="dl-btn">Download .exe</span>
+      </a>
+      <a class="dl-card" href="https://github.com/ArbashHussain/Research-Assistant/releases" target="_blank">
+        <span class="dl-glyph">PLATFORM — Linux</span>
+        <div class="dl-platform">Linux</div>
+        <p class="dl-meta">Ubuntu, Debian, Fedora<br/>AppImage & .deb</p>
+        <span class="dl-btn">Download .AppImage</span>
+      </a>
+      <a class="dl-card" href="https://github.com/ArbashHussain/Research-Assistant" target="_blank">
+        <span class="dl-glyph">PLATFORM — Self-Host</span>
+        <div class="dl-platform">Self-Host</div>
+        <p class="dl-meta">Run on your own machine<br/>Full control, no telemetry</p>
+        <span class="dl-btn">View on GitHub</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section id="signup">
+  <div class="container">
+    <div class="signup-inner">
+      <span class="section-tag">Early Access</span>
+      <h2 class="section-title">Join the <em>waitlist</em></h2>
+      <p class="section-sub">We're onboarding researchers in small batches. Leave your email and we'll reach out when your place is ready.</p>
+      <div class="form-row">
+        <input class="form-input" type="email" id="emailInput" placeholder="your@institution.edu" />
+        <button class="btn-primary" onclick="handleSignup()">Request Access</button>
+      </div>
+      <p class="form-note">No marketing, no spam. Only your onboarding invitation.</p>
+      <div class="form-divider">or</div>
+      <a href="https://github.com/ArbashHussain/Research-Assistant" target="_blank" class="gh-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        Star on GitHub & self-host now
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <span class="logo-mark">✦</span>
+          Research Assistant
+        </div>
+        <p class="footer-tagline">"The purpose of a research tool is not to replace the scholar, but to free them to do the thinking only they can do."</p>
+      </div>
+      <div>
+        <div class="footer-group-title">Project</div>
+        <div class="footer-links">
+          <a href="https://github.com/ArbashHussain/Research-Assistant" target="_blank">GitHub Repository</a>
+          <a href="https://github.com/ArbashHussain/Research-Assistant/tree/development" target="_blank">Development Branch</a>
+          <a href="https://github.com/ArbashHussain/Research-Assistant/releases" target="_blank">Releases</a>
+          <a href="https://github.com/ArbashHussain/Research-Assistant/issues" target="_blank">Report an Issue</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-group-title">Navigate</div>
+        <div class="footer-links">
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it Works</a>
+          <a href="#download">Download</a>
+          <a href="#signup">Early Access</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2025 Research Assistant. Open source, built with care.</p>
+      <span class="footer-mono">v0.1-dev</span>
+    </div>
+  </div>
+</footer>
+
+<div id="toast">✦ &nbsp; You're on the list. We'll be in touch.</div>
+
+<script>
+  function handleSignup() {
+    const input = document.getElementById('emailInput');
+    const email = input.value.trim();
+    if (!email || !email.includes('@')) {
+      input.style.borderColor = '#a85032';
+      input.focus();
+      setTimeout(() => input.style.borderColor = '', 1800);
+      return;
+    }
+    document.getElementById('toast').classList.add('show');
+    input.value = '';
+    setTimeout(() => document.getElementById('toast').classList.remove('show'), 3800);
+  }
+
+  document.getElementById('emailInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleSignup();
+  });
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const delay = +(e.target.dataset.delay || 0);
+        setTimeout(() => e.target.classList.add('visible'), delay);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.step').forEach((el, i) => { el.dataset.delay = i * 100; io.observe(el); });
+  document.querySelectorAll('.dl-card').forEach((el, i) => { el.dataset.delay = i * 80; io.observe(el); });
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ langchain-community
 langchain-openai
 langchain-google-genai
 langchain-anthropic
+langchain-deepseek
 langchain-huggingface
 sentence_transformers
 faiss-cpu

@@ -9,6 +9,7 @@ export const llmProviders = [
   { label: "OpenAI", value: "openai" },
   { label: "Anthropic", value: "anthropic" },
   { label: "Google", value: "google" },
+  { label: "DeepSeek", value: "deepseek" },
 ];
 
 export const modelsByProvider: Record<
@@ -35,5 +36,9 @@ export const modelsByProvider: Record<
     { label: "Gemini 3 Flash", value: "gemini-3-flash-preview" },
     { label: "Gemini 2.5 Pro", value: "gemini-2-5-pro" },
     { label: "Gemini 2.5 Flash", value: "gemini-2-5-flash" },
+  ],
+  deepseek: [
+    { label: "DeepSeek V3", value: "deepseek-chat" },
+    { label: "DeepSeek R1", value: "deepseek-reasoner" },
   ],
 };

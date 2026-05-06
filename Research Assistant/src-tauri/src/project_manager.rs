@@ -247,6 +247,17 @@ pub fn create_new_project(
             chat_prompt: default_chat_prompt.to_string(),
         },
     );
+    llm_config.insert(
+        "deepseek".to_string(),
+        LLMConfig {
+            label: "DeepSeek V3".to_string(),
+            model: "deepseek-chat".to_string(),
+            api_key: String::new(),
+            temperature: 0.7,
+            max_tokens: 1000,
+            chat_prompt: default_chat_prompt.to_string(),
+        },
+    );
 
     // Create a default config
     let default_config = Config {
