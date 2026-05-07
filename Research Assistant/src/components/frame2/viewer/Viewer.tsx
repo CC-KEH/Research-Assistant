@@ -126,6 +126,7 @@ export default function Viewer({
             filePath={filePath}
             markdownContent={markdownContent}
             isLoadingMarkdown={isLoadingMarkdown}
+            isEditable={true}
             onContentChange={setMarkdownContent}
           />
         );

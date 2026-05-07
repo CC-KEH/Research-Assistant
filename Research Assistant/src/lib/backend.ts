@@ -686,22 +686,40 @@ export const createProject = async (
 //* Placeholder Functions
 //*********************** */
 
-const fetchContent = async (
+export const fetchContent = async (
   tab_id: string,
-  file_info: FileInfo,
+  file_path: string,
 ): Promise<string> => {
   const content = await fetch(`${PYTHON_API_BASE}/process_tabs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ tab_id: tab_id, file_info: file_info }),
+    body: JSON.stringify({ tab_id: tab_id, file_path: file_path }),
   });
+  saveContent(tab_id, file_path, content);
   return content.text();
 };
 
+export const saveContent = async (
+  tab_id: string,
+  file_path: string,
+  content: Response,
+): Promise<void> => {
+  try {
+    await invoke("update_knowledge_store", {
+      tabId: tab_id,
+      fileName: file_path,
+      content: await content.text(),
+    });
+  } catch (err) {
+    error(`Error saving content for tab ${tab_id}: ${err}`);
+    throw err;
+  }
+};
+
 export const processTabs = async (
-  file_info: FileInfo,
+  file_path: string,
   tabs_config: {
     tabs: Tab[];
     customTabs: Tab[];
@@ -715,7 +733,7 @@ export const processTabs = async (
 
   for (const tab of enabledTabs) {
     try {
-      const content = await fetchContent(tab.id, file_info);
+      const content = await fetchContent(tab.id, file_path);
       contentMap[tab.id] = content;
       onTabComplete?.(tab.id, content);
     } catch (err) {

@@ -40,4 +40,4 @@ class FileInfo(BaseModel):
 
 class TabProcessRequest(BaseModel):
     tab_id: str
-    file_info: FileInfo
+    file_path: str

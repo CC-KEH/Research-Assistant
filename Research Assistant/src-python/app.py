@@ -407,7 +407,7 @@ async def process_with_tab(
         if not assistant.model.check()["status"]:
             raise HTTPException(status_code=400, detail="LLM not initialized...")
 
-        result = assistant.process_tab(request.tab_id, request.file_info.model_dump())
+        result = assistant.process_tab(request.tab_id, request.file_path)
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

@@ -8,6 +8,7 @@ interface MarkdownRendererProps {
   filePath: string;
   markdownContent: string;
   isLoadingMarkdown: boolean;
+  isEditable: boolean;
   onContentChange: (content: string) => void;
 }
 
@@ -15,6 +16,7 @@ export default function MarkdownViewerRenderer({
   activeTab,
   filePath,
   markdownContent,
+  isEditable,
   isLoadingMarkdown,
   onContentChange,
 }: MarkdownRendererProps) {
@@ -25,6 +27,7 @@ export default function MarkdownViewerRenderer({
       return (
         <MarkdownRenderer
           content={markdownContent || "Go to Edit tab to start editing."}
+          isEditable={isEditable}
         />
       );
     case "edit":

@@ -63,7 +63,7 @@ export default function PaperRenderer({
       );
     }
 
-    default:
+    default: {
       if (isLoadingPaperTab) return <Loading />;
 
       // Check if content is a JSON error response (e.g. { detail: "..." })
@@ -86,6 +86,14 @@ export default function PaperRenderer({
         }
       }
 
-      return <MarkdownRenderer content={displayContent} />;
+      return (
+        <MarkdownRenderer
+          content={displayContent}
+          isEditable={false}
+          filePath={filePath}
+          tabId={activeTab}
+        />
+      );
+    }
   }
 }

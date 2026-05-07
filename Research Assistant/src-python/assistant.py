@@ -75,12 +75,12 @@ class Assistant:
             self.model.save()
             logger.info("Vector store saved")
 
-    def process_tab(self, tab_id: str, file_info: dict) -> str:
+    def process_tab(self, tab_id: str, file_path: dict) -> str:
         """Process a PDF file using a tab's prompt from config.json.
 
         Args:
             tab_id: The tab identifier to look up in config
-            file_info: Dict containing file_path or filePath key
+            file_path: The file path or filePath key
 
         Returns:
             Processed string result from the LLM
@@ -96,7 +96,6 @@ class Assistant:
         if not prompt:
             raise ValueError(f"No prompt defined for tab '{tab_id}'")
 
-        file_path = file_info.get("filePath") or file_info.get("file_path")
 
         if not file_path:
             raise ValueError(

@@ -5,10 +5,18 @@ import rehypeRaw from "rehype-raw";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import MarkdownToolbar from "./MarkdownToolbar";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { fetchContent } from "@/lib/backend";
+import { FileInfo } from "@/lib/types";
 
 // Props interface for the MarkdownRenderer component
 interface MarkdownRendererProps {
+  tabId?: string;
+  filePath?: string;
   content: string;
+  isEditable: boolean; // Optional prop to indicate if the content is editable
 }
 
 // Custom component props for HTML elements, extending HTMLAttributes
@@ -18,7 +26,12 @@ interface MarkdownComponentProps<
   children?: React.ReactNode;
 }
 
-const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
+const MarkdownRenderer: FC<MarkdownRendererProps> = ({
+  tabId,
+  filePath,
+  content,
+  isEditable,
+}) => {
   const components: Components = {
     h1: ({
       children,
@@ -154,6 +167,23 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
 
   return (
     <div className="border-t-2 mt-2.5 prose prose-slate max-w-none p-6 dark:prose-invert text-muted-foreground overflow-y-auto scrollbar-thin">
+      {content.length === 0 && (
+        <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+          <p className="text-lg">Generate Content</p>
+          <div>
+            <Button
+              onClick={() => fetchContent(tabId!, filePath!)}
+              variant="outline"
+              size="sm"
+              className="mt-4 rounded-xl transition-all duration-150"
+            >
+              <Plus className="h-[15px] w-[15px]" />
+              Generate
+            </Button>
+          </div>
+        </div>
+      )}
+      {!isEditable && <MarkdownToolbar />}
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeRaw, rehypeKatex]}
