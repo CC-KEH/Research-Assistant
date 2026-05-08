@@ -113,6 +113,7 @@
   --sidebar-accent-foreground:  #C9B99E;
   --sidebar-border:             #2E2820;
   --sidebar-ring:               #C9A96E;
+
 }
 
 @theme inline {
@@ -171,6 +172,9 @@
   }
   h4 {
     @apply font-light text-muted-foreground tracking-wide;
+  }
+  p {
+    @apply dark:text-gray-500 text-gray-700;
   }
 }
 

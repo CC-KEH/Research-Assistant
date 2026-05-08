@@ -9,14 +9,13 @@ import MarkdownToolbar from "./MarkdownToolbar";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchContent } from "@/lib/backend";
-import { FileInfo } from "@/lib/types";
 
 // Props interface for the MarkdownRenderer component
 interface MarkdownRendererProps {
   tabId?: string;
   filePath?: string;
   content: string;
-  isEditable: boolean; // Optional prop to indicate if the content is editable
+  showControlPanel: boolean; // Optional prop to indicate if the content is editable
 }
 
 // Custom component props for HTML elements, extending HTMLAttributes
@@ -30,7 +29,7 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
   tabId,
   filePath,
   content,
-  isEditable,
+  showControlPanel,
 }) => {
   const components: Components = {
     h1: ({
@@ -166,11 +165,15 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
   };
 
   return (
-    <div className="border-t-2 mt-2.5 prose prose-slate max-w-none p-6 dark:prose-invert text-muted-foreground overflow-y-auto scrollbar-thin">
+    <div className="border-t-2 mt-2.5 h-full w-full prose prose-slate max-w-none p-6 dark:prose-invert text-muted-foreground overflow-y-auto scrollbar-thin">
       {content.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-          <p className="text-lg">Generate Content</p>
-          <div>
+        <div className="m-0 p-0 h-full flex flex-col items-center justify-center self-center overflow-hidden">
+          <div className="flex flex-col items-center justify-center self-center text-center text-gray-500 overflow-hidden">
+            <p>
+              No content available yet. Click the button below to generate
+              content.
+            </p>
+            <p className="text-lg">Generate Content</p>
             <Button
               onClick={() => fetchContent(tabId!, filePath!)}
               variant="outline"
@@ -183,7 +186,11 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
           </div>
         </div>
       )}
-      {!isEditable && <MarkdownToolbar />}
+      {showControlPanel && (
+        <div className="flex justify-center z-10">
+          <MarkdownToolbar />
+        </div>
+      )}
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeRaw, rehypeKatex]}

@@ -33,25 +33,19 @@ export default function PaperRenderer({
           const parsed = JSON.parse(paperTabContent);
 
           if (parsed?.detail) {
-            parseError = parsed.detail;
+            parseError =
+              "Something went wrong. Please try refreshing the page. If the issue persists, contact support.";
           } else if (Array.isArray(parsed)) {
             suggestions = parsed;
           } else {
-            parseError = "Unexpected response format from backend.";
+            parseError =
+              "Something went wrong. Please try refreshing the page. If the issue persists, contact support.";
           }
         }
       } catch (e) {
-        parseError = "Failed to parse related papers data from backend.";
+        parseError =
+          "Something went wrong. Please try refreshing the page. If the issue persists, contact support.";
         error(`arXiv JSON parse error: ${e} — raw content: ${paperTabContent}`);
-      }
-
-      if (parseError) {
-        return (
-          <div className="p-6 m-3 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-sm whitespace-pre-wrap">
-            <p className="font-semibold mb-2">Error processing arxiv</p>
-            <p>{parseError}</p>
-          </div>
-        );
       }
 
       return (
@@ -62,34 +56,32 @@ export default function PaperRenderer({
         />
       );
     }
-
     default: {
       if (isLoadingPaperTab) return <Loading />;
 
-      // Check if content is a JSON error response (e.g. { detail: "..." })
-      let displayContent = paperTabContent || "No content available yet.";
-      if (paperTabContent?.trim().startsWith("{")) {
-        try {
-          const parsed = JSON.parse(paperTabContent);
-          if (parsed?.detail) {
-            return (
-              <div className="p-6 m-3 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-sm whitespace-pre-wrap">
-                <p className="font-semibold mb-2">
-                  Error processing {activeTab}
-                </p>
-                <p>{parsed.detail}</p>
-              </div>
-            );
-          }
-        } catch {
-          // Not JSON, fall through to render as markdown
+      try {
+        const parsed = paperTabContent?.trim().startsWith("{")
+          ? JSON.parse(paperTabContent)
+          : null;
+
+        if (parsed?.detail) {
+          return (
+            <MarkdownRenderer
+              content=""
+              showControlPanel={false}
+              filePath={filePath}
+              tabId={activeTab}
+            />
+          );
         }
+      } catch {
+        // Ignore JSON parse errors and render markdown normally
       }
 
       return (
         <MarkdownRenderer
-          content={displayContent}
-          isEditable={false}
+          content={paperTabContent}
+          showControlPanel={true}
           filePath={filePath}
           tabId={activeTab}
         />

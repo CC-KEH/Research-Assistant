@@ -56,7 +56,7 @@ function EmptyState() {
     <div className="flex h-full w-full items-center justify-center flex-col p-4">
       <div className="flex flex-1 flex-col items-center justify-center gap-5 w-full">
         {/* Dashed drop zone */}
-        <div className="flex flex-col items-center justify-center gap-4 w-full max-w-[260px] rounded-xl border border-dashed border-border/60 px-6 py-10 ">
+        <div className="flex flex-col items-center justify-center gap-4 w-full max-w-[260px] rounded-xl border border-border/60 px-6 py-10 ">
           {/* Stacked pages illustration */}
           <div className="relative h-14 w-10">
             {/* Back page */}

@@ -28,12 +28,9 @@ export default function Suggestions({
   );
 
   return (
-    <div className="mt-3 text-muted-foreground w-full h-full flex flex-col">
+    <div className="mt-3 border-t-2 text-muted-foreground w-full h-full flex flex-col">
       {/* FIX: changed h1 → h2 — h1 implies a top-level page heading.
           This is a panel section within a larger layout. */}
-      <h2 className="text-center mb-6 border-b pb-2 text-xl font-semibold">
-        Similar / Related Papers
-      </h2>
 
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">

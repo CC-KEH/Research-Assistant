@@ -457,7 +457,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   return (
     <div
-      className={`border-t-2 mt-2.5 min-h-0 rounded-md flex flex-col ${
+      className={`mt-2.5 min-h-0 rounded-md flex flex-col ${
         pageRendered
           ? isDarkMode
             ? "bg-black text-white"
@@ -466,7 +466,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       }`}
     >
       {showSearchBox && (
-        <Card className="fixed top-4 right-6 p-3 z-50 w-72 shadow-xl">
+        <Card className="fixed top-24 right-26 p-3 z-50 w-72 shadow-xl">
           <Input
             ref={searchInputRef}
             placeholder="Search..."
