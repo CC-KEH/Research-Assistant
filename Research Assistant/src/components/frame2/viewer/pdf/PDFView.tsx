@@ -477,7 +477,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         </Card>
       )}
 
-      <div className="relative flex-1 min-h-0 overflow-y-auto flex justify-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative flex-1 h-full w-full overflow-y-auto flex justify-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Toolbar */}
         <div
           className={`fixed bottom-6 z-50 flex flex-row items-center gap-0.5 p-1.5 rounded-2xl border ${toolbarStyles.base}`}
@@ -562,7 +562,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         </div>
 
         {/* Your skeleton — shown while fetching OR while page hasn't rendered yet */}
-        {showSkeleton && <Loading />}
+        {showSkeleton && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loading />
+          </div>
+        )}
 
         {/* No PDF state */}
         {!isLoadingPdf && !pdfSource && (

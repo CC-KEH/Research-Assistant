@@ -1,4 +1,4 @@
-import React, { FC, HTMLAttributes } from "react";
+import React, { FC, HTMLAttributes, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -6,7 +6,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import MarkdownToolbar from "./MarkdownToolbar";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchContent } from "@/lib/backend";
 
@@ -28,9 +28,29 @@ interface MarkdownComponentProps<
 const MarkdownRenderer: FC<MarkdownRendererProps> = ({
   tabId,
   filePath,
-  content,
+  content: initialContent,
   showControlPanel,
 }) => {
+  const [content, setContent] = useState<string>(initialContent);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    if (!tabId || !filePath) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const fetched = await fetchContent(tabId, filePath);
+      setContent(fetched);
+    } catch (err) {
+      setError(
+        "Failed to generate content. Please check your API key and try again.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const components: Components = {
     h1: ({
       children,
@@ -166,16 +186,17 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
 
   return (
     <div className="border-t-2 mt-2.5 h-full w-full prose prose-slate max-w-none p-6 dark:prose-invert text-muted-foreground overflow-y-auto scrollbar-thin">
-      {content.length === 0 && (
+      {content.length === 0 && !isLoading && (
         <div className="m-0 p-0 h-full flex flex-col items-center justify-center self-center overflow-hidden">
           <div className="flex flex-col items-center justify-center self-center text-center text-gray-500 overflow-hidden">
+            {error && <p className="text-red-500 mb-2">{error}</p>}
             <p>
               No content available yet. Click the button below to generate
               content.
             </p>
             <p className="text-lg">Generate Content</p>
             <Button
-              onClick={() => fetchContent(tabId!, filePath!)}
+              onClick={handleGenerate}
               variant="outline"
               size="sm"
               className="mt-4 rounded-xl transition-all duration-150"
@@ -186,18 +207,30 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
           </div>
         </div>
       )}
-      {showControlPanel && (
-        <div className="flex justify-center z-10">
-          <MarkdownToolbar />
+
+      {isLoading && (
+        <div className="h-full flex items-center justify-center text-gray-400">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />
+          Generating...
         </div>
       )}
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeRaw, rehypeKatex]}
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
+
+      {!isLoading && content.length > 0 && (
+        <>
+          {showControlPanel && (
+            <div className="flex justify-center z-10">
+              <MarkdownToolbar />
+            </div>
+          )}
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeRaw, rehypeKatex]}
+            components={components}
+          >
+            {content}
+          </ReactMarkdown>
+        </>
+      )}
     </div>
   );
 };

@@ -690,27 +690,28 @@ export const fetchContent = async (
   tab_id: string,
   file_path: string,
 ): Promise<string> => {
-  const content = await fetch(`${PYTHON_API_BASE}/process_tabs`, {
+  const response = await fetch(`${PYTHON_API_BASE}/process_tabs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ tab_id: tab_id, file_path: file_path }),
   });
-  saveContent(tab_id, file_path, content);
-  return content.text();
+  const text = await response.text(); // resolve first
+  saveContent(tab_id, file_path, text); // then save the string
+  return text;
 };
 
 export const saveContent = async (
   tab_id: string,
   file_path: string,
-  content: Response,
+  content: string,
 ): Promise<void> => {
   try {
     await invoke("update_knowledge_store", {
       tabId: tab_id,
       fileName: file_path,
-      content: await content.text(),
+      content: content,
     });
   } catch (err) {
     error(`Error saving content for tab ${tab_id}: ${err}`);
@@ -780,10 +781,6 @@ export const saveContentToPDF = async (
     : "";
 
   try {
-    if (!knowledgeStoreConfig.files.length) {
-      throw new Error("No content provided");
-    }
-
     if (!documentsPath) {
       throw new Error("Invalid documents path");
     }
@@ -822,14 +819,8 @@ export const saveContentToPDF = async (
         const content = knowledgeFile.fileData?.[tab.id];
 
         if (tab.id === "arxiv") {
-          const arxivList: string[] = (() => {
-            try {
-              const parsed = JSON.parse(content ?? "[]");
-              return Array.isArray(parsed) ? parsed : [];
-            } catch {
-              return [];
-            }
-          })();
+          // Already a string[] — no JSON.parse needed
+          const arxivList = Array.isArray(content) ? content : [];
 
           if (arxivList.length === 0) return;
 
@@ -845,7 +836,9 @@ export const saveContentToPDF = async (
             yPosition += arxivLines.length * 5 + 2;
           });
         } else {
-          if (!content || content === "N/A") return;
+          // Narrow to string — skip arrays and empty values
+          if (typeof content !== "string" || !content || content === "N/A")
+            return;
 
           pdf.setFontSize(12);
           pdf.setFont("helvetica", "bold");
@@ -860,12 +853,10 @@ export const saveContentToPDF = async (
       });
     });
 
-    // Get PDF as array buffer
     const pdfBytes = pdf.output("arraybuffer");
     const uint8Array = new Uint8Array(pdfBytes);
     const pdfData = Array.from(uint8Array);
 
-    // Call Tauri command to save PDF file
     await invoke("save_pdf", {
       filePath: documentsPath,
       pdfData: pdfData,

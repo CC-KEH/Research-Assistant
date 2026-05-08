@@ -52,7 +52,7 @@ pub struct KnowledgeFile {
     pub feed_llm: bool,
     pub file_type: String,
     pub is_processed: bool,
-    pub file_data: HashMap<String, String>,
+    pub file_data: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]

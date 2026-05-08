@@ -63,7 +63,7 @@ export interface KnowledgeFile {
   fileType: string;
   feedLlm: boolean;
   isProcessed: boolean;
-  fileData: Record<string, string>;
+  fileData: Record<string, string | string[]>;
 }
 
 export interface ArxivItem {

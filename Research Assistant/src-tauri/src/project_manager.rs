@@ -675,6 +675,62 @@ pub fn upload_to_knowledge_store(
 }
 
 #[tauri::command]
+pub fn update_knowledge_store(
+    file_path: String,
+    project_root: String,
+    feed_llm: Option<bool>,
+    is_processed: Option<bool>,
+    file_data: Option<HashMap<String, serde_json::Value>>,
+) -> Result<FileInfo, String> {
+    // Construct config path
+    let config_path = PathBuf::from(&project_root).join("config.json");
+    let config_path_str = config_path
+        .to_str()
+        .ok_or_else(|| "Invalid config path".to_string())?
+        .to_string();
+
+    // Read current config
+    let mut config = get_config(config_path_str.clone())?;
+
+    // Find the file in the knowledge store
+    let knowledge_file = config
+        .knowledge_store_config
+        .files
+        .iter_mut()
+        .find(|f| f.file_path == file_path)
+        .ok_or_else(|| format!("File not found in knowledge store: {}", file_path))?;
+
+    // Apply partial updates — only fields that are Some(...)
+    if let Some(feed_llm_val) = feed_llm {
+        knowledge_file.feed_llm = feed_llm_val;
+    }
+    if let Some(is_processed_val) = is_processed {
+        knowledge_file.is_processed = is_processed_val;
+    }
+    if let Some(file_data_val) = file_data {
+        knowledge_file.file_data = file_data_val;
+    }
+
+    // Capture return info before config is moved
+    let file_info = FileInfo {
+        file_name: knowledge_file.file_name.clone(),
+        file_type: knowledge_file.file_type.clone(),
+        file_path: knowledge_file.file_path.clone(),
+        file_id: format!(
+            "{:?}",
+            PathBuf::from(&knowledge_file.file_path)
+                .canonicalize()
+                .unwrap_or(PathBuf::from(&knowledge_file.file_path))
+        ),
+    };
+
+    // Save updated config
+    update_config(config_path_str, config)?;
+
+    Ok(file_info)
+}
+
+#[tauri::command]
 pub fn delete_item(path: String) -> Result<(), String> {
     let item_path = PathBuf::from(&path);
     if item_path.is_dir() {
@@ -721,7 +777,7 @@ pub fn get_tab_content(
     Ok(file_info
         .file_data
         .get(&tab_id)
-        .cloned()
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
         .unwrap_or_default())
 }
 
