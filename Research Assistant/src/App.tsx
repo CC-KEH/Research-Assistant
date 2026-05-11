@@ -86,8 +86,10 @@ function App() {
     getCurrentWindow().show().catch(console.error);
   }, []);
 
-  const handleProjectPathSet = (path: string) => {
+  const handleProjectInfo = (path: string, projectName: string) => {
     localStorage.setItem("projectPath", path);
+    localStorage.setItem("projectName", projectName);
+
     setProjectPath(path);
   };
 
@@ -96,7 +98,9 @@ function App() {
       {/* Outer shell: full viewport, column layout */}
       <div className="flex flex-col h-screen w-screen">
         {/* Title bar always on top, outside the router so it never unmounts */}
-        <TitleBar title="My App" />
+        <TitleBar
+          title={localStorage.getItem("projectName") || "Research Assistant"}
+        />
 
         {/* Page content fills the rest */}
         <div className="flex-1">
@@ -108,7 +112,7 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route
               path="/project-setup"
-              element={<ProjectSetup onProjectPathSet={handleProjectPathSet} />}
+              element={<ProjectSetup onProjectInfo={handleProjectInfo} />}
             />
             <Route element={<ProtectedRoutes projectPath={projectPath} />}>
               <Route path="/workspace" element={<Workspace />} />

@@ -60,10 +60,10 @@ const tabs = [
 ];
 
 interface ProjectSetupProps {
-  onProjectPathSet: (path: string) => void;
+  onProjectInfo: (path: string, projectName: string) => void;
 }
 
-export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
+export function ProjectSetup({ onProjectInfo }: ProjectSetupProps) {
   useEffect(() => {
     info("<<<<<ProjectSetup mounted>>>>>");
   }, []);
@@ -130,7 +130,10 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
     values: z.infer<typeof loadProjectSchema>,
   ) {
     try {
-      onProjectPathSet(values.projectpath);
+      onProjectInfo(
+        values.projectpath,
+        values.projectpath.split("/").slice(-1)[0],
+      );
       setTimeout(() => navigate("/workspace"), 500);
     } catch (err) {
       error(`Failed to load project: ${err}`);
@@ -150,7 +153,7 @@ export function ProjectSetup({ onProjectPathSet }: ProjectSetupProps) {
       )) as { projectPath: string };
 
       info("✅ Project created");
-      onProjectPathSet(result.projectPath);
+      onProjectInfo(result.projectPath, values.projectname);
       navigate("/workspace");
     } catch (err) {
       error(`Failed to create project: ${err}`);
