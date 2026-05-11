@@ -1,4 +1,4 @@
-import React, { FC, HTMLAttributes, useState } from "react";
+import React, { FC, HTMLAttributes, useCallback, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -35,7 +35,7 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     if (!tabId || !filePath) return;
     setIsLoading(true);
     setError(null);
@@ -49,7 +49,7 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tabId, filePath]);
 
   const components: Components = {
     h1: ({
@@ -219,7 +219,7 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
         <>
           {showControlPanel && (
             <div className="flex justify-center z-10">
-              <MarkdownToolbar />
+              <MarkdownToolbar generateDoc={handleGenerate} />
             </div>
           )}
           <ReactMarkdown

@@ -698,6 +698,7 @@ export const fetchContent = async (
     body: JSON.stringify({ tab_id: tab_id, file_path: file_path }),
   });
   const text = await response.text(); // resolve first
+  // TODO: Ask user if they want the current content to be overwritten if it already exists in the knowledge store
   saveContent(tab_id, file_path, text); // then save the string
   return text;
 };
@@ -757,6 +758,9 @@ export const getContent = async (
     fileName: file_name,
     configPath: config_path,
   });
+  if (!content) {
+    throw new Error(`No content found for tab ${tab_id} and file ${file_name}`);
+  }
   return content;
 };
 

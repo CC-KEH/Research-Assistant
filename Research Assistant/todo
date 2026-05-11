@@ -1,7 +1,12 @@
+[Saturday]
 - [ ] Viewer Controlbar: Generate | Change Prompt | Previous/Current Version
-- [ ] Responsive Layout
-- [ ] PDF Loader visibility
-- [ ] Do something with Plan.tsx
-- [ ] Refactor
-- [ ] API Testing
 - [ ] Search doesn't show text present in other pages.
+- [ ] PDF Loader visibility
+- [ ] Responsive Layout
+- [ ] Show Project name in titlebar
+
+[Sunday]
+- [ ] Refactor
+- [ ] Arxiv
+- [ ] API Testing
+- [ ] Do something with Plan.tsx

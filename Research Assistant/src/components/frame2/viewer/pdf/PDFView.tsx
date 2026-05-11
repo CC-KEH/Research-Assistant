@@ -11,14 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import {
-  ChevronLeft,
-  ChevronRight,
   EraserIcon,
   HighlighterIcon,
   MoonIcon,
   PenIcon,
   SunIcon,
   DownloadIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -40,29 +40,58 @@ interface PDFViewerProps {
   file: string;
 }
 
+// A positioned highlight rect over the page
+interface MatchRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  pageNum: number; // which page wrapper it belongs to
+  globalIndex: number; // across all pages
+}
+
 const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [tool, setTool] = useState<"pen" | "highlight" | "eraser" | null>(null);
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const pageContainerRef = useRef<HTMLDivElement | null>(null);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-
-  const focusTimeoutRef = useRef<number | null>(null);
-
-  const [drawing, setDrawing] = useState(false);
+  const [pdfSource, setPdfSource] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(false);
   const [pagePathsMap, setPagePathsMap] = useState<PagePathsMap>({});
-  const [currentPath, setCurrentPath] = useState<AnnotationPath | null>(null);
   const [historyMap, setHistoryMap] = useState<
     Record<number, AnnotationPath[][]>
   >({});
   const [showSearchBox, setShowSearchBox] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [pdfSource, setPdfSource] = useState<string | null>(null);
-  const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(false);
-  const [pageRendered, setPageRendered] = useState<boolean>(false);
+
+  // Search match state
+  const [matchRects, setMatchRects] = useState<MatchRect[]>([]);
+  const [activeMatchIndex, setActiveMatchIndex] = useState<number>(-1);
+
+  // One canvas ref + page wrapper ref per page
+  const canvasRefs = useRef<Record<number, HTMLCanvasElement | null>>({});
+  const pageWrapperRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  // Drawing state in a ref to avoid stale closures
+  const drawingState = useRef<{
+    active: boolean;
+    page: number;
+    currentPath: AnnotationPath | null;
+  }>({ active: false, page: 1, currentPath: null });
+
+  // Track how many pages have rendered so we can re-scan after all are ready
+  const renderedPagesRef = useRef<Set<number>>(new Set());
+
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const focusTimeoutRef = useRef<number | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Scrollbar thumb drag state
+  const thumbDragRef = useRef<{
+    startY: number;
+    startScrollTop: number;
+  } | null>(null);
+  const [thumbTop, setThumbTop] = useState(0);
+  const [thumbHeight, setThumbHeight] = useState(0);
 
   const { config, updateConfig } = useConfig();
 
@@ -83,86 +112,51 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     [isDarkMode],
   );
 
-  // ─── currentPaths ────────────────────────────────────────────────────────
-
-  const currentPaths = useMemo<AnnotationPath[]>(
-    () => pagePathsMap[pageNumber] ?? [],
-    [pagePathsMap, pageNumber],
-  );
-
-  // ─── Annotations: persist ────────────────────────────────────────────────
+  // ─── Annotations: persist / read ────────────────────────────────────────
 
   const persistAnnotations = useCallback(
-    (updatedPagePathsMap: PagePathsMap) => {
+    (updatedMap: PagePathsMap) => {
       if (!config) return;
       updateConfig({
         ...config,
         annotations: {
           ...(config.annotations ?? {}),
-          [file]: {
-            pagePathsMap: updatedPagePathsMap,
-          } satisfies FileAnnotations,
+          [file]: { pagePathsMap: updatedMap } satisfies FileAnnotations,
         },
       });
     },
     [file, config, updateConfig],
   );
 
-  // ─── Annotations: read ───────────────────────────────────────────────────
-
   const readAnnotationsFromConfig = useCallback((): PagePathsMap => {
-    const fileAnnotations: FileAnnotations | undefined =
-      config?.annotations?.[file];
-    if (!fileAnnotations) return {};
-
-    const normalised: PagePathsMap = {};
-    for (const [k, v] of Object.entries(fileAnnotations.pagePathsMap)) {
-      normalised[Number(k)] = v;
-    }
-    return normalised;
+    const fa: FileAnnotations | undefined = config?.annotations?.[file];
+    if (!fa) return {};
+    const out: PagePathsMap = {};
+    for (const [k, v] of Object.entries(fa.pagePathsMap)) out[Number(k)] = v;
+    return out;
   }, [file, config]);
 
-  // ─── Annotations: update page paths ─────────────────────────────────────
-
-  const updatePagePaths = useCallback(
-    (page: number, updater: (prev: AnnotationPath[]) => AnnotationPath[]) => {
-      setPagePathsMap((prev) => {
-        const updated: PagePathsMap = {
-          ...prev,
-          [page]: updater(prev[page] ?? []),
-        };
-        return updated;
-      });
-      setPagePathsMap((prev) => {
-        persistAnnotations(prev);
-        return prev;
-      });
-    },
-    [persistAnnotations],
-  );
-
-  // ─── Load PDF on file change ─────────────────────────────────────────────
+  // ─── Load PDF ────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!file) return;
-    setPageNumber(1);
     setPagePathsMap({});
     setHistoryMap({});
-    setCurrentPath(null);
-    setDrawing(false);
-    setPageRendered(false);
     setPdfSource(null);
+    setMatchRects([]);
+    setActiveMatchIndex(-1);
+    canvasRefs.current = {};
+    pageWrapperRefs.current = {};
+    renderedPagesRef.current = new Set();
 
     let cancelled = false;
     setIsLoadingPdf(true);
-
     invoke<string>("read_pdf_file", { filePath: file })
-      .then((base64String) => {
-        if (!cancelled)
-          setPdfSource(`data:application/pdf;base64,${base64String}`);
+      .then((b64) => {
+        if (!cancelled) setPdfSource(`data:application/pdf;base64,${b64}`);
       })
       .catch((err) => {
-        if (!cancelled) error(`Failed to load PDF from ${file}: ${err}`);
+        if (!cancelled) error(`Failed to load PDF: ${err}`);
       })
       .finally(() => {
         if (!cancelled) setIsLoadingPdf(false);
@@ -173,237 +167,341 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     };
   }, [file]);
 
-  // ─── Load annotations on file change ────────────────────────────────────
-
   useEffect(() => {
     if (!file) return;
     const saved = readAnnotationsFromConfig();
-    if (Object.keys(saved).length > 0) {
-      setPagePathsMap(saved);
-    }
+    if (Object.keys(saved).length > 0) setPagePathsMap(saved);
   }, [file, readAnnotationsFromConfig]);
 
   // ─── Document load ───────────────────────────────────────────────────────
 
   const onDocumentLoadSuccess = useCallback(
-    ({ numPages }: { numPages: number }) => setNumPages(numPages),
+    ({ numPages }: { numPages: number }) => {
+      setNumPages(numPages);
+      renderedPagesRef.current = new Set();
+    },
     [],
   );
 
-  // ─── Page render: size annotation canvas to CSS pixels ──────────────────
+  // ─── Canvas: redraw ───────────────────────────────────────────────────────
 
-  const onPageRenderSuccess = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = pageContainerRef.current;
-    if (!canvas || !container) return;
+  const redrawCanvas = useCallback(
+    (pageNum: number, paths: AnnotationPath[]) => {
+      const canvas = canvasRefs.current[pageNum];
+      const ctx = canvas?.getContext("2d");
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      paths.forEach((path) => {
+        if (!path.points.length) return;
+        ctx.beginPath();
+        path.points.forEach((pt, i) =>
+          i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y),
+        );
+        ctx.strokeStyle = path.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
+        ctx.lineWidth = path.tool === "pen" ? 2 : 20;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+      });
+    },
+    [],
+  );
 
-    const pdfCanvas = container.querySelector(
-      ".react-pdf__Page__canvas",
-    ) as HTMLCanvasElement | null;
+  useEffect(() => {
+    for (const [k, paths] of Object.entries(pagePathsMap)) {
+      redrawCanvas(Number(k), paths);
+    }
+  }, [pagePathsMap, redrawCanvas]);
 
-    if (pdfCanvas) {
-      const cssW = parseFloat(pdfCanvas.style.width) || pdfCanvas.offsetWidth;
-      const cssH = parseFloat(pdfCanvas.style.height) || pdfCanvas.offsetHeight;
+  // ─── Page render: size the overlay canvas ────────────────────────────────
 
-      canvas.width = cssW;
-      canvas.height = cssH;
-      canvas.style.width = `${cssW}px`;
-      canvas.style.height = `${cssH}px`;
+  const onPageRenderSuccess = useCallback(
+    (pageNum: number) => () => {
+      const canvas = canvasRefs.current[pageNum];
+      if (!canvas) return;
+      const pdfCanvas = canvas.parentElement?.querySelector(
+        ".react-pdf__Page__canvas",
+      ) as HTMLCanvasElement | null;
+      if (!pdfCanvas) return;
+      const w = parseFloat(pdfCanvas.style.width) || pdfCanvas.offsetWidth;
+      const h = parseFloat(pdfCanvas.style.height) || pdfCanvas.offsetHeight;
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      redrawCanvas(pageNum, pagePathsMap[pageNum] ?? []);
+      renderedPagesRef.current.add(pageNum);
+    },
+    [pagePathsMap, redrawCanvas],
+  );
+
+  // ─── Search: compute match rects from text layer spans ───────────────────
+  //
+  // react-pdf's text layer applies CSS transforms (scale, rotate) to each span
+  // to match the PDF glyph positions. We must NOT use innerHTML injection because
+  // the highlight would be the wrong size/position after the transform.
+  //
+  // Instead: for each matching span, get its getBoundingClientRect() (already
+  // accounts for the CSS transform), then translate it into coordinates relative
+  // to the page wrapper div. This gives us pixel-perfect overlay rects.
+
+  const computeMatchRects = useCallback(() => {
+    if (!searchTerm) {
+      setMatchRects([]);
+      setActiveMatchIndex(-1);
+      return;
     }
 
-    setPageRendered(true);
-  }, []);
+    const lower = searchTerm.toLowerCase();
+    const rects: MatchRect[] = [];
+    let globalIndex = 0;
 
-  // Reset pageRendered when navigating
-  useEffect(() => {
-    setPageRendered(false);
-  }, [pageNumber]);
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      const wrapper = pageWrapperRefs.current[pageNum];
+      if (!wrapper) continue;
 
-  // ─── Redraw canvas ───────────────────────────────────────────────────────
+      const wrapperRect = wrapper.getBoundingClientRect();
 
-  const redrawCanvas = useCallback((paths: AnnotationPath[]) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!ctx || !canvas) return;
+      const spans = wrapper.querySelectorAll<HTMLElement>(
+        ".react-pdf__Page__textContent span",
+      );
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    paths.forEach((path) => {
-      if (path.points.length === 0) return;
-      ctx.beginPath();
-      path.points.forEach((pt, idx) => {
-        if (idx === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
+      spans.forEach((span) => {
+        const text = span.textContent ?? "";
+        if (!text.toLowerCase().includes(lower)) return;
+
+        // getBoundingClientRect already accounts for CSS transforms on the span
+        const sr = span.getBoundingClientRect();
+        rects.push({
+          top: sr.top - wrapperRect.top,
+          left: sr.left - wrapperRect.left,
+          width: sr.width,
+          height: sr.height,
+          pageNum,
+          globalIndex: globalIndex++,
+        });
       });
-      ctx.strokeStyle = path.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
-      ctx.lineWidth = path.tool === "pen" ? 2 : 20;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.stroke();
-    });
+    }
+
+    setMatchRects(rects);
+    setActiveMatchIndex(rects.length > 0 ? 0 : -1);
+  }, [searchTerm, numPages]);
+
+  // Re-scan whenever term changes or pages finish rendering.
+  // The 150ms delay ensures text layers are mounted after onRenderSuccess.
+  useEffect(() => {
+    const id = setTimeout(computeMatchRects, 150);
+    return () => clearTimeout(id);
+  }, [computeMatchRects]);
+
+  // ─── Scroll active match into view ───────────────────────────────────────
+
+  useEffect(() => {
+    if (activeMatchIndex < 0 || !matchRects[activeMatchIndex]) return;
+    const m = matchRects[activeMatchIndex];
+    const wrapper = pageWrapperRefs.current[m.pageNum];
+    const container = scrollContainerRef.current;
+    if (!wrapper || !container) return;
+
+    // Scroll so the match is centred in the viewport
+    const wrapperTop = wrapper.offsetTop; // relative to scroll container
+    const matchMidY = wrapperTop + m.top + m.height / 2;
+    const targetScrollTop = matchMidY - container.clientHeight / 2;
+    container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+  }, [activeMatchIndex, matchRects]);
+
+  const navigateMatch = useCallback(
+    (direction: 1 | -1) => {
+      setActiveMatchIndex((prev) => {
+        if (matchRects.length === 0) return -1;
+        if (prev < 0) return 0;
+        return (prev + direction + matchRects.length) % matchRects.length;
+      });
+    },
+    [matchRects.length],
+  );
+
+  // ─── Scrollbar ────────────────────────────────────────────────────────────
+
+  const updateScrollbar = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const ratio = el.clientHeight / el.scrollHeight;
+    const tH = Math.max(el.clientHeight * ratio, 32);
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    const tT =
+      maxScroll > 0 ? (el.scrollTop / maxScroll) * (el.clientHeight - tH) : 0;
+    setThumbHeight(tH);
+    setThumbTop(tT);
   }, []);
 
   useEffect(() => {
-    if (!pageRendered) return;
-    redrawCanvas(pagePathsMap[pageNumber] ?? []);
-  }, [pagePathsMap, pageNumber, pageRendered, redrawCanvas]);
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    updateScrollbar();
+    el.addEventListener("scroll", updateScrollbar, { passive: true });
+    const ro = new ResizeObserver(updateScrollbar);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollbar);
+      ro.disconnect();
+    };
+  }, [updateScrollbar]);
 
-  // ─── Coordinate helper ───────────────────────────────────────────────────
+  const handleThumbMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    thumbDragRef.current = { startY: e.clientY, startScrollTop: el.scrollTop };
+
+    const onMove = (ev: MouseEvent) => {
+      const drag = thumbDragRef.current;
+      if (!drag || !el) return;
+      const dy = ev.clientY - drag.startY;
+      const ratio = el.scrollHeight / el.clientHeight;
+      el.scrollTop = drag.startScrollTop + dy * ratio;
+    };
+    const onUp = () => {
+      thumbDragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, []);
+
+  // ─── Canvas coordinate helper ────────────────────────────────────────────
 
   const getCanvasPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
   // ─── Eraser ──────────────────────────────────────────────────────────────
 
   const eraseAt = useCallback(
-    (pos: { x: number; y: number }) => {
-      const ERASER_RADIUS = 20;
-
-      let erasedPaths: AnnotationPath[] | null = null;
-
-      setPagePathsMap((prevMap) => {
-        const paths = prevMap[pageNumber] ?? [];
-        if (paths.length === 0) return prevMap;
-
+    (pageNum: number, pos: { x: number; y: number }) => {
+      const RADIUS = 20;
+      setPagePathsMap((prev) => {
+        const paths = prev[pageNum] ?? [];
         const remaining = paths.filter(
-          (path) =>
-            !path.points.some(
-              (pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < ERASER_RADIUS,
+          (p) =>
+            !p.points.some(
+              (pt) => Math.hypot(pt.x - pos.x, pt.y - pos.y) < RADIUS,
             ),
         );
-
-        if (remaining.length === paths.length) return prevMap;
-
+        if (remaining.length === paths.length) return prev;
         setHistoryMap((h) => ({
           ...h,
-          [pageNumber]: [...(h[pageNumber] ?? []), paths],
+          [pageNum]: [...(h[pageNum] ?? []), paths],
         }));
-
-        const updated: PagePathsMap = { ...prevMap, [pageNumber]: remaining };
+        const updated = { ...prev, [pageNum]: remaining };
         persistAnnotations(updated);
-        erasedPaths = remaining;
+        redrawCanvas(pageNum, remaining);
         return updated;
       });
-
-      if (erasedPaths !== null) redrawCanvas(erasedPaths);
     },
-    [pageNumber, persistAnnotations, redrawCanvas],
+    [persistAnnotations, redrawCanvas],
   );
 
-  // ─── Canvas drawing ──────────────────────────────────────────────────────
+  // ─── Mouse handlers ───────────────────────────────────────────────────────
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+    (pageNum: number) => (e: React.MouseEvent<HTMLCanvasElement>) => {
       const pos = getCanvasPos(e);
       if (tool === "pen" || tool === "highlight") {
-        setDrawing(true);
-        setCurrentPath({ points: [pos], tool });
+        drawingState.current = {
+          active: true,
+          page: pageNum,
+          currentPath: { points: [pos], tool },
+        };
       } else if (tool === "eraser") {
-        setDrawing(true);
-        eraseAt(pos);
+        drawingState.current = {
+          active: true,
+          page: pageNum,
+          currentPath: null,
+        };
+        eraseAt(pageNum, pos);
       }
     },
     [tool, eraseAt],
   );
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!drawing) return;
+    (pageNum: number) => (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const ds = drawingState.current;
+      if (!ds.active || ds.page !== pageNum) return;
       const pos = getCanvasPos(e);
-
-      if (tool === "pen" || tool === "highlight") {
-        setCurrentPath((prev) => {
-          if (!prev) return null;
-          const updated: AnnotationPath = {
-            ...prev,
-            points: [...prev.points, pos],
-          };
-          const ctx = canvasRef.current?.getContext("2d");
-          if (ctx && prev.points.length > 0) {
-            const last = prev.points[prev.points.length - 1];
-            ctx.beginPath();
-            ctx.moveTo(last.x, last.y);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.strokeStyle =
-              prev.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
-            ctx.lineWidth = prev.tool === "pen" ? 2 : 20;
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
-            ctx.stroke();
-          }
-          return updated;
-        });
+      if ((tool === "pen" || tool === "highlight") && ds.currentPath) {
+        const prev = ds.currentPath;
+        const ctx = canvasRefs.current[pageNum]?.getContext("2d");
+        if (ctx && prev.points.length > 0) {
+          const last = prev.points[prev.points.length - 1];
+          ctx.beginPath();
+          ctx.moveTo(last.x, last.y);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.strokeStyle = prev.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
+          ctx.lineWidth = prev.tool === "pen" ? 2 : 20;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.stroke();
+        }
+        drawingState.current.currentPath = {
+          ...prev,
+          points: [...prev.points, pos],
+        };
       } else if (tool === "eraser") {
-        eraseAt(pos);
+        eraseAt(pageNum, pos);
       }
     },
-    [drawing, tool, eraseAt],
+    [tool, eraseAt],
   );
 
-  const handleMouseUp = useCallback(() => {
-    if (currentPath && currentPath.points.length > 0) {
-      setHistoryMap((prev) => ({
-        ...prev,
-        [pageNumber]: [...(prev[pageNumber] ?? []), [...currentPaths]],
-      }));
-      updatePagePaths(pageNumber, (prev) => [...prev, currentPath]);
-      setCurrentPath(null);
-    }
-    setDrawing(false);
-  }, [currentPath, currentPaths, pageNumber, updatePagePaths]);
+  const handleMouseUp = useCallback(
+    (pageNum: number) => () => {
+      const ds = drawingState.current;
+      if (!ds.active || ds.page !== pageNum) return;
+      if (ds.currentPath && ds.currentPath.points.length > 0) {
+        const path = ds.currentPath;
+        setPagePathsMap((prev) => {
+          setHistoryMap((h) => ({
+            ...h,
+            [pageNum]: [...(h[pageNum] ?? []), prev[pageNum] ?? []],
+          }));
+          const updated = {
+            ...prev,
+            [pageNum]: [...(prev[pageNum] ?? []), path],
+          };
+          persistAnnotations(updated);
+          return updated;
+        });
+      }
+      drawingState.current = {
+        active: false,
+        page: pageNum,
+        currentPath: null,
+      };
+    },
+    [persistAnnotations],
+  );
 
   // ─── Undo ────────────────────────────────────────────────────────────────
 
   const handleUndo = useCallback(() => {
-    setHistoryMap((prevHistoryMap) => {
-      const pageHistory = prevHistoryMap[pageNumber] ?? [];
-      if (pageHistory.length === 0) return prevHistoryMap;
-
-      const lastPaths = pageHistory[pageHistory.length - 1];
+    const lastPage = drawingState.current.page;
+    setHistoryMap((prevH) => {
+      const pageHist = prevH[lastPage] ?? [];
+      if (!pageHist.length) return prevH;
+      const lastPaths = pageHist[pageHist.length - 1];
       setPagePathsMap((prev) => {
-        const updated: PagePathsMap = { ...prev, [pageNumber]: lastPaths };
+        const updated = { ...prev, [lastPage]: lastPaths };
         persistAnnotations(updated);
+        redrawCanvas(lastPage, lastPaths);
         return updated;
       });
-
-      return { ...prevHistoryMap, [pageNumber]: pageHistory.slice(0, -1) };
+      return { ...prevH, [lastPage]: pageHist.slice(0, -1) };
     });
-  }, [pageNumber, persistAnnotations]);
-
-  // ─── Search highlighting ─────────────────────────────────────────────────
-
-  const highlightMatches = useCallback(() => {
-    pageContainerRef.current
-      ?.querySelectorAll(".react-pdf__Page__textContent span")
-      .forEach((span) => {
-        const el = span as HTMLElement;
-        const text = el.textContent || "";
-        el.style.backgroundColor =
-          searchTerm && text.toLowerCase().includes(searchTerm.toLowerCase())
-            ? isDarkMode
-              ? "orange"
-              : "yellow"
-            : "";
-      });
-  }, [searchTerm, isDarkMode]);
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => highlightMatches());
-    return () => cancelAnimationFrame(id);
-  }, [highlightMatches, pageNumber]);
-
-  // ─── Navigation ──────────────────────────────────────────────────────────
-
-  const handlePrevPage = useCallback(() => {
-    if (pageNumber > 1) setPageNumber((p) => p - 1);
-  }, [pageNumber]);
-
-  const handleNextPage = useCallback(() => {
-    if (pageNumber < numPages) setPageNumber((p) => p + 1);
-  }, [pageNumber, numPages]);
+  }, [persistAnnotations, redrawCanvas]);
 
   // ─── Download ────────────────────────────────────────────────────────────
 
@@ -437,189 +535,271 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         handleUndo();
+      } else if (e.key === "Enter" && showSearchBox) {
+        e.preventDefault();
+        navigateMatch(e.shiftKey ? -1 : 1);
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      if (focusTimeoutRef.current !== null) {
+      if (focusTimeoutRef.current !== null)
         window.clearTimeout(focusTimeoutRef.current);
-      }
     };
-  }, [handleUndo]);
-
-  // ─── Derived: should show skeleton ──────────────────────────────────────
-
-  const showSkeleton = isLoadingPdf || (!!pdfSource && !pageRendered);
+  }, [handleUndo, navigateMatch, showSearchBox]);
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
+  const showScrollbar =
+    thumbHeight < (scrollContainerRef.current?.clientHeight ?? 0);
+
   return (
     <div
-      className={`mt-2.5 min-h-0 rounded-md flex flex-col ${
-        pageRendered
-          ? isDarkMode
-            ? "bg-black text-white"
-            : "bg-white text-black"
-          : ""
-      }`}
+      className={`mt-2.5 min-h-0 rounded-md flex flex-col ${isDarkMode ? "bg-black text-white" : "bg-white text-black"}`}
     >
+      {/* Search box */}
       {showSearchBox && (
-        <Card className="fixed top-24 right-26 p-3 z-50 w-72 shadow-xl">
-          <Input
-            ref={searchInputRef}
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
+        <Card className="fixed top-24 right-26 p-3 z-50 w-80 shadow-xl">
+          <div className="flex gap-1">
+            <Input
+              ref={searchInputRef}
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  navigateMatch(e.shiftKey ? -1 : 1);
+                }
+              }}
+              className="w-full"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigateMatch(-1)}
+              disabled={!searchTerm}
+              className="shrink-0 px-2"
+              title="Previous (Shift+Enter)"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigateMatch(1)}
+              disabled={!searchTerm}
+              className="shrink-0 px-2"
+              title="Next (Enter)"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          {matchRects.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {activeMatchIndex + 1} / {matchRects.length} · Shift+Enter ← ·
+              Enter →
+            </p>
+          )}
+          {searchTerm && matchRects.length === 0 && (
+            <p className="text-xs text-muted-foreground mt-1.5">No matches</p>
+          )}
         </Card>
       )}
 
-      <div className="relative flex-1 h-full w-full overflow-y-auto flex justify-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Toolbar */}
+      {/* Outer wrapper for scroll + scrollbar */}
+      <div className="relative flex-1 min-h-0">
+        {/* Scroll container */}
         <div
-          className={`fixed bottom-6 z-50 flex flex-row items-center gap-0.5 p-1.5 rounded-2xl border ${toolbarStyles.base}`}
+          ref={scrollContainerRef}
+          className="h-full w-full overflow-y-auto flex flex-col items-center gap-4 py-4"
+          style={{ scrollbarWidth: "none" }}
         >
-          <Button
-            onClick={handlePrevPage}
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarStyles.btn}`}
-          >
-            <ChevronLeft className="h-[15px] w-[15px]" />
-          </Button>
-          <Button
-            onClick={handleNextPage}
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarStyles.btn}`}
-          >
-            <ChevronRight className="h-[15px] w-[15px]" />
-          </Button>
-
+          {/* Floating toolbar */}
           <div
-            className={`mx-1 h-4 w-px rounded-full ${toolbarStyles.divider}`}
-          />
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTool(tool === "pen" ? null : "pen")}
-            className={`h-8 w-8 rounded-xl transition-all duration-150 ${
-              tool === "pen" ? toolbarStyles.btnActive : toolbarStyles.btn
-            }`}
+            className={`fixed bottom-6 z-50 flex flex-row items-center gap-0.5 p-1.5 rounded-2xl border ${toolbarStyles.base}`}
           >
-            <PenIcon className="h-[15px] w-[15px]" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTool(tool === "highlight" ? null : "highlight")}
-            className={`h-8 w-8 rounded-xl transition-all duration-150 ${
-              tool === "highlight" ? toolbarStyles.btnActive : toolbarStyles.btn
-            }`}
-          >
-            <HighlighterIcon className="h-[15px] w-[15px]" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTool(tool === "eraser" ? null : "eraser")}
-            className={`h-8 w-8 rounded-xl transition-all duration-150 ${
-              tool === "eraser" ? toolbarStyles.btnActive : toolbarStyles.btn
-            }`}
-          >
-            <EraserIcon className="h-[15px] w-[15px]" />
-          </Button>
-
-          <div
-            className={`mx-1 h-4 w-px rounded-full ${toolbarStyles.divider}`}
-          />
-
-          <Button
-            onClick={() => setIsDarkMode((d) => !d)}
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarStyles.btn}`}
-          >
-            {isDarkMode ? (
-              <SunIcon className="h-[15px] w-[15px]" />
-            ) : (
-              <MoonIcon className="h-[15px] w-[15px]" />
-            )}
-          </Button>
-
-          <Button
-            onClick={createDocument}
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarStyles.btn}`}
-          >
-            <DownloadIcon className="h-[15px] w-[15px]" />
-          </Button>
-        </div>
-
-        {/* Your skeleton — shown while fetching OR while page hasn't rendered yet */}
-        {showSkeleton && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Loading />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTool(tool === "pen" ? null : "pen")}
+              className={`h-8 w-8 rounded-xl transition-all duration-150 ${tool === "pen" ? toolbarStyles.btnActive : toolbarStyles.btn}`}
+            >
+              <PenIcon className="h-[15px] w-[15px]" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTool(tool === "highlight" ? null : "highlight")}
+              className={`h-8 w-8 rounded-xl transition-all duration-150 ${tool === "highlight" ? toolbarStyles.btnActive : toolbarStyles.btn}`}
+            >
+              <HighlighterIcon className="h-[15px] w-[15px]" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTool(tool === "eraser" ? null : "eraser")}
+              className={`h-8 w-8 rounded-xl transition-all duration-150 ${tool === "eraser" ? toolbarStyles.btnActive : toolbarStyles.btn}`}
+            >
+              <EraserIcon className="h-[15px] w-[15px]" />
+            </Button>
+            <div
+              className={`mx-1 h-4 w-px rounded-full ${toolbarStyles.divider}`}
+            />
+            <Button
+              onClick={() => setIsDarkMode((d) => !d)}
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarStyles.btn}`}
+            >
+              {isDarkMode ? (
+                <SunIcon className="h-[15px] w-[15px]" />
+              ) : (
+                <MoonIcon className="h-[15px] w-[15px]" />
+              )}
+            </Button>
+            <Button
+              onClick={createDocument}
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 rounded-xl transition-all duration-150 ${toolbarStyles.btn}`}
+            >
+              <DownloadIcon className="h-[15px] w-[15px]" />
+            </Button>
           </div>
-        )}
 
-        {/* No PDF state */}
-        {!isLoadingPdf && !pdfSource && (
-          <div className="flex items-center justify-center h-full">
-            <p>No PDF loaded</p>
-          </div>
-        )}
+          {isLoadingPdf && (
+            <div className="flex items-center justify-center h-64">
+              <Loading />
+            </div>
+          )}
+          {!isLoadingPdf && !pdfSource && (
+            <div className="flex items-center justify-center h-full">
+              <p>No PDF loaded</p>
+            </div>
+          )}
 
-        {/* PDF + canvas overlay — always mounted once source exists, hidden until rendered */}
-        {pdfSource && (
-          <div
-            ref={pageContainerRef}
-            style={{
-              // Hide (but keep mounted) so react-pdf can render in the background
-              // without flashing its own built-in loader.
-              visibility: pageRendered ? "visible" : "hidden",
-              position: pageRendered ? "relative" : "absolute",
-              display: "inline-block",
-              filter: isDarkMode ? "invert(1) hue-rotate(180deg)" : "none",
-            }}
-          >
+          {pdfSource && (
             <Document
               file={pdfSource}
               onLoadSuccess={onDocumentLoadSuccess}
-              loading={null} // suppress react-pdf's built-in spinner
-              noData={null} // suppress react-pdf's no-data message
+              loading={<Loading />}
+              noData={null}
             >
-              <Page
-                pageNumber={pageNumber}
-                renderAnnotationLayer
-                renderTextLayer
-                onRenderSuccess={onPageRenderSuccess}
-                loading={null} // suppress react-pdf's page-level spinner
-              />
+              {Array.from({ length: numPages }, (_, i) => i + 1).map(
+                (pageNum) => (
+                  <div
+                    key={pageNum}
+                    ref={(el) => {
+                      pageWrapperRefs.current[pageNum] = el;
+                    }}
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      filter: isDarkMode
+                        ? "invert(1) hue-rotate(180deg)"
+                        : "none",
+                    }}
+                  >
+                    <Page
+                      pageNumber={pageNum}
+                      renderAnnotationLayer
+                      renderTextLayer
+                      onRenderSuccess={onPageRenderSuccess(pageNum)}
+                      loading={null}
+                    />
+
+                    {/* Search highlight overlays — pixel-perfect, above text layer */}
+                    {matchRects
+                      .filter((m) => m.pageNum === pageNum)
+                      .map((m) => (
+                        <div
+                          key={m.globalIndex}
+                          style={{
+                            position: "absolute",
+                            top: m.top,
+                            left: m.left,
+                            width: m.width,
+                            height: m.height,
+                            // Active match: vivid orange; others: semi-transparent yellow
+                            background:
+                              m.globalIndex === activeMatchIndex
+                                ? "rgba(255, 140, 0, 0.55)"
+                                : "rgba(255, 220, 0, 0.35)",
+                            borderRadius: 2,
+                            pointerEvents: "none",
+                            zIndex: 11,
+                            // Pop the active one with a subtle outline
+                            outline:
+                              m.globalIndex === activeMatchIndex
+                                ? "2px solid rgba(255,100,0,0.8)"
+                                : "none",
+                          }}
+                        />
+                      ))}
+
+                    {/* Drawing canvas — above highlights */}
+                    <canvas
+                      ref={(el) => {
+                        canvasRefs.current[pageNum] = el;
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        zIndex: 12,
+                        backgroundColor: "transparent",
+                      }}
+                      className={
+                        tool === "pen" ||
+                        tool === "highlight" ||
+                        tool === "eraser"
+                          ? "pointer-events-auto cursor-crosshair"
+                          : "pointer-events-none"
+                      }
+                      onMouseDown={handleMouseDown(pageNum)}
+                      onMouseMove={handleMouseMove(pageNum)}
+                      onMouseUp={handleMouseUp(pageNum)}
+                      onMouseLeave={handleMouseUp(pageNum)}
+                    />
+                  </div>
+                ),
+              )}
             </Document>
-            <canvas
-              ref={canvasRef}
+          )}
+        </div>
+
+        {/* Minimal custom scrollbar */}
+        {showScrollbar && (
+          <div
+            className="absolute right-0 top-0 bottom-0 w-[10px] rounded-full"
+            style={{ background: "transparent" }}
+          >
+            <div
+              onMouseDown={handleThumbMouseDown}
               style={{
                 position: "absolute",
-                top: 0,
-                left: 0,
-                zIndex: 10,
-                backgroundColor: "transparent",
+                top: thumbTop,
+                height: thumbHeight,
+                width: "5px",
+                borderRadius: "9999px",
+                background: isDarkMode
+                  ? "rgba(237,232,223,0.25)"
+                  : "rgba(44,36,22,0.2)",
+                cursor: "grab",
+                transition: "background 0.15s",
               }}
-              className={
-                tool === "pen" || tool === "highlight" || tool === "eraser"
-                  ? "pointer-events-auto cursor-crosshair"
-                  : "pointer-events-none"
-              }
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onMouseMove={handleMouseMove}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background =
+                  isDarkMode ? "rgba(237,232,223,0.45)" : "rgba(44,36,22,0.4)";
+              }}
+              onMouseLeave={(e) => {
+                if (!thumbDragRef.current)
+                  (e.currentTarget as HTMLDivElement).style.background =
+                    isDarkMode
+                      ? "rgba(237,232,223,0.25)"
+                      : "rgba(44,36,22,0.2)";
+              }}
             />
           </div>
         )}

@@ -11,17 +11,16 @@ const handleCurrentDoc = () => {
   console.log("Navigate to current page");
 };
 
-const generateDoc = () => {
-  // Implement logic to generate a new document
-  console.log("Generate new document");
-};
-
 const changePrompt = () => {
   // Implement logic to change the prompt
   console.log("Change prompt");
 };
 
-export default function MarkdownToolbar() {
+export default function MarkdownToolbar({
+  generateDoc,
+}: {
+  generateDoc: () => Promise<void>;
+}) {
   return (
     <div className="fixed bottom-6 z-50 flex flex-row items-center gap-0.5 p-1.5 rounded-2xl border">
       <Button

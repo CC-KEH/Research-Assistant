@@ -64,7 +64,7 @@ export default function PaperRenderer({
           ? JSON.parse(paperTabContent)
           : null;
 
-        if (parsed?.detail) {
+        if (parsed?.detail || paperTabContent.startsWith("Error:")) {
           return (
             <MarkdownRenderer
               content=""
