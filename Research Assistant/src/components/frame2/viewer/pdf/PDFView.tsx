@@ -40,14 +40,23 @@ interface PDFViewerProps {
   file: string;
 }
 
-// A positioned highlight rect over the page
 interface MatchRect {
   top: number;
   left: number;
   width: number;
   height: number;
-  pageNum: number; // which page wrapper it belongs to
-  globalIndex: number; // across all pages
+  pageNum: number;
+  globalIndex: number;
+}
+
+// A persisted selection-based highlight rect (page-relative coords)
+interface SelectionHighlight {
+  id: string;
+  pageNum: number;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
 }
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
@@ -63,29 +72,30 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const [showSearchBox, setShowSearchBox] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
 
+  // Selection-based highlights
+  const [selectionHighlights, setSelectionHighlights] = useState<
+    SelectionHighlight[]
+  >([]);
+
   // Search match state
   const [matchRects, setMatchRects] = useState<MatchRect[]>([]);
   const [activeMatchIndex, setActiveMatchIndex] = useState<number>(-1);
 
-  // One canvas ref + page wrapper ref per page
   const canvasRefs = useRef<Record<number, HTMLCanvasElement | null>>({});
   const pageWrapperRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  // Drawing state in a ref to avoid stale closures
   const drawingState = useRef<{
     active: boolean;
     page: number;
     currentPath: AnnotationPath | null;
   }>({ active: false, page: 1, currentPath: null });
 
-  // Track how many pages have rendered so we can re-scan after all are ready
   const renderedPagesRef = useRef<Set<number>>(new Set());
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const focusTimeoutRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Scrollbar thumb drag state
   const thumbDragRef = useRef<{
     startY: number;
     startScrollTop: number;
@@ -145,6 +155,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     setPdfSource(null);
     setMatchRects([]);
     setActiveMatchIndex(-1);
+    setSelectionHighlights([]);
     canvasRefs.current = {};
     pageWrapperRefs.current = {};
     renderedPagesRef.current = new Set();
@@ -197,8 +208,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         path.points.forEach((pt, i) =>
           i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y),
         );
-        ctx.strokeStyle = path.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
-        ctx.lineWidth = path.tool === "pen" ? 2 : 20;
+        // Only pen tool draws on canvas now; highlight is selection-based
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.stroke();
@@ -235,15 +247,68 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     [pagePathsMap, redrawCanvas],
   );
 
-  // ─── Search: compute match rects from text layer spans ───────────────────
+  // ─── Selection-based highlighting ────────────────────────────────────────
   //
-  // react-pdf's text layer applies CSS transforms (scale, rotate) to each span
-  // to match the PDF glyph positions. We must NOT use innerHTML injection because
-  // the highlight would be the wrong size/position after the transform.
-  //
-  // Instead: for each matching span, get its getBoundingClientRect() (already
-  // accounts for the CSS transform), then translate it into coordinates relative
-  // to the page wrapper div. This gives us pixel-perfect overlay rects.
+  // When the highlight tool is active and the user releases the mouse anywhere
+  // inside a page wrapper, we read window.getSelection(), iterate over its
+  // DOMRects, and store each rect translated into page-relative coordinates.
+
+  const handlePageMouseUp = useCallback(
+    (pageNum: number) => (e: React.MouseEvent<HTMLDivElement>) => {
+      if (tool !== "highlight") return;
+
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+
+      const range = sel.getRangeAt(0);
+      const rects = Array.from(range.getClientRects());
+      if (!rects.length) return;
+
+      const wrapper = pageWrapperRefs.current[pageNum];
+      if (!wrapper) return;
+      const wrapperRect = wrapper.getBoundingClientRect();
+
+      const newHighlights: SelectionHighlight[] = rects
+        .filter((r) => r.width > 1 && r.height > 1)
+        .map((r) => ({
+          id: `${pageNum}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          pageNum,
+          top: r.top - wrapperRect.top,
+          left: r.left - wrapperRect.left,
+          width: r.width,
+          height: r.height,
+        }));
+
+      if (!newHighlights.length) return;
+
+      setSelectionHighlights((prev) => [...prev, ...newHighlights]);
+
+      // Clear the browser selection so it doesn't linger
+      sel.removeAllRanges();
+    },
+    [tool],
+  );
+
+  // Eraser also removes selection highlights near the click position
+  const eraseSelectionHighlightsAt = useCallback(
+    (pageNum: number, pos: { x: number; y: number }) => {
+      const RADIUS = 20;
+      setSelectionHighlights((prev) =>
+        prev.filter((h) => {
+          if (h.pageNum !== pageNum) return true;
+          // Check if pos is within the highlight rect (expanded by RADIUS)
+          const withinX =
+            pos.x >= h.left - RADIUS && pos.x <= h.left + h.width + RADIUS;
+          const withinY =
+            pos.y >= h.top - RADIUS && pos.y <= h.top + h.height + RADIUS;
+          return !(withinX && withinY);
+        }),
+      );
+    },
+    [],
+  );
+
+  // ─── Search: compute match rects ─────────────────────────────────────────
 
   const computeMatchRects = useCallback(() => {
     if (!searchTerm) {
@@ -270,7 +335,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         const text = span.textContent ?? "";
         if (!text.toLowerCase().includes(lower)) return;
 
-        // getBoundingClientRect already accounts for CSS transforms on the span
         const sr = span.getBoundingClientRect();
         rects.push({
           top: sr.top - wrapperRect.top,
@@ -287,8 +351,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     setActiveMatchIndex(rects.length > 0 ? 0 : -1);
   }, [searchTerm, numPages]);
 
-  // Re-scan whenever term changes or pages finish rendering.
-  // The 150ms delay ensures text layers are mounted after onRenderSuccess.
   useEffect(() => {
     const id = setTimeout(computeMatchRects, 150);
     return () => clearTimeout(id);
@@ -303,8 +365,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     const container = scrollContainerRef.current;
     if (!wrapper || !container) return;
 
-    // Scroll so the match is centred in the viewport
-    const wrapperTop = wrapper.offsetTop; // relative to scroll container
+    const wrapperTop = wrapper.offsetTop;
     const matchMidY = wrapperTop + m.top + m.height / 2;
     const targetScrollTop = matchMidY - container.clientHeight / 2;
     container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
@@ -400,16 +461,21 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
         redrawCanvas(pageNum, remaining);
         return updated;
       });
+
+      // Also erase selection highlights near this position
+      eraseSelectionHighlightsAt(pageNum, pos);
     },
-    [persistAnnotations, redrawCanvas],
+    [persistAnnotations, redrawCanvas, eraseSelectionHighlightsAt],
   );
 
   // ─── Mouse handlers ───────────────────────────────────────────────────────
 
   const handleMouseDown = useCallback(
     (pageNum: number) => (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Only pen draws on canvas; highlight is handled at wrapper level
+      if (tool !== "pen" && tool !== "eraser") return;
       const pos = getCanvasPos(e);
-      if (tool === "pen" || tool === "highlight") {
+      if (tool === "pen") {
         drawingState.current = {
           active: true,
           page: pageNum,
@@ -432,7 +498,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       const ds = drawingState.current;
       if (!ds.active || ds.page !== pageNum) return;
       const pos = getCanvasPos(e);
-      if ((tool === "pen" || tool === "highlight") && ds.currentPath) {
+      if (tool === "pen" && ds.currentPath) {
         const prev = ds.currentPath;
         const ctx = canvasRefs.current[pageNum]?.getContext("2d");
         if (ctx && prev.points.length > 0) {
@@ -440,8 +506,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
           ctx.beginPath();
           ctx.moveTo(last.x, last.y);
           ctx.lineTo(pos.x, pos.y);
-          ctx.strokeStyle = prev.tool === "pen" ? "red" : "rgba(255,255,0,0.4)";
-          ctx.lineWidth = prev.tool === "pen" ? 2 : 20;
+          ctx.strokeStyle = "red";
+          ctx.lineWidth = 2;
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
           ctx.stroke();
@@ -548,6 +614,25 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
     };
   }, [handleUndo, navigateMatch, showSearchBox]);
 
+  // ─── Cursor style when highlight tool is active ──────────────────────────
+  // Allow normal text selection cursor in highlight mode
+  const pageWrapperStyle = useCallback(
+    (isDarkMode: boolean): React.CSSProperties => ({
+      position: "relative",
+      display: "inline-block",
+      filter: isDarkMode ? "invert(1) hue-rotate(180deg)" : "none",
+      // In highlight mode, show text cursor to invite selection
+      cursor: tool === "highlight" ? "text" : undefined,
+      // Allow text selection in highlight mode; block it otherwise so drawing works
+      userSelect: tool === "highlight" ? "text" : "none",
+    }),
+    [tool],
+  );
+
+  // ─── Loading ──────────────────────────────────────────────────────────────
+
+  const isLoading = isLoadingPdf || (!!pdfSource && numPages === 0);
+
   // ─── Render ──────────────────────────────────────────────────────────────
 
   const showScrollbar =
@@ -609,6 +694,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
       {/* Outer wrapper for scroll + scrollbar */}
       <div className="relative flex-1 min-h-0">
+        {isLoading && (
+          <div className="absolute inset-0 top-80 flex items-center justify-center z-20">
+            <Loading />
+          </div>
+        )}
+
+        {!isLoadingPdf && !pdfSource && (
+          <div className="flex items-center justify-center h-full">
+            <p>No PDF loaded</p>
+          </div>
+        )}
+
         {/* Scroll container */}
         <div
           ref={scrollContainerRef}
@@ -632,6 +729,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
               size="icon"
               onClick={() => setTool(tool === "highlight" ? null : "highlight")}
               className={`h-8 w-8 rounded-xl transition-all duration-150 ${tool === "highlight" ? toolbarStyles.btnActive : toolbarStyles.btn}`}
+              title="Highlight (select text to highlight)"
             >
               <HighlighterIcon className="h-[15px] w-[15px]" />
             </Button>
@@ -668,104 +766,107 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
             </Button>
           </div>
 
-          {isLoadingPdf && (
-            <div className="flex items-center justify-center h-64">
-              <Loading />
-            </div>
-          )}
-          {!isLoadingPdf && !pdfSource && (
-            <div className="flex items-center justify-center h-full">
-              <p>No PDF loaded</p>
-            </div>
-          )}
-
           {pdfSource && (
-            <Document
-              file={pdfSource}
-              onLoadSuccess={onDocumentLoadSuccess}
-              loading={<Loading />}
-              noData={null}
-            >
-              {Array.from({ length: numPages }, (_, i) => i + 1).map(
-                (pageNum) => (
-                  <div
-                    key={pageNum}
-                    ref={(el) => {
-                      pageWrapperRefs.current[pageNum] = el;
-                    }}
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      filter: isDarkMode
-                        ? "invert(1) hue-rotate(180deg)"
-                        : "none",
-                    }}
-                  >
-                    <Page
-                      pageNumber={pageNum}
-                      renderAnnotationLayer
-                      renderTextLayer
-                      onRenderSuccess={onPageRenderSuccess(pageNum)}
-                      loading={null}
-                    />
-
-                    {/* Search highlight overlays — pixel-perfect, above text layer */}
-                    {matchRects
-                      .filter((m) => m.pageNum === pageNum)
-                      .map((m) => (
-                        <div
-                          key={m.globalIndex}
-                          style={{
-                            position: "absolute",
-                            top: m.top,
-                            left: m.left,
-                            width: m.width,
-                            height: m.height,
-                            // Active match: vivid orange; others: semi-transparent yellow
-                            background:
-                              m.globalIndex === activeMatchIndex
-                                ? "rgba(255, 140, 0, 0.55)"
-                                : "rgba(255, 220, 0, 0.35)",
-                            borderRadius: 2,
-                            pointerEvents: "none",
-                            zIndex: 11,
-                            // Pop the active one with a subtle outline
-                            outline:
-                              m.globalIndex === activeMatchIndex
-                                ? "2px solid rgba(255,100,0,0.8)"
-                                : "none",
-                          }}
-                        />
-                      ))}
-
-                    {/* Drawing canvas — above highlights */}
-                    <canvas
+            <div style={{ visibility: isLoading ? "hidden" : "visible" }}>
+              <Document
+                file={pdfSource}
+                onLoadSuccess={onDocumentLoadSuccess}
+                loading={null}
+                noData={null}
+              >
+                {Array.from({ length: numPages }, (_, i) => i + 1).map(
+                  (pageNum) => (
+                    <div
+                      key={pageNum}
                       ref={(el) => {
-                        canvasRefs.current[pageNum] = el;
+                        pageWrapperRefs.current[pageNum] = el;
                       }}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        zIndex: 12,
-                        backgroundColor: "transparent",
-                      }}
-                      className={
-                        tool === "pen" ||
-                        tool === "highlight" ||
-                        tool === "eraser"
-                          ? "pointer-events-auto cursor-crosshair"
-                          : "pointer-events-none"
-                      }
-                      onMouseDown={handleMouseDown(pageNum)}
-                      onMouseMove={handleMouseMove(pageNum)}
-                      onMouseUp={handleMouseUp(pageNum)}
-                      onMouseLeave={handleMouseUp(pageNum)}
-                    />
-                  </div>
-                ),
-              )}
-            </Document>
+                      style={pageWrapperStyle(isDarkMode)}
+                      onMouseUp={handlePageMouseUp(pageNum)}
+                    >
+                      <Page
+                        pageNumber={pageNum}
+                        renderAnnotationLayer
+                        renderTextLayer
+                        onRenderSuccess={onPageRenderSuccess(pageNum)}
+                        loading={null}
+                      />
+
+                      {/* Selection-based highlight overlays */}
+                      {selectionHighlights
+                        .filter((h) => h.pageNum === pageNum)
+                        .map((h) => (
+                          <div
+                            key={h.id}
+                            style={{
+                              position: "absolute",
+                              top: h.top,
+                              left: h.left,
+                              width: h.width,
+                              height: h.height,
+                              background: "rgba(255, 220, 0, 0.40)",
+                              borderRadius: 2,
+                              pointerEvents: "none",
+                              zIndex: 10,
+                              mixBlendMode: "multiply",
+                            }}
+                          />
+                        ))}
+
+                      {/* Search highlight overlays — above selection highlights */}
+                      {matchRects
+                        .filter((m) => m.pageNum === pageNum)
+                        .map((m) => (
+                          <div
+                            key={m.globalIndex}
+                            style={{
+                              position: "absolute",
+                              top: m.top,
+                              left: m.left,
+                              width: m.width,
+                              height: m.height,
+                              background:
+                                m.globalIndex === activeMatchIndex
+                                  ? "rgba(255, 140, 0, 0.55)"
+                                  : "rgba(255, 220, 0, 0.35)",
+                              borderRadius: 2,
+                              pointerEvents: "none",
+                              zIndex: 11,
+                              outline:
+                                m.globalIndex === activeMatchIndex
+                                  ? "2px solid rgba(255,100,0,0.8)"
+                                  : "none",
+                            }}
+                          />
+                        ))}
+
+                      {/* Drawing canvas — above everything */}
+                      <canvas
+                        ref={(el) => {
+                          canvasRefs.current[pageNum] = el;
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          zIndex: 12,
+                          backgroundColor: "transparent",
+                        }}
+                        className={
+                          tool === "pen" || tool === "eraser"
+                            ? "pointer-events-auto cursor-crosshair"
+                            : "pointer-events-none"
+                        }
+                        onMouseDown={handleMouseDown(pageNum)}
+                        onMouseMove={handleMouseMove(pageNum)}
+                        onMouseUp={handleMouseUp(pageNum)}
+                        onMouseLeave={handleMouseUp(pageNum)}
+                      />
+                    </div>
+                  ),
+                )}
+              </Document>
+            </div>
           )}
         </div>
 

@@ -1,11 +1,8 @@
 [Saturday]
 - [ ] Viewer Controlbar: Generate | Change Prompt | Previous/Current Version
-- [ ] PDF Loader visibility
-- [ ] Responsive Layout
-- [ ] Show Project name in titlebar
+- [ ] Highlight using cursor select rather than pen plus should be able to make notes
 
 [Sunday]
 - [ ] Refactor
 - [ ] Arxiv
 - [ ] API Testing
-- [ ] Do something with Plan.tsx

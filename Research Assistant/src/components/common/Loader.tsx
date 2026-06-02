@@ -52,15 +52,7 @@ const Loading: React.FC = () => {
             animation: "load-pulse-ring 2.4s ease-in-out infinite",
           }}
         />
-        {/* Inner static ring */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 10,
-            borderRadius: "50%",
-            border: `0.5px solid ${isDarkMode ? "rgba(237,232,223,0.1)" : "rgba(28,25,23,0.08)"}`,
-          }}
-        />
+
         {/* Dot 1 — brightest */}
         <div
           style={{
@@ -110,19 +102,6 @@ const Loading: React.FC = () => {
           }}
         />
       </div>
-
-      {/* Label */}
-      <span
-        style={{
-          fontSize: 11,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: isDarkMode ? "rgba(237,232,223,0.35)" : "rgba(28,25,23,0.35)",
-          animation: "load-fade-text 2.4s ease-in-out infinite",
-        }}
-      >
-        Loading document
-      </span>
     </div>
   );
 };
