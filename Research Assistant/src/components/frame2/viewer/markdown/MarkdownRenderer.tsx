@@ -5,7 +5,6 @@ import rehypeRaw from "rehype-raw";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import MarkdownToolbar from "./MarkdownToolbar";
 import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchContent } from "@/lib/backend";
@@ -216,20 +215,13 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
       )}
 
       {!isLoading && content.length > 0 && (
-        <>
-          {showControlPanel && (
-            <div className="flex justify-center z-10">
-              <MarkdownToolbar generateDoc={handleGenerate} />
-            </div>
-          )}
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeRaw, rehypeKatex]}
-            components={components}
-          >
-            {content}
-          </ReactMarkdown>
-        </>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeRaw, rehypeKatex]}
+          components={components}
+        >
+          {content}
+        </ReactMarkdown>
       )}
     </div>
   );
