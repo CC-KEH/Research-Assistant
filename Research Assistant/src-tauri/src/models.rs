@@ -124,9 +124,46 @@ pub struct FileInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectionHighlight {
+    pub id: String,
+    pub page_num: u32,
+    pub top: f64,
+    pub left: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteRect {
+    pub top: f64,
+    pub left: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextNote {
+    pub id: String,
+    pub page_num: u32,
+    pub rects: Vec<NoteRect>,
+    pub selected_text: String,
+    pub markdown: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnnotationPoint {
     pub x: f64,
     pub y: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AnnotationTool {
+    Pen,
+    Highlight,
 }
 
 /// One continuous stroke drawn with a pen or highlighter.
@@ -138,15 +175,10 @@ pub struct AnnotationPath {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum AnnotationTool {
-    Pen,
-    Highlight,
-}
-
-/// All strokes for a single PDF file, keyed by page number (as a string in JSON).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct FileAnnotations {
-    /// Keys are page numbers serialised as strings (JSON object keys are always strings).
     pub page_paths_map: HashMap<String, Vec<AnnotationPath>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub selection_highlights: Option<Vec<SelectionHighlight>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub notes: Option<Vec<TextNote>>,
 }

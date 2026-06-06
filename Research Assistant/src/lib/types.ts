@@ -109,12 +109,31 @@ export interface AnnotationPath {
   tool: "pen" | "highlight";
 }
 
+export interface SelectionHighlight {
+  id: string;
+  pageNum: number;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+export interface TextNote {
+  id: string;
+  pageNum: number;
+  rects: { top: number; left: number; width: number; height: number }[];
+  selectedText: string;
+  markdown: string;
+}
+
 /** All canvas paths for a single PDF file, keyed by page number. */
 export type PagePathsMap = Record<number, AnnotationPath[]>;
 
 /** Stored under config.annotations[filePath] */
 export interface FileAnnotations {
   pagePathsMap: PagePathsMap;
+  selectionHighlights?: SelectionHighlight[];
+  notes?: TextNote[];
 }
 
 // ─── Chat Types ───────────────────────────────────────────────────────────────

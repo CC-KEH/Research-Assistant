@@ -33,6 +33,8 @@ import type {
   AnnotationPath,
   PagePathsMap,
   FileAnnotations,
+  SelectionHighlight,
+  TextNote,
 } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import Loading from "@/components/common/Loader";
@@ -51,23 +53,6 @@ interface MatchRect {
   height: number;
   pageNum: number;
   globalIndex: number;
-}
-
-interface SelectionHighlight {
-  id: string;
-  pageNum: number;
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
-
-interface TextNote {
-  id: string;
-  pageNum: number;
-  rects: { top: number; left: number; width: number; height: number }[];
-  selectedText: string;
-  markdown: string;
 }
 
 interface PendingNote {
@@ -159,6 +144,12 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   const { config, updateConfig } = useConfig();
 
+  // Always-current ref so callbacks never close over a stale config snapshot
+  const configRef = useRef(config);
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
   // ─── Zoom ────────────────────────────────────────────────────────────────
 
   const zoomIn = useCallback(
@@ -190,26 +181,62 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
 
   // ─── Annotations persist / read ──────────────────────────────────────────
 
-  const persistAnnotations = useCallback(
-    (updatedMap: PagePathsMap) => {
-      if (!config) return;
+  // FileAnnotations only guarantees { pagePathsMap }. We store highlights and
+  // notes in the same slot under extra keys, cast through unknown to avoid
+  // touching the shared type definition.
+  const persistAll = useCallback(
+    (
+      updatedPathsMap: PagePathsMap,
+      updatedHighlights: SelectionHighlight[],
+      updatedNotes: TextNote[],
+    ) => {
+      const currentConfig = configRef.current;
+      console.log("persistAll called", {
+        currentConfig: !!currentConfig,
+        file,
+        highlights: updatedHighlights.length,
+        notes: updatedNotes.length,
+      });
+      if (!currentConfig) return;
       updateConfig({
-        ...config,
+        ...currentConfig,
         annotations: {
-          ...(config.annotations ?? {}),
-          [file]: { pagePathsMap: updatedMap } satisfies FileAnnotations,
+          ...(currentConfig.annotations ?? {}),
+          [file]: {
+            pagePathsMap: updatedPathsMap,
+            selectionHighlights: updatedHighlights,
+            notes: updatedNotes,
+          },
         },
       });
     },
-    [file, config, updateConfig],
+    [file, updateConfig],
+  ); // no `config` dep — reads via ref
+
+  // Thin wrappers so existing callers that only update pen strokes still work
+  const persistAnnotations = useCallback(
+    (updatedMap: PagePathsMap) => {
+      persistAll(updatedMap, selectionHighlights, notes);
+    },
+    [persistAll, selectionHighlights, notes],
   );
 
-  const readAnnotationsFromConfig = useCallback((): PagePathsMap => {
-    const fa: FileAnnotations | undefined = config?.annotations?.[file];
-    if (!fa) return {};
-    const out: PagePathsMap = {};
-    for (const [k, v] of Object.entries(fa.pagePathsMap)) out[Number(k)] = v;
-    return out;
+  const readAnnotationsFromConfig = useCallback(() => {
+    const fa = config?.annotations?.[file];
+    if (!fa)
+      return {
+        pagePathsMap: {} as PagePathsMap,
+        selectionHighlights: [] as SelectionHighlight[],
+        notes: [] as TextNote[],
+      };
+    const pagePathsMap: PagePathsMap = {};
+    for (const [k, v] of Object.entries(fa.pagePathsMap ?? {}))
+      pagePathsMap[Number(k)] = v;
+    return {
+      pagePathsMap,
+      selectionHighlights: fa.selectionHighlights ?? [],
+      notes: fa.notes ?? [],
+    };
   }, [file, config]);
 
   // ─── Load PDF ────────────────────────────────────────────────────────────
@@ -248,10 +275,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   }, [file]);
 
   useEffect(() => {
-    if (!file) return;
+    if (!file || !config) return;
     const saved = readAnnotationsFromConfig();
-    if (Object.keys(saved).length > 0) setPagePathsMap(saved);
-  }, [file, readAnnotationsFromConfig]);
+    if (Object.keys(saved.pagePathsMap).length > 0)
+      setPagePathsMap(saved.pagePathsMap);
+    if (saved.selectionHighlights.length > 0)
+      setSelectionHighlights(saved.selectionHighlights);
+    if (saved.notes.length > 0) setNotes(saved.notes);
+  }, [file, config]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Document load ───────────────────────────────────────────────────────
 
@@ -370,10 +401,12 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       pageNum,
       ...r,
     }));
-    setSelectionHighlights((prev) => [...prev, ...newHighlights]);
+    const updated = [...selectionHighlights, ...newHighlights];
+    setSelectionHighlights(updated);
+    persistAll(pagePathsMap, updated, notes);
     setSelectionSnapshot(null);
     window.getSelection()?.removeAllRanges();
-  }, [selectionSnapshot]);
+  }, [selectionSnapshot, selectionHighlights, persistAll, pagePathsMap, notes]);
 
   // ─── Contextual action: open note composer ────────────────────────────────
 
@@ -401,10 +434,19 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
       selectedText: pendingNote.selectedText,
       markdown: noteInput.trim(),
     };
-    setNotes((prev) => [...prev, note]);
+    const updated = [...notes, note];
+    setNotes(updated);
+    persistAll(pagePathsMap, selectionHighlights, updated);
     setPendingNote(null);
     setNoteInput("");
-  }, [pendingNote, noteInput]);
+  }, [
+    pendingNote,
+    noteInput,
+    notes,
+    persistAll,
+    pagePathsMap,
+    selectionHighlights,
+  ]);
 
   const cancelNote = useCallback(() => {
     setPendingNote(null);
@@ -416,31 +458,30 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file }) => {
   const eraseSelectionHighlightsAt = useCallback(
     (pageNum: number, pos: { x: number; y: number }) => {
       const R = 20;
-      setSelectionHighlights((prev) =>
-        prev.filter((h) => {
-          if (h.pageNum !== pageNum) return true;
-          return !(
-            pos.x >= h.left - R &&
-            pos.x <= h.left + h.width + R &&
-            pos.y >= h.top - R &&
-            pos.y <= h.top + h.height + R
-          );
-        }),
-      );
-      setNotes((prev) =>
-        prev.filter((n) => {
-          if (n.pageNum !== pageNum) return true;
-          return !n.rects.some(
-            (r) =>
-              pos.x >= r.left - R &&
-              pos.x <= r.left + r.width + R &&
-              pos.y >= r.top - R &&
-              pos.y <= r.top + r.height + R,
-          );
-        }),
-      );
+      const updatedH = selectionHighlights.filter((h) => {
+        if (h.pageNum !== pageNum) return true;
+        return !(
+          pos.x >= h.left - R &&
+          pos.x <= h.left + h.width + R &&
+          pos.y >= h.top - R &&
+          pos.y <= h.top + h.height + R
+        );
+      });
+      const updatedN = notes.filter((n) => {
+        if (n.pageNum !== pageNum) return true;
+        return !n.rects.some(
+          (r) =>
+            pos.x >= r.left - R &&
+            pos.x <= r.left + r.width + R &&
+            pos.y >= r.top - R &&
+            pos.y <= r.top + r.height + R,
+        );
+      });
+      setSelectionHighlights(updatedH);
+      setNotes(updatedN);
+      persistAll(pagePathsMap, updatedH, updatedN);
     },
-    [],
+    [selectionHighlights, notes, persistAll, pagePathsMap],
   );
 
   // ─── Search ───────────────────────────────────────────────────────────────
